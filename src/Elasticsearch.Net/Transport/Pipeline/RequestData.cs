@@ -43,24 +43,23 @@ namespace Elasticsearch.Net
 		public IConnectionConfigurationValues ConnectionSettings { get; }
 		public IMemoryStreamFactory MemoryStreamFactory { get; }
 
-		[Obsolete("this constructor is scheduled to be removed in the next major version")]
-		public RequestData(HttpMethod method, string path, PostData<object> data, IConnectionConfigurationValues global, IMemoryStreamFactory memoryStreamFactory)
+		public RequestData(HttpMethod method, string path, PostData<object> data, IConnectionConfigurationValues global, IRequestParameters local, IMemoryStreamFactory memoryStreamFactory, CancellationToken cancellationToken = default(CancellationToken))
 #pragma warning disable CS0618 // Type or member is obsolete
-			: this(method, path, data, global, (IRequestConfiguration)null, memoryStreamFactory)
-#pragma warning restore CS0618 // Type or member is obsolete
-		{ }
-
-		public RequestData(HttpMethod method, string path, PostData<object> data, IConnectionConfigurationValues global, IRequestParameters local, IMemoryStreamFactory memoryStreamFactory)
-#pragma warning disable CS0618 // Type or member is obsolete
-			: this(method, path, data, global, (IRequestConfiguration)local?.RequestConfiguration, memoryStreamFactory)
+			: this(method, path, data, global, (IRequestConfiguration)local?.RequestConfiguration, memoryStreamFactory, cancellationToken)
 #pragma warning restore CS0618 // Type or member is obsolete
 		{
 			this.CustomConverter = local?.DeserializationOverride;
 			this.Path = this.CreatePathWithQueryStrings(path, this.ConnectionSettings, local);
 		}
 
-		[Obsolete("this constructor is scheduled to become private in the next major version")]
-		public RequestData(HttpMethod method, string path, PostData<object> data, IConnectionConfigurationValues global, IRequestConfiguration local, IMemoryStreamFactory memoryStreamFactory)
+		private RequestData(
+			HttpMethod method,
+			string path,
+			PostData<object> data,
+			IConnectionConfigurationValues global,
+			IRequestConfiguration local,
+			IMemoryStreamFactory memoryStreamFactory,
+			CancellationToken cancellationToken = default(CancellationToken))
 		{
 			this.ConnectionSettings = global;
 			this.MemoryStreamFactory = memoryStreamFactory;
@@ -89,7 +88,7 @@ namespace Elasticsearch.Net
 			this.ProxyPassword = global.ProxyPassword;
 			this.DisableAutomaticProxyDetection = global.DisableAutomaticProxyDetection;
 			this.BasicAuthorizationCredentials = local?.BasicAuthenticationCredentials ?? global.BasicAuthenticationCredentials;
-			this.CancellationToken = local?.CancellationToken ?? CancellationToken.None;
+			this.CancellationToken = cancellationToken;
 			this.AllowedStatusCodes = local?.AllowedStatusCodes ?? Enumerable.Empty<int>();
 		}
 
