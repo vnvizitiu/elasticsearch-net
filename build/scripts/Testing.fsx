@@ -69,7 +69,8 @@ module Tests =
             |> Seq.map DirectoryName
             |> Seq.map Paths.Quote
             |> Seq.iter(fun project -> 
-                Tooling.Dnx.Exec runtime TestFailure "." ["--project"; project; "test -parallel"; parallelization; " -xml"; xmlOutput]) 
+                // TODO: No way to currently pass xml output...
+                Tooling.DotNet.Exec runtime TestFailure "." ["test"; project;]) 
 
     let RunUnitTests() =
         !! Paths.Source("Tests/project.json") 

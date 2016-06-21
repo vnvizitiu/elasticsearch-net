@@ -28,8 +28,8 @@ type Build() =
         projects
         |> Seq.iter(fun project -> 
             let path = (Paths.Quote project)
-            Tooling.Dnu.Exec Tooling.DotNetRuntime.Desktop Build.BuildFailure project ["restore"; path; "--quiet"]
-            Tooling.Dnu.Exec Tooling.DotNetRuntime.Desktop Build.BuildFailure project ["build"; path; "--configuration Release --quiet"]
+            Tooling.DotNet.Exec Tooling.DotNetRuntime.Desktop Build.BuildFailure project ["restore"; path; "--verbosity Warning"]
+            Tooling.DotNet.Exec Tooling.DotNetRuntime.Desktop Build.BuildFailure project ["build"; path; "--configuration Release"]
            )
 
     static member BuildFailure errors =
@@ -44,8 +44,8 @@ type Build() =
 
             //eventhough this says desktop it still builds all the tfm's it just hints wich installed dnx version to use
             let path = (Paths.Quote project)
-            Tooling.Dnu.Exec Tooling.DotNetRuntime.Desktop Build.BuildFailure project ["restore"; path; "--quiet"]
-            Tooling.Dnu.Exec Tooling.DotNetRuntime.Desktop Build.BuildFailure project ["build"; path; "--configuration Release --quiet"]
+            Tooling.DotNet.Exec Tooling.DotNetRuntime.Desktop Build.BuildFailure project ["restore"; path; "--verbosity Warning"]
+            Tooling.DotNet.Exec Tooling.DotNetRuntime.Desktop Build.BuildFailure project ["build"; path; "--configuration Release"]
            )
 
         projects

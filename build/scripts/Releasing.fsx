@@ -52,7 +52,7 @@ type Release() =
         |> Seq.map DirectoryName
         |> Seq.iter(fun project -> 
             //even though this says desktop it still packs all the tfm's it just hints wich installed dnx version to use
-            Tooling.Dnu.Exec Tooling.DotNetRuntime.Desktop Build.BuildFailure project ["pack"; (Paths.Quote project); "--configuration Release";])
+            Tooling.DotNet.Exec Tooling.DotNetRuntime.Desktop Build.BuildFailure project ["pack"; (Paths.Quote project); "--configuration Release";])
 
         projects
         |> Seq.iter(fun project ->

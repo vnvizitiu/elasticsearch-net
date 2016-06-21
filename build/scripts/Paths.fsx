@@ -188,122 +188,15 @@ module Tooling =
 
     let Notifier = new NpmTooling("node-notifier", "bin.js")
 
-    let private userProfileDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-
-    type DnvmVersion(str:string) =
-        let p = str.Split([|' '|], StringSplitOptions.RemoveEmptyEntries)
-        let parts = 
-            match p.Length with
-            | 6 -> List.ofArray p
-            | 5 -> 
-                match p.[0] with
-                | "*" -> (List.ofArray p) @ [""]
-                | _ -> "" :: List.ofArray p
-            | 4 -> "" :: (List.ofArray p) @ [""]
-            | _ -> raise(BuildException(sprintf "Invalid number of arguments to dnvm version: %i" p.Length, List.ofArray p)) 
- 
-        member this.Active = isNotNullOrEmpty parts.[0] 
-        member this.Version = parts.[1]          
-        member this.Runtime = parts.[2] 
-        member this.Architecture = parts.[3] 
-        member this.OperatingSystem = parts.[4] 
-        member this.Alias = parts.[5]
-
-        member this.Location = Path.Combine(userProfileDir,
-            sprintf ".dnx/runtimes/dnx-%s-%s-%s.%s"
-                this.Runtime
-                this.OperatingSystem 
-                this.Architecture 
-                this.Version)
-
-        member this.Process proc =
-            sprintf "%s/bin/%s" this.Location proc
-
-    type DnvmTooling() =
-        let dnvmUserLocation = Path.Combine(userProfileDir, ".dnx/bin/dnvm.cmd")
-        let dnvmProgramFilesLocation = "C:/Program Files/Microsoft DNX/Dnvm/dnvm.cmd"
-        let dnvm = 
-            match fileExists dnvmUserLocation with
-            | true -> dnvmUserLocation
-            | false -> dnvmProgramFilesLocation
-
-        member this.Exec arguments =
-            execProcessWithTimeoutAndReturnMessages dnvm arguments (TimeSpan.FromSeconds 30.)
-
-        member this.UpdateSelf() =
-            this.Exec ["update-self"] |> ignore
-
-        member this.List() =
-            this.Exec ["list"]
-
-        member this.Install version runtime arch os =
-            match (arch, os) with
-            | (Some a, Some o) -> this.Exec ["install"; "-Version"; version; "-r"; runtime; "-a"; a; "-os"; o]
-            | (Some a, None) -> this.Exec ["install"; "-Version"; version; "-r"; runtime; "-a"; a]
-            | (None, Some o) -> this.Exec ["install"; "-Version"; version; "-r"; runtime; "-os"; o]
-            | (None, None) -> this.Exec ["install"; "-Version"; version; "-r"; runtime]
-            
-    let Dnvm = new DnvmTooling()
-
-    // update dnvm first
-    Dnvm.UpdateSelf()
-
-    let dnxVersions = 
-        let result = Dnvm.List()
-        match result.OK with
-        | true ->
-            result.Messages
-            |> Seq.skip 3
-            |> Seq.filter isNotNullOrEmpty
-            |> Seq.map DnvmVersion
-        | _ -> raise(BuildException("No dnvm versions found on the machine. Please install dnx", []))
-
-    type GlobalJson = JsonProvider<"../../src/global.json">
-    let desiredDnxVersion = GlobalJson.GetSample().Sdk.Version
-    printfn "Expect %s to be installed (both clr and coreclr and runtimes)" desiredDnxVersion
-    let hasClr = dnxVersions |> Seq.tryFind (fun v -> v.Version = desiredDnxVersion && v.Runtime = "clr")
-    let hasCoreClr = dnxVersions |> Seq.tryFind (fun v -> v.Version = desiredDnxVersion && v.Runtime = "coreclr")
-
-    let failure errors =
-        raise (BuildException("The project build failed.", errors |> List.ofSeq))
-
-    match (hasClr, hasCoreClr) with
-    | (None, None) -> 
-        let installClr = Dnvm.Install desiredDnxVersion "clr" None None
-        if not installClr.OK then failure installClr.Errors
-        let installCoreClr = Dnvm.Install desiredDnxVersion "coreclr" None None
-        if not installCoreClr.OK then failure installCoreClr.Errors
-    | (Some _, None) -> 
-        let installCoreClr = Dnvm.Install desiredDnxVersion "coreclr" None None
-        if not installCoreClr.OK then failure installCoreClr.Errors
-    | (None, Some _) -> 
-        let installClr = Dnvm.Install desiredDnxVersion "clr" None None
-        if not installClr.OK then failure installClr.Errors
-    | _ -> ()
-    
     type DotNetRuntime = | Desktop | Core | Both
 
-    type DnxTooling(exe) =
-        member this.Exec runtime failedF workingDirectory arguments =
+    type DotNetTooling(exe) =
+       member this.Exec runtime failedF workingDirectory arguments =
             this.ExecWithTimeout runtime failedF workingDirectory arguments (TimeSpan.FromMinutes 30.)
 
         member this.ExecWithTimeout runtime failedF workingDirectory arguments timeout =
-            match (runtime, hasClr, hasCoreClr) with
-            | (Core, _, Some c) ->
-                let proc = c.Process exe
-                execProcessWithTimeout proc arguments timeout
-            | (Desktop, Some d, _) ->
-                let proc = d.Process exe
-                execProcessWithTimeout proc arguments timeout
-            | (Both, Some d, Some c) ->
-                let proc = d.Process exe
-                let result = execProcessWithTimeout proc arguments timeout
-                if result <> 0 then failwith (sprintf "Failed to run dnx tooling for %s args: %A" proc arguments)
-                let proc = c.Process exe
-                execProcessWithTimeout proc arguments (TimeSpan.FromMinutes 30.)
-            | _ -> failwith "Tried to run dnx tooling in unknown state"
-            |> ignore
+            let result = execProcessWithTimeout exe arguments timeout
+            if result <> 0 then failwith (sprintf "Failed to run dotnet tooling for %s args: %A" exe arguments)
 
-    let Dnu = new DnxTooling("dnu.cmd")
-    let Dnx = new DnxTooling("dnx.exe")
+    let DotNet = new DotNetTooling("dotnet.exe")
 

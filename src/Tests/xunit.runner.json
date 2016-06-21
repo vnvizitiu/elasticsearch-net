@@ -1,0 +1,5 @@
+﻿{
+  "diagnosticMessages": true,
+  "maxParallelThreads": 1,
+  "parallelizeTestCollections": true 
+}
