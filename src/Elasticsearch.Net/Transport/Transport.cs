@@ -118,7 +118,7 @@ namespace Elasticsearch.Net
 			{
 				await pipeline.FirstPoolUsageAsync(this.Settings.BootstrapLock, cancellationToken).ConfigureAwait(false);
 
-				var requestData = new RequestData(method, path, data, this.Settings, requestParameters, this.MemoryStreamFactory, cancellationToken);
+				var requestData = new RequestData(method, path, data, this.Settings, requestParameters, this.MemoryStreamFactory);
 				ElasticsearchResponse<TReturn> response = null;
 
 				var seenExceptions = new List<PipelineException>();
@@ -129,7 +129,7 @@ namespace Elasticsearch.Net
 					{
 						await pipeline.SniffOnStaleClusterAsync(cancellationToken).ConfigureAwait(false);
 						await PingAsync(pipeline, node, cancellationToken).ConfigureAwait(false);
-						response = await pipeline.CallElasticsearchAsync<TReturn>(requestData).ConfigureAwait(false);
+						response = await pipeline.CallElasticsearchAsync<TReturn>(requestData, cancellationToken).ConfigureAwait(false);
 						if (!response.SuccessOrKnownError)
 						{
 							pipeline.MarkDead(node);

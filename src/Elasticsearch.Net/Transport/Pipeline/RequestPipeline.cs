@@ -212,7 +212,7 @@ namespace Elasticsearch.Net
 			}
 		}
 
-		private RequestData CreatePingRequestData(Node node, Auditable audit, CancellationToken cancellationToken = default(CancellationToken))
+		private RequestData CreatePingRequestData(Node node, Auditable audit)
 		{
 			audit.Node = node;
 
@@ -222,13 +222,12 @@ namespace Elasticsearch.Net
 				RequestTimeout = this.RequestTimeout,
 				BasicAuthenticationCredentials = this._settings.BasicAuthenticationCredentials,
 				EnableHttpPipelining = this.RequestConfiguration?.EnableHttpPipelining ?? this._settings.HttpPipeliningEnabled,
-				ForceNode = this.RequestConfiguration?.ForceNode,
-				CancellationToken = cancellationToken
+				ForceNode = this.RequestConfiguration?.ForceNode
 			};
 			IRequestParameters requestParameters = new RootNodeInfoRequestParameters { };
 			requestParameters.RequestConfiguration = requestOverrides;
 
-			return new RequestData(HttpMethod.HEAD, "/", null, this._settings, requestParameters, this._memoryStreamFactory, cancellationToken) { Node = node };
+			return new RequestData(HttpMethod.HEAD, "/", null, this._settings, requestParameters, this._memoryStreamFactory) { Node = node };
 		}
 
 		public void Ping(Node node)
@@ -264,7 +263,7 @@ namespace Elasticsearch.Net
 				try
 				{
 					var pingData = CreatePingRequestData(node, audit);
-					var response = await this._connection.RequestAsync<VoidResponse>(pingData).ConfigureAwait(false);
+					var response = await this._connection.RequestAsync<VoidResponse>(pingData, cancellationToken).ConfigureAwait(false);
 					ThrowBadAuthPipelineExceptionWhenNeeded(response);
 					//ping should not silently accept bad but valid http responses
 					if (!response.Success) throw new PipelineException(PipelineFailure.BadResponse) { Response = response };
@@ -350,8 +349,8 @@ namespace Elasticsearch.Net
 					audit.Node = node;
 					try
 					{
-						var requestData = new RequestData(HttpMethod.GET, path, null, this._settings, (IRequestParameters)null, this._memoryStreamFactory, cancellationToken) { Node = node };
-						var response = await this._connection.RequestAsync<SniffResponse>(requestData).ConfigureAwait(false);
+						var requestData = new RequestData(HttpMethod.GET, path, null, this._settings, (IRequestParameters)null, this._memoryStreamFactory) { Node = node };
+						var response = await this._connection.RequestAsync<SniffResponse>(requestData, cancellationToken).ConfigureAwait(false);
 						ThrowBadAuthPipelineExceptionWhenNeeded(response);
 						//sniff should not silently accept bad but valid http responses
 						if (!response.Success) throw new PipelineException(PipelineFailure.BadResponse) { Response = response };
@@ -397,7 +396,7 @@ namespace Elasticsearch.Net
 			}
 		}
 
-		public async Task<ElasticsearchResponse<TReturn>> CallElasticsearchAsync<TReturn>(RequestData requestData) where TReturn : class
+		public async Task<ElasticsearchResponse<TReturn>> CallElasticsearchAsync<TReturn>(RequestData requestData, CancellationToken cancellationToken) where TReturn : class
 		{
 			using (var audit = this.Audit(HealthyResponse))
 			{
@@ -407,7 +406,7 @@ namespace Elasticsearch.Net
 				ElasticsearchResponse<TReturn> response = null;
 				try
 				{
-					response = await this._connection.RequestAsync<TReturn>(requestData).ConfigureAwait(false);
+					response = await this._connection.RequestAsync<TReturn>(requestData, cancellationToken).ConfigureAwait(false);
 					response.AuditTrail = this.AuditTrail;
 					ThrowBadAuthPipelineExceptionWhenNeeded(response);
 					if (!response.Success) audit.Event = AuditEvent.BadResponse;

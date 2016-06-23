@@ -26,8 +26,8 @@ namespace Elasticsearch.Net
 			_exception = exception;
 		}
 
-		public virtual async Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData) where TReturn : class =>
-			await this.ReturnConnectionStatusAsync<TReturn>(requestData, requestData.CancellationToken).ConfigureAwait(false);
+		public virtual async Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData, CancellationToken cancellationToken) where TReturn : class =>
+			await this.ReturnConnectionStatusAsync<TReturn>(requestData, cancellationToken).ConfigureAwait(false);
 
 		public virtual ElasticsearchResponse<TReturn> Request<TReturn>(RequestData requestData) where TReturn : class =>
 			this.ReturnConnectionStatus<TReturn>(requestData);

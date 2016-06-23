@@ -37,15 +37,14 @@ namespace Elasticsearch.Net
 		public string ProxyPassword { get; }
 		public bool DisableAutomaticProxyDetection { get; }
 		public BasicAuthenticationCredentials BasicAuthorizationCredentials { get; }
-		public CancellationToken CancellationToken { get; }
 		public IEnumerable<int> AllowedStatusCodes { get; }
 		public Func<IApiCallDetails, Stream, object> CustomConverter { get; private set; }
 		public IConnectionConfigurationValues ConnectionSettings { get; }
 		public IMemoryStreamFactory MemoryStreamFactory { get; }
 
-		public RequestData(HttpMethod method, string path, PostData<object> data, IConnectionConfigurationValues global, IRequestParameters local, IMemoryStreamFactory memoryStreamFactory, CancellationToken cancellationToken = default(CancellationToken))
+		public RequestData(HttpMethod method, string path, PostData<object> data, IConnectionConfigurationValues global, IRequestParameters local, IMemoryStreamFactory memoryStreamFactory)
 #pragma warning disable CS0618 // Type or member is obsolete
-			: this(method, path, data, global, (IRequestConfiguration)local?.RequestConfiguration, memoryStreamFactory, cancellationToken)
+			: this(method, path, data, global, (IRequestConfiguration)local?.RequestConfiguration, memoryStreamFactory)
 #pragma warning restore CS0618 // Type or member is obsolete
 		{
 			this.CustomConverter = local?.DeserializationOverride;
@@ -58,8 +57,7 @@ namespace Elasticsearch.Net
 			PostData<object> data,
 			IConnectionConfigurationValues global,
 			IRequestConfiguration local,
-			IMemoryStreamFactory memoryStreamFactory,
-			CancellationToken cancellationToken = default(CancellationToken))
+			IMemoryStreamFactory memoryStreamFactory)
 		{
 			this.ConnectionSettings = global;
 			this.MemoryStreamFactory = memoryStreamFactory;
@@ -88,7 +86,6 @@ namespace Elasticsearch.Net
 			this.ProxyPassword = global.ProxyPassword;
 			this.DisableAutomaticProxyDetection = global.DisableAutomaticProxyDetection;
 			this.BasicAuthorizationCredentials = local?.BasicAuthenticationCredentials ?? global.BasicAuthenticationCredentials;
-			this.CancellationToken = cancellationToken;
 			this.AllowedStatusCodes = local?.AllowedStatusCodes ?? Enumerable.Empty<int>();
 		}
 
