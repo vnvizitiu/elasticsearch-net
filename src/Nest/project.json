@@ -107,7 +107,7 @@
         }
       }
     },
-    "netstandard1.6": {
+    "netstandard1.3": {
       "buildOptions": {
         "define": [
           "DOTNETCORE"
