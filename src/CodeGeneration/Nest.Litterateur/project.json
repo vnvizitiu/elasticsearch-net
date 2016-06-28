@@ -5,7 +5,7 @@
     "emitEntryPoint": true
   },
   "dependencies": {
-    "Newtonsoft.Json": "8.0.4-beta1"
+    "Newtonsoft.Json": "9.0.1"
   },
   "commands": {
     "Nest.Litterateur": "Nest.Litterateur"
