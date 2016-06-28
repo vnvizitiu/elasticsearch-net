@@ -518,7 +518,6 @@
     <Compile Include="CommonOptions\TimeUnit\Time.cs" />
     <Compile Include="CommonOptions\TimeUnit\TimeJsonConverter.cs" />
     <Compile Include="CommonOptions\TimeUnit\TimeUnit.cs" />
-    <Compile Include="CrossPlatform\Browsable.cs" />
     <Compile Include="CrossPlatform\SynchronizedCollection.cs" />
     <Compile Include="CrossPlatform\TypeExtensions.cs" />
     <Compile Include="Document\Multiple\Bulk\BulkOperation\BulkCreate.cs" />

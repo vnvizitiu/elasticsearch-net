@@ -31,7 +31,7 @@ namespace Nest.Litterateur.Documentation.Files
 				document.Accept(visitor);
 			}
 #else
-			this.FileLocation.CopyTo(docFileName.FullName, true);
+			this.FileLocation.CopyTo(destination.FullName, true);
 #endif
 		}
 
