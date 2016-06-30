@@ -32,20 +32,6 @@
   },
   "testRunner": "xunit",
   "frameworks": {
-    "net451": {
-      "frameworkAssemblies": {
-        "System.Diagnostics.Tools": "",
-        "System.IO.Compression.FileSystem": "",
-        "System.Reflection": "",
-        "System.Runtime": "",
-        "System.Linq": "",
-        "System.Threading.Tasks": ""
-      },
-      "dependencies": {
-        "Microsoft.NETCore.Platforms": "1.0.1",
-        "SemanticVersioning": "0.6.17"
-      }
-    },
     "netcoreapp1.0": {
       "buildOptions": { "define": ["DOTNETCORE"] },
       "dependencies": {

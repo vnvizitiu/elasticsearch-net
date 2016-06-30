@@ -6,11 +6,8 @@ using System.Text;
 using Microsoft.CodeAnalysis.CSharp;
 using Nest.Litterateur.Documentation.Blocks;
 using Nest.Litterateur.Walkers;
-
-#if !DOTNETCORE
-using AsciiDocNet;
 using Nest.Litterateur.AsciiDoc;
-#endif
+using AsciiDocNet;
 
 namespace Nest.Litterateur.Documentation.Files
 {
@@ -188,14 +185,9 @@ namespace Nest.Litterateur.Documentation.Files
 			var body = this.RenderBlocksToDocumentation(mergedBlocks);
 			var docFile = this.CreateDocumentationLocation();
 
-#if !DOTNETCORE
 			CleanDocumentAndWriteToFile(body, docFile);
-#else
-			File.WriteAllText(docFile.FullName, body);
-#endif
 		}
 
-#if !DOTNETCORE
 		private void CleanDocumentAndWriteToFile(string body, FileInfo destination)
 		{
 			// tidy up the asciidoc
@@ -211,6 +203,5 @@ namespace Nest.Litterateur.Documentation.Files
 				document.Accept(new AsciiDocVisitor(file));
 			}
 		}
-#endif
 	}
 }

@@ -53,53 +53,9 @@
       }
     }
   },
-  "dependencies": {
-  
-  },
-  "commands": {
-  
-  },
-  "frameworks": {
-    "net46": {
-      "buildOptions": {
-        "define": [
-          "NET46"
-        ]
-      },
-      "frameworkAssemblies": {
-        "System": {
-          "type": "build"
-        },
-        "System.Runtime": {
-          "type": "build"
-        },
-        "System.Runtime.Serialization": {
-          "type": "build"
-        }
-      },
-      "dependencies": {
-        "System.Collections.Specialized": "4.0.1",
-        "System.Reflection.TypeExtensions": "4.1.0"
-      }
-    },
-    "net45": {
-      "buildOptions": {
-        "define": [
-          "NET45"
-        ]
-      },
-      "frameworkAssemblies": {
-        "System": {
-          "type": "build"
-        },
-        "System.Runtime": {
-          "type": "build"
-        },
-        "System.Runtime.Serialization": {
-          "type": "build"
-        }
-      }
-    },
+  "dependencies": {},
+  "commands": {},
+  "frameworks": { 
     "netstandard1.3": {
       "buildOptions": {
         "define": [

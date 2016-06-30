@@ -30,7 +30,7 @@ namespace Nest.Litterateur
 				// includes to other output asciidocs
 				yield return InputFiles("*.asciidoc");
 			}
-		}	
+		}
 
 		public static void Go(string[] args)
 		{
@@ -39,11 +39,9 @@ namespace Nest.Litterateur
 				file.SaveToDocumentationFolder();
 			}
 
-#if !DOTNETCORE
 			if (Debugger.IsAttached)
 				Console.WriteLine("Press any key to continue...");
 				Console.ReadKey();
-#endif
 		}
 	}
 }

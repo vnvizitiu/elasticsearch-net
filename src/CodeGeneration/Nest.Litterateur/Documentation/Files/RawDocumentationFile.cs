@@ -18,7 +18,6 @@ namespace Nest.Litterateur.Documentation.Files
 			//we simply do a copy of the markdown file
 			var destination = this.CreateDocumentationLocation();
 
-#if !DOTNETCORE
 			var document = Document.Load(FileLocation.FullName);
 
 			// make any modifications
@@ -30,9 +29,6 @@ namespace Nest.Litterateur.Documentation.Files
 			{
 				document.Accept(visitor);
 			}
-#else
-			this.FileLocation.CopyTo(destination.FullName, true);
-#endif
 		}
 
 		protected override FileInfo CreateDocumentationLocation()

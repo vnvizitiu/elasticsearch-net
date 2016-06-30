@@ -55,7 +55,6 @@ namespace Nest.Litterateur.Walkers
 				_code = node.WithoutLeadingTrivia().WithTrailingTrivia().ToFullString();
 				_code = _code.RemoveNumberOfLeadingTabsAfterNewline(repeatedTabs);
 
-#if !DOTNETCORE
 				if (_propertyOrMethodName == "ExpectJson" || _propertyOrMethodName == "QueryJson")
 				{
 					// try to get the json for the anonymous type.
@@ -67,7 +66,6 @@ namespace Nest.Litterateur.Walkers
 						_code = json;
 					}
 				}
-#endif
 				// TODO: Can do this once we get the generic arguments from the Property declaration
 				//if (_propertyName == "Fluent")
 				//{

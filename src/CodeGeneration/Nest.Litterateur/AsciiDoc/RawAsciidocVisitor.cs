@@ -1,4 +1,3 @@
-#if !DOTNETCORE
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -110,4 +109,3 @@ namespace Nest.Litterateur.AsciiDoc
 		}
 	}
 }
-#endif
