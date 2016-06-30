@@ -347,7 +347,7 @@ NUGET
       System.Runtime.Extensions (>= 4.1) - framework: dnxcore50, >= netstandard13
       System.Threading (>= 4.0.11) - framework: dnxcore50, >= netstandard13
       System.Threading.Tasks (>= 4.0.11) - framework: dnxcore50, netstandard11, >= netstandard13
-    System.Collections.Immutable (1.2) - framework: >= netstandard13
+    System.Collections.Immutable (1.2)
       System.Collections (>= 4.0.11) - framework: >= netstandard10
       System.Diagnostics.Debug (>= 4.0.11) - framework: >= netstandard10
       System.Globalization (>= 4.0.11) - framework: >= netstandard10
