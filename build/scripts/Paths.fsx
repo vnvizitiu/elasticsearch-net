@@ -52,9 +52,16 @@ module Paths =
         let binFolder = BinFolder projectName
         sprintf "%s/net46" binFolder
 
-    let DotNet51BinFolder(projectName) =
+    let NetStandard13BinFolder(projectName) =
         let binFolder = BinFolder(projectName)
-        sprintf "%s/dotnet5.1" binFolder
+        sprintf "%s/netstandard1.3" binFolder
+
+
+    let ProjectJson(projectName) =
+        Source(sprintf "%s/project.json" projectName)
+
+    let CsProj(projectName) = 
+        Source(sprintf "%s/%s.csproj" projectName projectName)
 
 module Tooling = 
     let private fileDoesNotExist path = path |> Path.GetFullPath |> File.Exists |> not
@@ -200,3 +207,24 @@ module Tooling =
 
     let DotNet = new DotNetTooling("dotnet.exe")
 
+    type DotNetFrameworkIdentifier = { MSBuild: string; Nuget: string; }
+
+    type DotNetFramework = 
+        | Net45 
+        | Net46 
+        static member All = [Net45; Net46] 
+        member this.Identifier = 
+            match this with
+            | Net45 -> { MSBuild = "v4.5"; Nuget = "net45"; }
+            | Net46 -> { MSBuild = "v4.6"; Nuget = "net46"; }
+
+    type MsBuildTooling() =
+       let msbuildProperties = [
+            ("Configuration","Release"); 
+            ("PreBuildEvent","echo");
+       ]
+        
+       member this.Exec output target framework projects =
+            MSBuild output target (msbuildProperties |> List.append [("TargetFrameworkVersion", framework.MSBuild)]) projects |> ignore
+
+    let MsBuild = new MsBuildTooling()
