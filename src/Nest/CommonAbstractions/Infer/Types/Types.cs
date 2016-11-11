@@ -16,7 +16,17 @@ namespace Nest
 		{
 			private readonly List<TypeName> _types = new List<TypeName>();
 			public IReadOnlyList<TypeName> Types => _types;
-			internal ManyTypes(IEnumerable<TypeName> types) { this._types.AddRange(types); }
+			internal ManyTypes(IEnumerable<TypeName> types)
+			{
+				types.ThrowIfEmpty(nameof(types));
+				this._types.AddRange(types);
+			}
+
+			internal ManyTypes(IEnumerable<string> types)
+			{
+				types.ThrowIfEmpty(nameof(types));
+				this._types.AddRange(types.Select(s=>(TypeName)s));
+			}
 
 			public ManyTypes And<T>()
 			{
@@ -33,6 +43,9 @@ namespace Nest
 		public static TypeName Type<T>() => typeof(T);
 		public static ManyTypes Type(IEnumerable<TypeName> types) => new ManyTypes(types);
 		public static ManyTypes Type(params TypeName[] types) => new ManyTypes(types);
+		public static ManyTypes Type(IEnumerable<string> indices) => new ManyTypes(indices);
+		public static ManyTypes Type(params string[] indices) => new ManyTypes(indices);
+
 
 		public static Types Parse(string typesString)
 		{
@@ -46,6 +59,7 @@ namespace Nest
 		public static implicit operator Types(ManyTypes many) => new Types(many);
 		public static implicit operator Types(TypeName type) => new ManyTypes(new[] { type });
 		public static implicit operator Types(TypeName[] type) => new ManyTypes(type);
+		public static implicit operator Types(string[] many) => new ManyTypes(many);
 		public static implicit operator Types(Type type) => new ManyTypes(new TypeName[] { type });
 
 		string IUrlParameter.GetString(IConnectionConfigurationValues settings)
@@ -57,8 +71,8 @@ namespace Nest
 					var nestSettings = settings as IConnectionSettingsValues;
 					if (nestSettings == null)
 						throw new Exception("Tried to pass field name on querystring but it could not be resolved because no nest settings are available");
-					var infer = new Inferrer(nestSettings);
-					var types = this.Item2.Types.Select(t => infer.TypeName(t)).Distinct();
+
+					var types = this.Item2.Types.Select(t => nestSettings.Inferrer.TypeName(t)).Distinct();
 					return string.Join(",", types);
 				}
 			);

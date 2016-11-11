@@ -37,6 +37,7 @@ namespace Nest
 		private ISpanContainingQuery _spanContaining;
 		private ISpanWithinQuery _spanWithin;
 		private ISpanMultiTermQuery _spanMultiTerm;
+		private ISpanFieldMaskingQuery _spanFieldMasking;
 		private INestedQuery _nested;
 
 #pragma warning disable 618
@@ -51,7 +52,6 @@ namespace Nest
 		private IGeoHashCellQuery _geoHashCell;
 		private IScriptQuery _script;
 		private IExistsQuery _exists;
-		private IMissingQuery _missing;
 		private ITypeQuery _type;
 		private IRawQuery _raw;
 		private IPercolateQuery _percolate;
@@ -101,6 +101,7 @@ namespace Nest
 		ISpanContainingQuery IQueryContainer.SpanContaining { get { return _spanContaining; } set { _spanContaining = Set(value); } }
 		ISpanWithinQuery IQueryContainer.SpanWithin { get { return _spanWithin; } set { _spanWithin = Set(value); } }
 		ISpanMultiTermQuery IQueryContainer.SpanMultiTerm { get { return _spanMultiTerm; } set { _spanMultiTerm = Set(value); } }
+		ISpanFieldMaskingQuery IQueryContainer.SpanFieldMasking { get { return _spanFieldMasking; } set { _spanFieldMasking = Set(value); } }
 		INestedQuery IQueryContainer.Nested { get { return _nested; } set { _nested = Set(value); } }
 #pragma warning disable 618
 		IIndicesQuery IQueryContainer.Indices { get { return _indices; } set { _indices = Set(value); } }
@@ -114,7 +115,6 @@ namespace Nest
 		IGeoHashCellQuery IQueryContainer.GeoHashCell { get { return _geoHashCell; } set { _geoHashCell = Set(value); } }
 		IScriptQuery IQueryContainer.Script { get { return _script; } set { _script = Set(value); } }
 		IExistsQuery IQueryContainer.Exists { get { return _exists; } set { _exists = Set(value); } }
-		IMissingQuery IQueryContainer.Missing { get { return _missing; } set { _missing = Set(value); } }
 		ITypeQuery IQueryContainer.Type { get { return _type; } set { _type = Set(value); } }
 		IPercolateQuery IQueryContainer.Percolate { get { return _percolate; } set { _percolate = Set(value); } }
 		IParentIdQuery IQueryContainer.ParentId { get { return _parentId; } set { _parentId = Set(value); } }

@@ -34,13 +34,17 @@ namespace Nest
 				case "keyword":
 					return jObject.ToObject<KeywordProperty>();
 				case "string":
+#pragma warning disable 618
 					return jObject.ToObject<StringProperty>();
+#pragma warning restore 618
 				case "float":
 				case "double":
 				case "byte":
 				case "short":
 				case "integer":
 				case "long":
+				case "scaled_float":
+				case "half_float":
 					return jObject.ToObject<NumberProperty>();
 				case "date":
 					return jObject.ToObject<DateProperty>();

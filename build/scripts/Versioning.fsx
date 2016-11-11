@@ -1,17 +1,38 @@
 ﻿#I @"../../packages/build/FAKE/tools"
 #r @"FakeLib.dll"
-#load @"Projects.fsx"
+
+#load @"Paths.fsx"
+
+open Paths.Projects
+
+
 open System
-open System.Text.RegularExpressions
-open Fake 
-open SemVerHelper
-open AssemblyInfoFile
-open Projects
 open System.Diagnostics
+open System.IO
+open System.Text.RegularExpressions
+
+open Fake 
+open AssemblyInfoFile
+open SemVerHelper
 
 type Versioning() = 
     
+    static let regexReplaceFirstOccurrence pattern (replacement:string) encoding file =
+        let oldContent = File.ReadAllLines(file, encoding)
+        let mutable replaced = false
+        let newContent = oldContent |> Seq.map (fun l -> 
+            if replaced then l
+            else (
+                if Regex.IsMatch(l, pattern) then (
+                    replaced <- true
+                    Regex.Replace(l, pattern, replacement)
+                ) else l
+            )
+        )
+        File.WriteAllLines(file, newContent, encoding)
+
     static let suffix = fun (prerelease: PreRelease) -> sprintf "-%s%i" prerelease.Name prerelease.Number.Value
+
     //returns the current version number 
     //when version is passed to script we always use that
     //otherwise we get the current version number and append -ci-datestamp
@@ -70,7 +91,8 @@ type Versioning() =
             let projectName = DotNetProject.TryFindName name
             let assemblyDescription =
                 match projectName with
-                | Some p -> p.NugetDescription.Value
+                | Some "Nest" -> "NEST - official high level elasticsearch client"
+                | Some "Elasticsearch.Net" -> "Elasticsearch.Net - official low level elasticsearch client"
                 | _ -> ""
 
             CreateCSharpAssemblyInfo f [
@@ -88,7 +110,15 @@ type Versioning() =
     static member PatchProjectJsons() =
         !! "src/**/project.json"
         |> Seq.iter(fun f -> 
-            RegexReplaceInFileWithEncoding "\"version\"\\s?:\\s?\".*\"" (sprintf "\"version\": \"%s\"" fileVersion) (new System.Text.UTF8Encoding(false)) f
+            regexReplaceFirstOccurrence 
+                "\"version\"\\s?:\\s?\".*\"" 
+                (sprintf "\"version\": \"%s\"" fileVersion) 
+                (new System.Text.UTF8Encoding(false)) f
+
+            RegexReplaceInFileWithEncoding 
+                "\"releaseNotes\"\\s?:\\s?\".*\"" 
+                (sprintf "\"releaseNotes\": \"See https://github.com/elastic/elasticsearch-net/releases/tag/%s\"" fileVersion) 
+                (new System.Text.UTF8Encoding(false)) f
         )
 
     static member ValidateArtifacts() =

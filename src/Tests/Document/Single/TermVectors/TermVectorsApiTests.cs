@@ -9,8 +9,7 @@ using static Nest.Infer;
 
 namespace Tests.Document.Single.TermVectors
 {
-	[Collection(TypeOfCluster.ReadOnly)]
-	public class TermVectorsApiTests : ApiIntegrationTestBase<ITermVectorsResponse, ITermVectorsRequest<Project>, TermVectorsDescriptor<Project>, TermVectorsRequest<Project>>
+	public class TermVectorsApiTests : ApiIntegrationTestBase<ReadOnlyCluster, ITermVectorsResponse, ITermVectorsRequest<Project>, TermVectorsDescriptor<Project>, TermVectorsRequest<Project>>
 	{
 		public TermVectorsApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 		protected override LazyResponses ClientUsage() => Calls(
@@ -33,7 +32,11 @@ namespace Tests.Document.Single.TermVectors
 			{
 				max_num_terms = 3,
 				min_term_freq = 1,
-				min_doc_freq = 1
+				max_term_freq = 10,
+				min_doc_freq = 1,
+				max_doc_freq = int.MaxValue,
+				min_word_length = 0,
+				max_word_length = 200
 			}
 		};
 
@@ -45,7 +48,11 @@ namespace Tests.Document.Single.TermVectors
 			.Filter(f => f
 				.MaximimumNumberOfTerms(3)
 				.MinimumTermFrequency(1)
+				.MaximumTermFrequency(10)
 				.MinimumDocumentFrequency(1)
+				.MaximumDocumentFrequency(int.MaxValue)
+				.MinimumWordLength(0)
+				.MaximumWordLength(200)
 			)
 		;
 
@@ -56,7 +63,11 @@ namespace Tests.Document.Single.TermVectors
 			{
 				MaximumNumberOfTerms = 3,
 				MinimumTermFrequency = 1,
-				MinimumDocumentFrequency = 1
+				MaximumTermFrequency = 10,
+				MinimumDocumentFrequency = 1,
+				MaximumDocumentFrequency = int.MaxValue,
+				MinimumWordLength = 0,
+				MaximumWordLength = 200
 			}
 		};
 	}

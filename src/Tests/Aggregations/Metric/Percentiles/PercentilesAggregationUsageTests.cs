@@ -1,6 +1,7 @@
 ﻿using System;
 using FluentAssertions;
 using Nest;
+using Tests.Framework;
 using Tests.Framework.Integration;
 using Tests.Framework.MockData;
 using static Nest.Infer;
@@ -27,7 +28,8 @@ namespace Tests.Aggregations.Metric.Percentiles
 						},
 						script = new
 						{
-							inline = "doc['numberOfCommits'].value * 1.2"
+							inline = "doc['numberOfCommits'].value * 1.2",
+							lang = "groovy"
 						},
 						missing = 0.0
 					}
@@ -45,7 +47,7 @@ namespace Tests.Aggregations.Metric.Percentiles
 							.NumberOfSignificantValueDigits(3)
 						)
 					)
-					.Script("doc['numberOfCommits'].value * 1.2")
+					.Script(ss => ss.Inline("doc['numberOfCommits'].value * 1.2").Lang("groovy"))
 					.Missing(0)
 				)
 			);
@@ -60,14 +62,14 @@ namespace Tests.Aggregations.Metric.Percentiles
 					{
 						NumberOfSignificantValueDigits = 3
 					},
-					Script = new InlineScript("doc['numberOfCommits'].value * 1.2"),
+					Script = new InlineScript("doc['numberOfCommits'].value * 1.2") { Lang = "groovy" },
 					Missing = 0
 				}
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 			var commitsOutlier = response.Aggs.Percentiles("commits_outlier");
 			commitsOutlier.Should().NotBeNull();
 			commitsOutlier.Items.Should().NotBeNullOrEmpty();

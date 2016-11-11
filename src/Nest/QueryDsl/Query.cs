@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Linq.Expressions;
 
 namespace Nest
@@ -104,9 +102,6 @@ namespace Nest
 		public static QueryContainer MatchPhrasePrefix(Func<MatchPhrasePrefixQueryDescriptor<T>, IMatchQuery> selector) =>
 			new QueryContainerDescriptor<T>().MatchPhrasePrefix(selector);
 
-		public static QueryContainer Missing(Func<MissingQueryDescriptor<T>, IMissingQuery> selector) =>
-			new QueryContainerDescriptor<T>().Missing(selector);
-
 		public static QueryContainer MoreLikeThis(Func<MoreLikeThisQueryDescriptor<T>, IMoreLikeThisQuery> selector) =>
 			new QueryContainerDescriptor<T>().MoreLikeThis(selector);
 
@@ -169,6 +164,9 @@ namespace Nest
 
 		public static QueryContainer SpanWithin(Func<SpanWithinQueryDescriptor<T>, ISpanWithinQuery> selector) =>
 			new QueryContainerDescriptor<T>().SpanWithin(selector);
+
+		public static QueryContainer SpanFieldMasking(Func<SpanFieldMaskingQueryDescriptor<T>, ISpanFieldMaskingQuery> selector) =>
+			new QueryContainerDescriptor<T>().SpanFieldMasking(selector);
 
 		public static QueryContainer Template(Func<TemplateQueryDescriptor<T>, ITemplateQuery> selector) =>
 			new QueryContainerDescriptor<T>().Template(selector);

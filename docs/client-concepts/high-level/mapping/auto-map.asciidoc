@@ -186,9 +186,10 @@ var expected = new
                             {
                                 keyword = new
                                 {
-                                    type = "keyword"
+                                    type = "keyword",
+                                    ignore_above = 256
                                 }
-                        },
+                            },
                             type = "text"
                         },
                         hours = new
@@ -205,9 +206,10 @@ var expected = new
                             {
                                 keyword = new
                                 {
-                                    type = "keyword"
+                                    type = "keyword",
+                                    ignore_above = 256
                                 }
-                        },
+                            },
                             type = "text"
                         },
                         salary = new
@@ -223,11 +225,12 @@ var expected = new
                     {
                         keyword = new
                         {
-                            type = "keyword"
-                }
+                            type = "keyword",
+                            ignore_above = 256
+                        }
                     },
                     type = "text"
-            }
+                }
             }
         },
         employee = new
@@ -249,9 +252,10 @@ var expected = new
                     {
                         keyword = new
                         {
-                            type = "keyword"
+                            type = "keyword",
+                            ignore_above = 256
                         }
-                },
+                    },
                     type = "text"
                 },
                 hours = new
@@ -268,9 +272,10 @@ var expected = new
                     {
                         keyword = new
                         {
-                            type = "keyword"
+                            type = "keyword",
+                            ignore_above = 256
                         }
-                },
+                    },
                     type = "text"
                 },
                 salary = new
@@ -325,7 +330,8 @@ var expected = new
                     {
                         keyword = new
                         {
-                            type = "keyword"
+                            type = "keyword",
+                            ignore_above = 256
                         }
                     }
                 },
@@ -374,13 +380,13 @@ Here we define the same two types as before, but this time using attributes to d
 [ElasticsearchType(Name = "company")]
 public class CompanyWithAttributes
 {
-    [Keyword(NullValue = "null", Similarity = SimilarityOption.BM25)]
+    [Keyword(NullValue = "null", Similarity = "BM25")]
     public string Name { get; set; }
 
     [Text(Name = "office_hours")]
     public TimeSpan? HeadOfficeHours { get; set; }
 
-    [Object(Path = "employees", Store = false)]
+    [Object(Store = false)]
     public List<Employee> Employees { get; set; }
 }
 
@@ -396,13 +402,13 @@ public class EmployeeWithAttributes
     [Number(DocValues = false, IgnoreMalformed = true, Coerce = true)]
     public int Salary { get; set; }
 
-    [Date(Format = "MMddyyyy", NumericResolution = NumericResolutionUnit.Seconds)]
+    [Date(Format = "MMddyyyy")]
     public DateTime Birthday { get; set; }
 
     [Boolean(NullValue = false, Store = true)]
     public bool IsManager { get; set; }
 
-    [Nested(Path = "employees")]
+    [Nested]
     [JsonProperty("empl")]
     public List<Employee> Employees { get; set; }
 }
@@ -428,7 +434,6 @@ var expected = new
             {
                 employees = new
                 {
-                    path = "employees",
                     properties = new
                     {
                         birthday = new
@@ -446,9 +451,10 @@ var expected = new
                             {
                                 keyword = new
                                 {
-                                    type = "keyword"
+                                    type = "keyword",
+                                    ignore_above = 256
                                 }
-                        },
+                            },
                             type = "text"
                         },
                         hours = new
@@ -465,9 +471,10 @@ var expected = new
                             {
                                 keyword = new
                                 {
-                                    type = "keyword"
+                                    type = "keyword",
+                                    ignore_above = 256
                                 }
-                        },
+                            },
                             type = "text"
                         },
                         salary = new
@@ -497,12 +504,10 @@ var expected = new
                 birthday = new
                 {
                     format = "MMddyyyy",
-                    numeric_resolution = "seconds",
                     type = "date"
                 },
                 empl = new
                 {
-                    path = "employees",
                     properties = new
                     {
                         birthday = new
@@ -520,9 +525,10 @@ var expected = new
                             {
                                 keyword = new
                                 {
-                                    type = "keyword"
+                                    type = "keyword",
+                                    ignore_above = 256
                                 }
-                        },
+                            },
                             type = "text"
                         },
                         hours = new
@@ -539,9 +545,10 @@ var expected = new
                             {
                                 keyword = new
                                 {
-                                    type = "keyword"
+                                    type = "keyword",
+                                    ignore_above = 256
                                 }
-                        },
+                            },
                             type = "text"
                         },
                         salary = new
@@ -598,10 +605,6 @@ var descriptor = new CreateIndexDescriptor("myindex")
         )
         .Map<EmployeeWithAttributes>(m => m
             .AutoMap()
-            .TtlField(ttl => ttl
-                .Enabled()
-                .Default("10m")
-            )
             .Properties(ps => ps
                 .Text(s => s
                     .Name(e => e.FirstName)
@@ -654,11 +657,6 @@ var expected = new
         },
         employee = new
         {
-            _ttl = new
-            {
-                @default = "10m",
-                enabled = true
-            },
             properties = new
             {
                 birthday = new
@@ -668,7 +666,6 @@ var expected = new
                 },
                 empl = new
                 {
-                    path = "employees",
                     properties = new
                     {
                         birthday = new
@@ -686,7 +683,8 @@ var expected = new
                             {
                                 keyword = new
                                 {
-                                    type = "keyword"
+                                    type = "keyword",
+                                    ignore_above = 256
                                 }
                             },
                             type = "text"
@@ -705,9 +703,10 @@ var expected = new
                             {
                                 keyword = new
                                 {
-                                    type = "keyword"
+                                    type = "keyword",
+                                    ignore_above = 256
                                 }
-                        },
+                            },
                             type = "text"
                         },
                         salary = new
@@ -814,11 +813,12 @@ var expected = new
                     {
                         keyword = new
                         {
-                            type = "keyword"
+                            type = "keyword",
+                            ignore_above = 256
+                        }
+                    }
                 }
             }
-        }
-    }
         }
     }
 };

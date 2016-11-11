@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Elasticsearch.Net;
 using Nest;
 using Tests.Framework;
@@ -10,15 +9,12 @@ using static Nest.Infer;
 
 namespace Tests.Indices.MappingManagement.PutMapping
 {
-	[Collection(TypeOfCluster.Indexing)]
-	public class PutMappingApiTests : ApiIntegrationTestBase<IPutMappingResponse, IPutMappingRequest, PutMappingDescriptor<Project>, PutMappingRequest<Project>>
+	public class PutMappingApiTests
+		: ApiIntegrationAgainstNewIndexTestBase
+			<WritableCluster, IPutMappingResponse, IPutMappingRequest, PutMappingDescriptor<Project>, PutMappingRequest<Project>>
 	{
-		public PutMappingApiTests(IndexingCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		public PutMappingApiTests(WritableCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
-		protected override void IntegrationSetup(IElasticClient client, CallUniqueValues values)
-		{
-			foreach (var index in values.Values) client.CreateIndex(index);
-		}
 		protected override LazyResponses ClientUsage() => Calls(
 			fluent: (client, f) => client.Map(f),
 			fluentAsync: (client, f) => client.MapAsync(f),
@@ -41,7 +37,8 @@ namespace Tests.Indices.MappingManagement.PutMapping
 					{
 						keyword = new
 						{
-							type = "keyword"
+							type = "keyword",
+							ignore_above = 256
 						}
 					},
 					type = "text"
@@ -60,6 +57,10 @@ namespace Tests.Indices.MappingManagement.PutMapping
 						}
 					},
 					type = "object"
+				},
+				dateString = new
+				{
+					type = "text"
 				},
 				description = new
 				{
@@ -140,6 +141,10 @@ namespace Tests.Indices.MappingManagement.PutMapping
 				{
 					type = "integer"
 				},
+				numberOfContributors = new
+				{
+					type = "integer"
+				},
 				startedOn = new
 				{
 					type = "date"
@@ -185,6 +190,7 @@ namespace Tests.Indices.MappingManagement.PutMapping
 					)
 				)
 				.Text(t => t.Name(p => p.Description))
+				.Text(t => t.Name(p => p.DateString))
 				.Text(s => s
 					.Name(p => p.Name)
 					.Index(false)
@@ -223,7 +229,11 @@ namespace Tests.Indices.MappingManagement.PutMapping
 						{
 							Fields = new Properties
 							{
-								{ "keyword", new KeywordProperty() }
+								{ "keyword", new KeywordProperty
+									{
+										IgnoreAbove = 256
+									}
+								}
 							}
 						}
 				},
@@ -237,6 +247,7 @@ namespace Tests.Indices.MappingManagement.PutMapping
 						}
 				},
 				{ p => p.Description, new TextProperty() },
+				{ p => p.DateString, new TextProperty { } },
 				{ p => p.LastActivity, new DateProperty() },
 				{ p => p.LeadDeveloper, new ObjectProperty
 						{
@@ -266,6 +277,7 @@ namespace Tests.Indices.MappingManagement.PutMapping
 				{ p => p.Metadata, new ObjectProperty() },
 				{ p => p.Name, new TextProperty { Index = false }  },
 				{ p => p.NumberOfCommits, new NumberProperty(NumberType.Integer) },
+				{ p => p.NumberOfContributors, new NumberProperty(NumberType.Integer) },
 				{ p => p.StartedOn, new DateProperty() },
 				{ p => p.State, new NumberProperty(NumberType.Integer) },
 				{ p => p.Suggest, new CompletionProperty() },

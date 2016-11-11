@@ -11,8 +11,7 @@ using static Nest.Infer;
 
 namespace Tests.Indices.MappingManagement.GetMapping
 {
-	[Collection(TypeOfCluster.ReadOnly)]
-	public class GetMappingApiTests : ApiIntegrationTestBase<IGetMappingResponse, IGetMappingRequest, GetMappingDescriptor<Project>, GetMappingRequest>
+	public class GetMappingApiTests : ApiIntegrationTestBase<ReadOnlyCluster, IGetMappingResponse, IGetMappingRequest, GetMappingDescriptor<Project>, GetMappingRequest>
 	{
 		public GetMappingApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
@@ -46,13 +45,48 @@ namespace Tests.Indices.MappingManagement.GetMapping
 			visitor.CountsShouldContainKeyAndCountBe("type", 1);
 			visitor.CountsShouldContainKeyAndCountBe("object", 4);
 			visitor.CountsShouldContainKeyAndCountBe("date", 4);
-			visitor.CountsShouldContainKeyAndCountBe("text", 9);
+			visitor.CountsShouldContainKeyAndCountBe("text", 10);
 			visitor.CountsShouldContainKeyAndCountBe("keyword", 9);
 			visitor.CountsShouldContainKeyAndCountBe("ip", 1);
-			visitor.CountsShouldContainKeyAndCountBe("number", 2);
+			visitor.CountsShouldContainKeyAndCountBe("number", 3);
 			visitor.CountsShouldContainKeyAndCountBe("geo_point", 2);
 			visitor.CountsShouldContainKeyAndCountBe("completion", 2);
 			visitor.CountsShouldContainKeyAndCountBe("nested", 1);
+		}
+	}
+
+	public class GetMappingNonExistentIndexApiTests : ApiIntegrationTestBase<ReadOnlyCluster, IGetMappingResponse, IGetMappingRequest, GetMappingDescriptor<Project>, GetMappingRequest>
+	{
+		private string _nonExistentIndex = "non-existent-index";
+
+		public GetMappingNonExistentIndexApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+
+		protected override LazyResponses ClientUsage() => Calls(
+			fluent: (client, f) => client.GetMapping<Project>(f),
+			fluentAsync: (client, f) => client.GetMappingAsync<Project>(f),
+			request: (client, r) => client.GetMapping(r),
+			requestAsync: (client, r) => client.GetMappingAsync(r)
+		);
+
+		protected override bool ExpectIsValid => true;
+		protected override int ExpectStatusCode => 200;
+		protected override HttpMethod HttpMethod => HttpMethod.GET;
+		protected override string UrlPath => $"/{_nonExistentIndex}/_mapping?ignore_unavailable=true";
+
+		protected override Func<GetMappingDescriptor<Project>, IGetMappingRequest> Fluent => d => d
+			.Index(_nonExistentIndex)
+			.AllTypes()
+			.IgnoreUnavailable();
+
+		protected override GetMappingRequest Initializer => new GetMappingRequest(_nonExistentIndex, AllTypes)
+		{
+			IgnoreUnavailable = true
+		};
+
+		protected override void ExpectResponse(IGetMappingResponse response)
+		{
+			response.Mappings.Should().BeEmpty();
+			response.Mapping.Should().BeNull();
 		}
 	}
 
@@ -79,90 +113,91 @@ namespace Tests.Indices.MappingManagement.GetMapping
 		public void CountsShouldContainKeyAndCountBe(string key, int count)
 		{
 			this.Counts.ContainsKey(key).Should().BeTrue();
-			this.Counts[key].Should().Be(count);
+			this.Counts[key].Should().Be(count, $"because there should be {count} {key} properties");
 		}
 
-		public void Visit(StringProperty mapping)
+#pragma warning disable 618
+		public void Visit(IStringProperty mapping)
 		{
 			Increment("string");
 		}
-
-		public void Visit(DateProperty mapping)
+#pragma warning restore 618
+		public void Visit(IDateProperty mapping)
 		{
 			Increment("date");
 		}
 
-		public void Visit(BinaryProperty mapping)
+		public void Visit(IBinaryProperty mapping)
 		{
 			Increment("binary");
 		}
 
-		public void Visit(NestedProperty mapping)
+		public void Visit(INestedProperty mapping)
 		{
 			Increment("nested");
 		}
 
-		public void Visit(GeoPointProperty mapping)
+		public void Visit(IGeoPointProperty mapping)
 		{
 			Increment("geo_point");
 		}
 
-		public void Visit(AttachmentProperty mapping)
+		public void Visit(IAttachmentProperty mapping)
 		{
 			Increment("attachment");
 		}
 
-		public void Visit(CompletionProperty mapping)
+		public void Visit(ICompletionProperty mapping)
 		{
 			Increment("completion");
 		}
 
-		public void Visit(TokenCountProperty mapping)
+		public void Visit(ITokenCountProperty mapping)
 		{
 			Increment("token_count");
 		}
 
-		public void Visit(Murmur3HashProperty mapping)
+		public void Visit(IMurmur3HashProperty mapping)
 		{
 			Increment("murmur3");
 		}
 
-		public void Visit(NumberProperty mapping)
+		public void Visit(INumberProperty mapping)
 		{
 			Increment("number");
 		}
 
-		public void Visit(GeoShapeProperty mapping)
+		public void Visit(IGeoShapeProperty mapping)
 		{
 			Increment("geo_shape");
 		}
 
-		public void Visit(IpProperty mapping)
+		public void Visit(IIpProperty mapping)
 		{
 			Increment("ip");
 		}
 
-		public void Visit(ObjectProperty mapping)
+		public void Visit(IObjectProperty mapping)
 		{
 			Increment("object");
 		}
 
-		public void Visit(BooleanProperty mapping)
+		public void Visit(IBooleanProperty mapping)
 		{
 			Increment("boolean");
 		}
 
-		public void Visit(TextProperty mapping)
+		public void Visit(ITextProperty mapping)
 		{
 			Increment("text");
 		}
 
-		public void Visit(KeywordProperty mapping)
+		public void Visit(IKeywordProperty mapping)
 		{
 			Increment("keyword");
 		}
 
-		public void Visit(TypeMapping mapping)
+		public void Visit(ITypeMapping mapping)
 		{
 			Increment("type");
 		}

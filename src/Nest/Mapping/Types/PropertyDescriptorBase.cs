@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 
 namespace Nest
@@ -11,7 +12,7 @@ namespace Nest
 	{
 		PropertyName IProperty.Name { get; set; }
 		TypeName IProperty.Type { get; set; }
-		string IProperty.IndexName { get; set; }
+		IDictionary<string, object> IProperty.LocalMetadata { get; set; }
 
 		protected PropertyDescriptorBase(string type) { Self.Type = type; }
 
@@ -19,6 +20,10 @@ namespace Nest
 
 		public TDescriptor Name(Expression<Func<T, object>> objectPath) => Assign(a => a.Name = objectPath);
 
-		public TDescriptor IndexName(string indexName) => Assign(a => a.IndexName = indexName);
+		/// <summary>
+		/// Local property metadata that will NOT be stored in Elasticsearch with the mappings
+		/// </summary>
+		public TDescriptor LocalMetadata(Func<FluentDictionary<string, object>, FluentDictionary<string, object>> selector) =>
+			Assign(a => a.LocalMetadata = selector?.Invoke(new FluentDictionary<string, object>()));
 	}
 }

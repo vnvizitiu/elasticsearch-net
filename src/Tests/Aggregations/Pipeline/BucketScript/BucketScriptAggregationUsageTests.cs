@@ -1,6 +1,7 @@
 ﻿using System;
 using FluentAssertions;
 using Nest;
+using Tests.Framework;
 using Tests.Framework.Integration;
 using Tests.Framework.MockData;
 
@@ -65,7 +66,8 @@ namespace Tests.Aggregations.Pipeline.BucketScript
 								},
 								script = new
 								{
-									inline = "stableCommits / totalCommits * 100"
+									inline = "stableCommits / totalCommits * 100",
+									lang  = "groovy"
 								}
 							}
 						}
@@ -90,7 +92,7 @@ namespace Tests.Aggregations.Pipeline.BucketScript
 							)
 							.Aggregations(aaa => aaa
 								.Sum("commits", sm => sm
-									.Field(p => p.NumberOfCommits)	
+									.Field(p => p.NumberOfCommits)
 								)
 							)
 						)
@@ -99,7 +101,7 @@ namespace Tests.Aggregations.Pipeline.BucketScript
 								.Add("totalCommits", "commits")
 								.Add("stableCommits", "stable_state>commits")
 							)
-							.Script("stableCommits / totalCommits * 100")
+							.Script(ss =>ss.Inline("stableCommits / totalCommits * 100").Lang("groovy"))
 						)
 					)
 				)
@@ -112,7 +114,7 @@ namespace Tests.Aggregations.Pipeline.BucketScript
 			{
 				Field = "startedOn",
 				Interval = DateInterval.Month,
-				Aggregations = 
+				Aggregations =
 					new SumAggregation("commits", "numberOfCommits") &&
 					new FilterAggregation("stable_state")
 					{
@@ -129,14 +131,14 @@ namespace Tests.Aggregations.Pipeline.BucketScript
 							{ "stableCommits", "stable_state>commits" }
 						})
 					{
-						Script = (InlineScript)"stableCommits / totalCommits * 100"
+						Script = new InlineScript("stableCommits / totalCommits * 100") { Lang = "groovy" }
 					}
 			}
 		};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 
 			var projectsPerMonth = response.Aggs.DateHistogram("projects_started_per_month");
 			projectsPerMonth.Should().NotBeNull();

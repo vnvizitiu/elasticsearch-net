@@ -53,7 +53,6 @@ namespace Nest
 			VisitQuery(qd.Match, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Type, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Script, visitor, (v, d) => v.Visit(d));
-			VisitQuery(qd.Missing, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Exists, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.GeoPolygon, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.GeoDistanceRange, visitor, (v, d) => v.Visit(d));
@@ -232,6 +231,11 @@ namespace Nest
 				v.Visit(d);
 				Accept(visitor, d.Big);
 				Accept(visitor, d.Little);
+			});
+			VisitSpanSubQuery(qd.SpanFieldMasking, visitor, (v, d) =>
+			{
+				v.Visit(d);
+				Accept(visitor, d.Query);
 			});
 		}
 

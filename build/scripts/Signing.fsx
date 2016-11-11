@@ -1,9 +1,12 @@
 ﻿#I @"../../packages/build/FAKE/tools"
 #r @"FakeLib.dll"
+
 #load @"Paths.fsx"
-#load @"Projects.fsx"
+
 open System
+
 open Fake 
+
 open Paths
 open Projects
 
@@ -49,19 +52,13 @@ type Sign() =
         ) (TimeSpan.FromMinutes 5.0) |> ignore
 
     static member ValidateNugetDllAreSignedCorrectly() = 
-        for p in DotNetProject.All do
-            let name = p.ProjectName.Nuget
-            let outputFolder = Paths.Output(name)
-            match p with
-            | Project p -> 
-                (outputFolder |> directoryInfo).GetDirectories()
-                |> Seq.iter(fun frameworkDir ->
-                    let frameworkName = frameworkDir.Name
-                    let dll = sprintf "%s/%s/%s.dll" outputFolder frameworkName name
-                    if fileExists dll then validate dll name
-                )
+        for p in DotNetProject.AllPublishable do
+            for f in DotNetFramework.All do 
+                let name = p.Name
+                let outputFolder = Paths.ProjectOutputFolder p f
+                let dll = sprintf "%s/%s.dll" outputFolder name
+                if fileExists dll then validate dll name
 
     static member CreateKeysIfAbsent() =
         if not (directoryExists Paths.KeysFolder) then CreateDir Paths.KeysFolder
         if not (fileExists keyFile) then Sign.CreateKeys()
-

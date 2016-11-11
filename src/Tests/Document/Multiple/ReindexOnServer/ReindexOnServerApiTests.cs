@@ -12,8 +12,8 @@ using static Nest.Infer;
 
 namespace Tests.Document.Multiple.ReindexOnServer
 {
-	[Collection(TypeOfCluster.OwnIndex)]
-	public class ReindexOnServerApiTests : ApiIntegrationTestBase<IReindexOnServerResponse, IReindexOnServerRequest, ReindexOnServerDescriptor, ReindexOnServerRequest>
+	[SkipVersion("<2.3.0", "")]
+	public class ReindexOnServerApiTests : ApiIntegrationTestBase<IntrusiveOperationCluster, IReindexOnServerResponse, IReindexOnServerRequest, ReindexOnServerDescriptor, ReindexOnServerRequest>
 	{
 		public class Test
 		{
@@ -21,14 +21,14 @@ namespace Tests.Document.Multiple.ReindexOnServer
 			public string Flag { get; set; }
 		}
 
-		public ReindexOnServerApiTests(OwnIndexCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		public ReindexOnServerApiTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override void IntegrationSetup(IElasticClient client, CallUniqueValues values)
 		{
 			foreach (var index in values.Values)
 			{
-				this.Client.Index(new Test { Id = 1, Flag = "bar" }, i=>i.Index(index).Refresh());
-				this.Client.Index(new Test { Id = 2, Flag = "bar" }, i=>i.Index(index).Refresh());
+				this.Client.Index(new Test { Id = 1, Flag = "bar" }, i => i.Index(index).Refresh(Refresh.True));
+				this.Client.Index(new Test { Id = 2, Flag = "bar" }, i => i.Index(index).Refresh(Refresh.True));
 			}
 		}
 		protected override LazyResponses ClientUsage() => Calls(
@@ -50,27 +50,29 @@ namespace Tests.Document.Multiple.ReindexOnServer
 		private static string _script = "if (ctx._source.flag == 'bar') {ctx._source.remove('flag')}";
 
 		protected override Func<ReindexOnServerDescriptor, IReindexOnServerRequest> Fluent => d => d
-			.Source(s=>s
+			.Source(s => s
 				.Index(CallIsolatedValue)
 				.Type("test")
-				.Query<Test>(q=>q
-					.Match(m=>m
-						.Field(p=>p.Flag)
+				.Size(100)
+				.Query<Test>(q => q
+					.Match(m => m
+						.Field(p => p.Flag)
 						.Query("bar")
 					)
 				)
-				.Sort<Test>(sort=>sort
+				.Sort<Test>(sort => sort
 					.Ascending("id")
 				)
 			)
-			.Destination(s=>s
+			.Destination(s => s
 				.Index(CallIsolatedValue + "-clone")
 				.Type("test")
 				.OpType(OpType.Create)
 				.VersionType(VersionType.Internal)
 				.Routing(ReindexRouting.Discard)
 			)
-			.Script(_script)
+			.Script(ss => ss.Inline(_script).Lang("groovy"))
+			.Conflicts(Conflicts.Proceed)
 			.Refresh();
 
 		protected override ReindexOnServerRequest Initializer => new ReindexOnServerRequest()
@@ -79,8 +81,9 @@ namespace Tests.Document.Multiple.ReindexOnServer
 			{
 				Index = CallIsolatedValue,
 				Type = "test",
-				Query = new MatchQuery { Field = Field<Test>(p=>p.Flag), Query = "bar"},
-				Sort = new List<ISort> { new SortField { Field = "id", Order = SortOrder.Ascending } }
+				Query = new MatchQuery { Field = Field<Test>(p => p.Flag), Query = "bar" },
+				Sort = new List<ISort> { new SortField { Field = "id", Order = SortOrder.Ascending } },
+				Size = 100
 
 			},
 			Destination = new ReindexDestination
@@ -91,7 +94,8 @@ namespace Tests.Document.Multiple.ReindexOnServer
 				VersionType = VersionType.Internal,
 				Routing = ReindexRouting.Discard
 			},
-			Script = new InlineScript(_script),
+			Script = new InlineScript(_script) { Lang = "groovy" },
+			Conflicts = Conflicts.Proceed,
 			Refresh = true,
 		};
 
@@ -109,28 +113,35 @@ namespace Tests.Document.Multiple.ReindexOnServer
 				.Index(CallIsolatedValue + "-clone")
 			);
 			search.Total.Should().BeGreaterThan(0);
-			search.Documents.Should().OnlyContain(t=>string.IsNullOrWhiteSpace(t.Flag));
+			search.Documents.Should().OnlyContain(t => string.IsNullOrWhiteSpace(t.Flag));
 		}
 
 
 		protected override object ExpectJson =>
-			new {
-				dest = new {
+			new
+			{
+				dest = new
+				{
 					index = $"{CallIsolatedValue}-clone",
 					op_type = "create",
 					routing = "discard",
 					type = "test",
 					version_type = "internal"
 				},
-				script = new {
-					inline = _script
+				script = new
+				{
+					inline = _script,
+					lang = "groovy"
 				},
-				source = new {
+				source = new
+				{
 					index = CallIsolatedValue,
 					query = new { match = new { flag = new { query = "bar" } } },
-					sort = new [] { new { id = new { order = "asc" } } },
-					type = new [] { "test" }
-				}
+					sort = new[] { new { id = new { order = "asc" } } },
+					type = new[] { "test" },
+					size = 100
+				},
+				conflicts = "proceed"
 			};
 	}
 }

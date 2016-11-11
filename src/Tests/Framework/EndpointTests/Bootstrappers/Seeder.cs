@@ -13,7 +13,7 @@ namespace Tests.Framework.Integration
 
 		public Seeder(ElasticsearchNode node)
 		{
-			this.Client = node.Client();
+			this.Client = node.Client;
 		}
 
 		public void SeedNode()
@@ -61,6 +61,12 @@ namespace Tests.Framework.Integration
 				Id = "1",
 				Query = new QueryContainer(new MatchAllQuery())
 			});
+			this.Client.Bulk(b => b
+				.IndexMany(
+					CommitActivity.CommitActivities,
+					(d, c) => d.Document(c).Parent(c.ProjectName)
+				)
+			);
 			this.Client.Refresh(Nest.Indices.Index(typeof(Project), typeof(Developer), typeof(PercolatedQuery)));
 		}
 
@@ -126,9 +132,6 @@ namespace Tests.Framework.Integration
 					.Map<CommitActivity>(m => m
 						.AutoMap()
 						.Parent<Project>()
-						.TimestampField(t => t
-							.Enabled()
-						)
 						.Properties(props => props
 							.Object<Developer>(o => o
 								.AutoMap()
@@ -179,7 +182,12 @@ namespace Tests.Framework.Integration
 					.Fielddata()
 				)
 				.Date(d => d
+					.Store()
 					.Name(p => p.StartedOn)
+				)
+				.Text(d => d
+					.Store()
+					.Name(p => p.DateString)
 				)
 				.Keyword(d => d
 					.Name(p => p.State)
@@ -246,7 +254,7 @@ namespace Tests.Framework.Integration
 			)
 			.GeoPoint(g => g
 				.Name(p => p.Location)
-				.LatLon()
+				//.LatLon()
 			)
 			.Object<GeoIp>(o => o
 				.Name(p => p.GeoIp)

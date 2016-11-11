@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using static Elasticsearch.Net.AuditEvent;
@@ -17,7 +16,6 @@ namespace Elasticsearch.Net
 		private readonly IConnectionPool _connectionPool;
 		private readonly IDateTimeProvider _dateTimeProvider;
 		private readonly IMemoryStreamFactory _memoryStreamFactory;
-		private readonly CancellationToken _cancellationToken;
 
 		private IRequestParameters RequestParameters { get; }
 		private IRequestConfiguration RequestConfiguration { get; }
@@ -42,7 +40,6 @@ namespace Elasticsearch.Net
 
 			this.RequestParameters = requestParameters;
 			this.RequestConfiguration = requestParameters?.RequestConfiguration;
-			this._cancellationToken = this.RequestConfiguration?.CancellationToken ?? CancellationToken.None;
 			this.StartedOn = dateTimeProvider.Now();
 		}
 
@@ -125,8 +122,18 @@ namespace Elasticsearch.Net
 		{
 			if (!this.FirstPoolUsageNeedsSniffing) return;
 			if (!semaphore.Wait(this._settings.RequestTimeout))
-				throw new PipelineException(PipelineFailure.CouldNotStartSniffOnStartup, (Exception)null);
-			if (!this.FirstPoolUsageNeedsSniffing) return;
+			{
+				if (this.FirstPoolUsageNeedsSniffing)
+					throw new PipelineException(PipelineFailure.CouldNotStartSniffOnStartup, null);
+				return;
+			}
+
+			if (!this.FirstPoolUsageNeedsSniffing)
+			{
+				semaphore.Release();
+				return;
+			}
+
 			try
 			{
 				using (this.Audit(SniffOnStartup))
@@ -141,19 +148,27 @@ namespace Elasticsearch.Net
 			}
 		}
 
-		public async Task FirstPoolUsageAsync(SemaphoreSlim semaphore)
+		public async Task FirstPoolUsageAsync(SemaphoreSlim semaphore, CancellationToken cancellationToken)
 		{
 			if (!this.FirstPoolUsageNeedsSniffing) return;
-			var success = await semaphore.WaitAsync(this._settings.RequestTimeout, this._cancellationToken).ConfigureAwait(false);
+			var success = await semaphore.WaitAsync(this._settings.RequestTimeout, cancellationToken).ConfigureAwait(false);
 			if (!success)
-				throw new PipelineException(PipelineFailure.CouldNotStartSniffOnStartup, (Exception)null);
+			{
+				if(this.FirstPoolUsageNeedsSniffing)
+					throw new PipelineException(PipelineFailure.CouldNotStartSniffOnStartup, null);
+				return;
+			}
 
-			if (!this.FirstPoolUsageNeedsSniffing) return;
+			if (!this.FirstPoolUsageNeedsSniffing)
+			{
+				semaphore.Release();
+				return;
+			}
 			try
 			{
 				using (this.Audit(SniffOnStartup))
 				{
-					await this.SniffAsync().ConfigureAwait(false);
+					await this.SniffAsync(cancellationToken).ConfigureAwait(false);
 					this._connectionPool.SniffedOnStartup = true;
 				}
 			}
@@ -173,12 +188,12 @@ namespace Elasticsearch.Net
 			}
 		}
 
-		public async Task SniffOnStaleClusterAsync()
+		public async Task SniffOnStaleClusterAsync(CancellationToken cancellationToken)
 		{
 			if (!StaleClusterState) return;
 			using (this.Audit(AuditEvent.SniffOnStaleCluster))
 			{
-				await this.SniffAsync().ConfigureAwait(false);
+				await this.SniffAsync(cancellationToken).ConfigureAwait(false);
 				this._connectionPool.SniffedOnStartup = true;
 			}
 		}
@@ -224,8 +239,7 @@ namespace Elasticsearch.Net
 				RequestTimeout = this.RequestTimeout,
 				BasicAuthenticationCredentials = this._settings.BasicAuthenticationCredentials,
 				EnableHttpPipelining = this.RequestConfiguration?.EnableHttpPipelining ?? this._settings.HttpPipeliningEnabled,
-				ForceNode = this.RequestConfiguration?.ForceNode,
-				CancellationToken = this.RequestConfiguration?.CancellationToken ?? default(CancellationToken)
+				ForceNode = this.RequestConfiguration?.ForceNode
 			};
 			IRequestParameters requestParameters = new RootNodeInfoRequestParameters { };
 			requestParameters.RequestConfiguration = requestOverrides;
@@ -245,7 +259,7 @@ namespace Elasticsearch.Net
 					var response = this._connection.Request<VoidResponse>(pingData);
 					ThrowBadAuthPipelineExceptionWhenNeeded(response);
 					//ping should not silently accept bad but valid http responses
-					if (!response.Success) throw new PipelineException(PipelineFailure.BadResponse) { Response = response };
+					if (!response.Success) throw new PipelineException(pingData.OnFailurePipelineFailure) { Response = response };
 				}
 				catch (Exception e)
 				{
@@ -257,7 +271,7 @@ namespace Elasticsearch.Net
 			}
 		}
 
-		public async Task PingAsync(Node node)
+		public async Task PingAsync(Node node, CancellationToken cancellationToken)
 		{
 			if (PingDisabled(node)) return;
 
@@ -266,10 +280,10 @@ namespace Elasticsearch.Net
 				try
 				{
 					var pingData = CreatePingRequestData(node, audit);
-					var response = await this._connection.RequestAsync<VoidResponse>(pingData).ConfigureAwait(false);
+					var response = await this._connection.RequestAsync<VoidResponse>(pingData, cancellationToken).ConfigureAwait(false);
 					ThrowBadAuthPipelineExceptionWhenNeeded(response);
 					//ping should not silently accept bad but valid http responses
-					if (!response.Success) throw new PipelineException(PipelineFailure.BadResponse) { Response = response };
+					if (!response.Success) throw new PipelineException(pingData.OnFailurePipelineFailure) { Response = response };
 				}
 				catch (Exception e)
 				{
@@ -287,7 +301,7 @@ namespace Elasticsearch.Net
 				throw new PipelineException(PipelineFailure.BadAuthentication, response.OriginalException) { Response = response };
 		}
 
-		public string SniffPath => "_nodes/_all/settings?flat_settings&timeout=" + this.PingTimeout.ToTimeUnit();
+		public string SniffPath => "_nodes/http,settings?flat_settings&timeout=" + this.PingTimeout.ToTimeUnit();
 
 		public IEnumerable<Node> SniffNodes => this._connectionPool
 			.CreateView((e, n)=> { using (new Auditable(e, this.AuditTrail, this._dateTimeProvider) { Node = n }) {} })
@@ -301,11 +315,11 @@ namespace Elasticsearch.Net
 				this.Sniff();
 		}
 
-		public async Task SniffOnConnectionFailureAsync()
+		public async Task SniffOnConnectionFailureAsync(CancellationToken cancellationToken)
 		{
 			if (!this.SniffsOnConnectionFailure) return;
 			using (this.Audit(SniffOnFail))
-				await this.SniffAsync().ConfigureAwait(false);
+				await this.SniffAsync(cancellationToken).ConfigureAwait(false);
 		}
 
 		public void Sniff()
@@ -323,7 +337,7 @@ namespace Elasticsearch.Net
 						var response = this._connection.Request<SniffResponse>(requestData);
 						ThrowBadAuthPipelineExceptionWhenNeeded(response);
 						//sniff should not silently accept bad but valid http responses
-						if (!response.Success) throw new PipelineException(PipelineFailure.BadResponse) { Response = response };
+						if (!response.Success) throw new PipelineException(requestData.OnFailurePipelineFailure) { Response = response };
 						var nodes = response.Body.ToNodes(this._connectionPool.UsingSsl);
 						this._connectionPool.Reseed(nodes);
 						this.Refresh = true;
@@ -341,7 +355,7 @@ namespace Elasticsearch.Net
 			throw new PipelineException(PipelineFailure.SniffFailure, new AggregateException(exceptions));
 		}
 
-		public async Task SniffAsync()
+		public async Task SniffAsync(CancellationToken cancellationToken)
 		{
 			var path = this.SniffPath;
 			var exceptions = new List<Exception>();
@@ -353,10 +367,10 @@ namespace Elasticsearch.Net
 					try
 					{
 						var requestData = new RequestData(HttpMethod.GET, path, null, this._settings, (IRequestParameters)null, this._memoryStreamFactory) { Node = node };
-						var response = await this._connection.RequestAsync<SniffResponse>(requestData).ConfigureAwait(false);
+						var response = await this._connection.RequestAsync<SniffResponse>(requestData, cancellationToken).ConfigureAwait(false);
 						ThrowBadAuthPipelineExceptionWhenNeeded(response);
 						//sniff should not silently accept bad but valid http responses
-						if (!response.Success) throw new PipelineException(PipelineFailure.BadResponse) { Response = response };
+						if (!response.Success) throw new PipelineException(requestData.OnFailurePipelineFailure) { Response = response };
 						this._connectionPool.Reseed(response.Body.ToNodes(this._connectionPool.UsingSsl));
 						this.Refresh = true;
 						return;
@@ -386,20 +400,20 @@ namespace Elasticsearch.Net
 					response = this._connection.Request<TReturn>(requestData);
 					response.AuditTrail = this.AuditTrail;
 					ThrowBadAuthPipelineExceptionWhenNeeded(response);
-					if (!response.Success) audit.Event = AuditEvent.BadResponse;
+					if (!response.Success) audit.Event = requestData.OnFailureAuditEvent;
 					return response;
 				}
 				catch (Exception e)
 				{
 					(response as ElasticsearchResponse<Stream>)?.Body?.Dispose();
-					audit.Event = AuditEvent.BadResponse;
+					audit.Event = requestData.OnFailureAuditEvent;
 					audit.Exception = e;
 					throw;
 				}
 			}
 		}
 
-		public async Task<ElasticsearchResponse<TReturn>> CallElasticsearchAsync<TReturn>(RequestData requestData) where TReturn : class
+		public async Task<ElasticsearchResponse<TReturn>> CallElasticsearchAsync<TReturn>(RequestData requestData, CancellationToken cancellationToken) where TReturn : class
 		{
 			using (var audit = this.Audit(HealthyResponse))
 			{
@@ -409,16 +423,16 @@ namespace Elasticsearch.Net
 				ElasticsearchResponse<TReturn> response = null;
 				try
 				{
-					response = await this._connection.RequestAsync<TReturn>(requestData).ConfigureAwait(false);
+					response = await this._connection.RequestAsync<TReturn>(requestData, cancellationToken).ConfigureAwait(false);
 					response.AuditTrail = this.AuditTrail;
 					ThrowBadAuthPipelineExceptionWhenNeeded(response);
-					if (!response.Success) audit.Event = AuditEvent.BadResponse;
+					if (!response.Success) audit.Event = requestData.OnFailureAuditEvent;
 					return response;
 				}
 				catch (Exception e)
 				{
 					(response as ElasticsearchResponse<Stream>)?.Body?.Dispose();
-					audit.Event = AuditEvent.BadResponse;
+					audit.Event = requestData.OnFailureAuditEvent;
 					audit.Exception = e;
 					throw;
 				}
@@ -429,7 +443,7 @@ namespace Elasticsearch.Net
 			where TReturn : class
 		{
 			var callDetails = response ?? pipelineExceptions.LastOrDefault()?.Response;
-			var pipelineFailure = PipelineFailure.BadResponse;
+			var pipelineFailure = data.OnFailurePipelineFailure;
 			if (pipelineExceptions.HasAny())
 				pipelineFailure = pipelineExceptions.Last().FailureReason;
 
@@ -443,7 +457,7 @@ namespace Elasticsearch.Net
 			{
 				pipelineFailure = PipelineFailure.MaxTimeoutReached;
 				this.Audit(MaxTimeoutReached);
-				exceptionMessage = "Maximum timout reached while retrying request";
+				exceptionMessage = "Maximum timeout reached while retrying request";
 			}
 			else if (this.Retried >= this.MaxRetries && this.MaxRetries > 0)
 			{

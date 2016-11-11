@@ -3,7 +3,6 @@ using Xunit;
 
 namespace Tests.QueryDsl
 {
-	[Collection(TypeOfCluster.ReadOnly)]
 	public abstract class GeoShapeQueryUsageTestsBase : QueryDslUsageTestsBase
 	{
 		public GeoShapeQueryUsageTestsBase(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
@@ -17,6 +16,7 @@ namespace Tests.QueryDsl
 					_name="named_query",
 					boost = 1.1,
 					ignore_unmapped = false,
+					relation = "intersects",
 					shape = this.ShapeJson
 				}
 			}

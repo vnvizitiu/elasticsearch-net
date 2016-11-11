@@ -15,23 +15,22 @@ namespace Tests.Search.Suggesters
 	/** == Suggest API
 
 	*/
-	[Collection(TypeOfCluster.ReadOnly)]
 	public class SuggestApiTests
-		: ApiIntegrationTestBase<ISuggestResponse, ISuggestRequest, SuggestDescriptor<Project>, SuggestRequest>
+		: ApiIntegrationTestBase<ReadOnlyCluster, ISuggestResponse<Project>, ISuggestRequest, SuggestDescriptor<Project>, SuggestRequest<Project>>
 	{
 		public SuggestApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override LazyResponses ClientUsage() => Calls(
-			fluent: (c, f) => c.Suggest(f),
-			fluentAsync: (c, f) => c.SuggestAsync(f),
-			request: (c, r) => c.Suggest(r),
-			requestAsync: (c, r) => c.SuggestAsync(r)
+			fluent: (c, f) => c.Suggest<Project>(f),
+			fluentAsync: (c, f) => c.SuggestAsync<Project>(f),
+			request: (c, r) => c.Suggest<Project>(r),
+			requestAsync: (c, r) => c.SuggestAsync<Project>(r)
 		);
 
 		protected override int ExpectStatusCode => 200;
 		protected override bool ExpectIsValid => true;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
-		protected override string UrlPath => "/_suggest";
+		protected override string UrlPath => "/project/_suggest";
 		protected override bool SupportsDeserialization => false;
 
 		protected override object ExpectJson =>
@@ -53,7 +52,6 @@ namespace Tests.Search.Suggesters
 						  unicode_aware = false
 						},
 						size = 8,
-						payload = new [] { "numberOfCommits" }
 					  },
 					  prefix = Project.Instance.Name
 					} },
@@ -127,7 +125,6 @@ namespace Tests.Search.Suggesters
 					.Field(p => p.Suggest)
 					.Size(8)
 					.Prefix(Project.Instance.Name)
-					.Payload(fs => fs.Field(p => p.NumberOfCommits))
 				)
 				.Phrase("my-phrase-suggest", ph => ph
 					.Collate(c => c
@@ -147,8 +144,8 @@ namespace Tests.Search.Suggesters
 					.RealWordErrorLikelihood(0.5)
 				);
 
-		protected override SuggestRequest Initializer =>
-			new SuggestRequest
+		protected override SuggestRequest<Project> Initializer =>
+			new SuggestRequest<Project>
 			{
 				Suggest = new SuggestContainer
 				{
@@ -190,7 +187,6 @@ namespace Tests.Search.Suggesters
 							Analyzer = "simple",
 							Field = Field<Project>(p=>p.Suggest),
 							Size = 8,
-							Payload = Fields<Project>(p => p.NumberOfCommits)
 						}
 					} },
 					{ "my-phrase-suggest", new SuggestBucket
@@ -200,8 +196,9 @@ namespace Tests.Search.Suggesters
 						{
 							Collate = new PhraseSuggestCollate
 							{
-								Query = new InlineScript("{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}")
+								Query = new TemplateQuery
 								{
+									Inline = "{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}",
 									Params = new Dictionary<string, object>
 									{
 										{ "field_name", "title" }
@@ -222,7 +219,7 @@ namespace Tests.Search.Suggesters
 				}
 			};
 
-		protected override void ExpectResponse(ISuggestResponse response)
+		protected override void ExpectResponse(ISuggestResponse<Project> response)
 		{
 			/** === Handling Responses
 			* Get the suggestions for a suggester by indexing into
@@ -237,9 +234,12 @@ namespace Tests.Search.Suggesters
 
 			var option = suggest.Options.First();
 			option.Text.Should().NotBeNullOrEmpty();
+			option.Index.Should().Be("project");
+			option.Type.Should().Be("project");
+			option.Id.Should().NotBeNull();
+			option.Source.Should().NotBeNull();
+			option.Source.Name.Should().NotBeNullOrWhiteSpace();
 			option.Score.Should().BeGreaterThan(0);
-			option.Payload.Should().NotBeNull();
-			option.Payload.Value<int>(Field<Project>(p => p.NumberOfCommits)).Should().BeGreaterThan(0);
 			option.Contexts.Should().NotBeNull().And.NotBeEmpty();
 			option.Contexts.Should().ContainKey("color");
 			var colorContexts = option.Contexts["color"];

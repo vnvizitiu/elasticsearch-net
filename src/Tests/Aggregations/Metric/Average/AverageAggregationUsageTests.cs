@@ -5,6 +5,7 @@ using Tests.Framework.Integration;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 using System.Collections.Generic;
+using Tests.Framework;
 
 namespace Tests.Aggregations.Metric.Average
 {
@@ -13,7 +14,7 @@ namespace Tests.Aggregations.Metric.Average
 		public AverageAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
 		/// <summary>
-		/// 
+		///
 		/// </summary>
 		protected override object ExpectJson => new
 		{
@@ -32,6 +33,7 @@ namespace Tests.Aggregations.Metric.Average
 						script = new
 						{
 							inline = "_value * 1.2",
+							lang = "groovy"
 						}
 					}
 				}
@@ -46,7 +48,7 @@ namespace Tests.Aggregations.Metric.Average
 					)
 					.Field(p => p.NumberOfCommits)
 					.Missing(10)
-					.Script("_value * 1.2")
+					.Script(ss=>ss.Inline("_value * 1.2").Lang("groovy"))
 				)
 			);
 
@@ -60,13 +62,13 @@ namespace Tests.Aggregations.Metric.Average
 						{ "foo", "bar" }
 					},
 					Missing = 10,
-					Script = new InlineScript("_value * 1.2")
+					Script = new InlineScript("_value * 1.2") { Lang = "groovy" }
 				}
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 			var commitsAvg = response.Aggs.Average("average_commits");
 			commitsAvg.Should().NotBeNull();
 			commitsAvg.Value.Should().BeGreaterThan(0);

@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Elasticsearch.Net;
 using FluentAssertions;
 using Tests.Framework.MockResponses;
-using System.Net;
 
 namespace Tests.Framework
 {
@@ -36,7 +36,7 @@ namespace Tests.Framework
 			}
 		}
 
-		public bool IsSniffRequest(RequestData requestData) => requestData.Path.StartsWith("_nodes/_all/settings", StringComparison.Ordinal);
+		public bool IsSniffRequest(RequestData requestData) => requestData.Path.StartsWith("_nodes/http,settings", StringComparison.Ordinal);
 		public bool IsPingRequest(RequestData requestData) => requestData.Path == "/" && requestData.Method == HttpMethod.HEAD;
 
 		public override ElasticsearchResponse<TReturn> Request<TReturn>(RequestData requestData)
@@ -96,6 +96,9 @@ namespace Tests.Framework
 			Func<TRule, byte[]> successResponse
 			) where TReturn : class where TRule : IRule
 		{
+			//TODO Make this pluggable?
+			requestData.MadeItToResponse = true;
+
 			var state = this.Calls[requestData.Uri.Port];
 			foreach (var rule in rules.Where(s => s.OnPort.HasValue))
 			{
@@ -204,14 +207,17 @@ namespace Tests.Framework
 			if (rule?.ReturnResponse != null)
 				return rule.ReturnResponse;
 
+			if (DefaultResponseBytes != null) return DefaultResponseBytes;
 			var response = DefaultResponse;
 			using (var ms = new MemoryStream())
 			{
 				new ElasticsearchDefaultSerializer().Serialize(response, ms);
-				return ms.ToArray();
+				DefaultResponseBytes = ms.ToArray();
 			}
+			return DefaultResponseBytes;
 		}
 
+		private static byte[] DefaultResponseBytes;
 		private static object DefaultResponse
 		{
 			get
@@ -234,7 +240,7 @@ namespace Tests.Framework
 			}
 		}
 
-		public override Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData)
+		public override Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData, CancellationToken cancellationToken)
 		{
 			return Task.FromResult(this.Request<TReturn>(requestData));
 		}

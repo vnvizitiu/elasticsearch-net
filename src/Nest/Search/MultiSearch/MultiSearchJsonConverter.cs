@@ -44,10 +44,10 @@ namespace Nest
 					ignore_unavailable = operation.IgnoreUnavalable
 				};
 
-				var headerBytes = elasticsearchSerializer.SerializeToBytes(header, SerializationFormatting.None);
-				writer.WriteRaw(headerBytes.Utf8String() + "\n");
-				var bodyBytes = elasticsearchSerializer.SerializeToBytes(operation, SerializationFormatting.None);
-				writer.WriteRaw(bodyBytes.Utf8String() + "\n");
+				var headerString = elasticsearchSerializer.SerializeToString(header, SerializationFormatting.None);
+				writer.WriteRaw($"{headerString}\n");
+				var bodyString = elasticsearchSerializer.SerializeToString(operation, SerializationFormatting.None);
+				writer.WriteRaw($"{bodyString}\n");
 			}
 		}
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Elasticsearch.Net;
+using System.Threading;
 
 namespace Nest
 {
@@ -8,24 +9,24 @@ namespace Nest
 	{
 
 		/// <inheritdoc/>
-		IGetPipelineResponse GetPipeline(Id id, Func<GetPipelineDescriptor, IGetPipelineRequest> selector = null);
+		IGetPipelineResponse GetPipeline(Func<GetPipelineDescriptor, IGetPipelineRequest> selector = null);
 
 		/// <inheritdoc/>
 		IGetPipelineResponse GetPipeline(IGetPipelineRequest request);
 
 		/// <inheritdoc/>
-		Task<IGetPipelineResponse> GetPipelineAsync(Id id, Func<GetPipelineDescriptor, IGetPipelineRequest> selector = null);
+		Task<IGetPipelineResponse> GetPipelineAsync(Func<GetPipelineDescriptor, IGetPipelineRequest> selector = null, CancellationToken cancellationToken = default(CancellationToken));
 
 		/// <inheritdoc/>
-		Task<IGetPipelineResponse> GetPipelineAsync(IGetPipelineRequest request);
+		Task<IGetPipelineResponse> GetPipelineAsync(IGetPipelineRequest request, CancellationToken cancellationToken = default(CancellationToken));
 	}
 
 
 	public partial class ElasticClient
 	{
 		/// <inheritdoc/>
-		public IGetPipelineResponse GetPipeline( Id id, Func<GetPipelineDescriptor, IGetPipelineRequest> selector = null) =>
-			this.GetPipeline(selector.InvokeOrDefault(new GetPipelineDescriptor( id)));
+		public IGetPipelineResponse GetPipeline(Func<GetPipelineDescriptor, IGetPipelineRequest> selector = null) =>
+			this.GetPipeline(selector.InvokeOrDefault(new GetPipelineDescriptor()));
 
 		/// <inheritdoc/>
 		public IGetPipelineResponse GetPipeline(IGetPipelineRequest request) =>
@@ -35,14 +36,15 @@ namespace Nest
 			);
 
 		/// <inheritdoc/>
-		public Task<IGetPipelineResponse> GetPipelineAsync(Id id, Func<GetPipelineDescriptor, IGetPipelineRequest> selector = null) =>
-			this.GetPipelineAsync(selector.InvokeOrDefault(new GetPipelineDescriptor( id)));
+		public Task<IGetPipelineResponse> GetPipelineAsync(Func<GetPipelineDescriptor, IGetPipelineRequest> selector = null, CancellationToken cancellationToken = default(CancellationToken)) =>
+			this.GetPipelineAsync(selector.InvokeOrDefault(new GetPipelineDescriptor()), cancellationToken);
 
 		/// <inheritdoc/>
-		public Task<IGetPipelineResponse> GetPipelineAsync(IGetPipelineRequest request) =>
+		public Task<IGetPipelineResponse> GetPipelineAsync(IGetPipelineRequest request, CancellationToken cancellationToken = default(CancellationToken)) =>
 			this.Dispatcher.DispatchAsync<IGetPipelineRequest, GetPipelineRequestParameters, GetPipelineResponse, IGetPipelineResponse>(
 				request,
-				(p, d) => this.LowLevelDispatch.IngestGetPipelineDispatchAsync<GetPipelineResponse>(p)
+				cancellationToken,
+				(p, d, c) => this.LowLevelDispatch.IngestGetPipelineDispatchAsync<GetPipelineResponse>(p, c)
 			);
 	}
 }

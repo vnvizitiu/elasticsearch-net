@@ -10,9 +10,8 @@ using Xunit;
 
 namespace Tests.Document.Single.Index
 {
-	[Collection(TypeOfCluster.Indexing)]
 	public class IndexIngestAttachmentApiTests :
-		ApiIntegrationTestBase<IIndexResponse,
+		ApiIntegrationTestBase<IntrusiveOperationCluster, IIndexResponse,
 			IIndexRequest<IndexIngestAttachmentApiTests.IngestedAttachment>,
 			IndexDescriptor<IndexIngestAttachmentApiTests.IngestedAttachment>,
 			IndexRequest<IndexIngestAttachmentApiTests.IngestedAttachment>>
@@ -28,9 +27,7 @@ namespace Tests.Document.Single.Index
 
 		private static string PipelineId { get; } = "pipeline-" + Guid.NewGuid().ToString("N").Substring(0, 8);
 
-		public IndexIngestAttachmentApiTests(IndexingCluster cluster, EndpointUsage usage) : base(cluster, usage)
-		{
-		}
+		public IndexIngestAttachmentApiTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override void IntegrationSetup(IElasticClient client, CallUniqueValues values)
 		{
@@ -42,7 +39,7 @@ namespace Tests.Document.Single.Index
 					.Mappings(m => m
 						.Map<IngestedAttachment>(mm => mm
 							.Properties(p => p
-								.String(s => s
+								.Text(s => s
 									.Name(f => f.Content)
 								)
 								.Object<Nest.Attachment>(o => o
@@ -101,13 +98,13 @@ namespace Tests.Document.Single.Index
 
 		protected override Func<IndexDescriptor<IngestedAttachment>, IIndexRequest<IngestedAttachment>> Fluent => s => s
 			.Index(CallIsolatedValue)
-			.Refresh()
+			.Refresh(Refresh.True)
 			.Pipeline(PipelineId);
 
 		protected override IndexRequest<IngestedAttachment> Initializer =>
 			new IndexRequest<IngestedAttachment>(this.Document, CallIsolatedValue)
 			{
-				Refresh = true,
+				Refresh = Refresh.True,
 				Pipeline = PipelineId
 			};
 

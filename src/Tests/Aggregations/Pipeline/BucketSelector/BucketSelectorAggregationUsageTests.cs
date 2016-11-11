@@ -1,6 +1,7 @@
 ﻿using System;
 using FluentAssertions;
 using Nest;
+using Tests.Framework;
 using Tests.Framework.Integration;
 using Tests.Framework.MockData;
 
@@ -9,7 +10,7 @@ namespace Tests.Aggregations.Pipeline.BucketSelector
 	public class BucketSelectorAggregationUsageTests : AggregationUsageTestBase
 	{
 		public BucketSelectorAggregationUsageTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
-		
+
 		protected override object ExpectJson => new
 		{
 			size = 0,
@@ -41,7 +42,8 @@ namespace Tests.Aggregations.Pipeline.BucketSelector
 								},
 								script = new
 								{
-									inline = "totalCommits >= 500"
+									inline = "totalCommits >= 500",
+									lang = "groovy"
 								}
 							}
 						}
@@ -64,12 +66,12 @@ namespace Tests.Aggregations.Pipeline.BucketSelector
 							.BucketsPath(bp => bp
 								.Add("totalCommits", "commits")
 							)
-							.Script("totalCommits >= 500")
+							.Script(ss => ss.Inline("totalCommits >= 500").Lang("groovy"))
 						)
 					)
 				)
 			);
-		
+
 		protected override SearchRequest<Project> Initializer => new SearchRequest<Project>()
 		{
 			Size = 0,
@@ -77,28 +79,28 @@ namespace Tests.Aggregations.Pipeline.BucketSelector
 			{
 				Field = "startedOn",
 				Interval = DateInterval.Month,
-				Aggregations = 
+				Aggregations =
 					new SumAggregation("commits", "numberOfCommits") &&
 					new BucketSelectorAggregation("commits_bucket_filter", new MultiBucketsPath
 						{
 							{ "totalCommits", "commits" },
 						})
 					{
-						Script = (InlineScript)"totalCommits >= 500"
+						Script = new InlineScript("totalCommits >= 500") { Lang = "groovy" }
 					}
 			}
 		};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 
 			var projectsPerMonth = response.Aggs.DateHistogram("projects_started_per_month");
 			projectsPerMonth.Should().NotBeNull();
 			projectsPerMonth.Buckets.Should().NotBeNull();
 			projectsPerMonth.Buckets.Count.Should().BeGreaterThan(0);
 
-			foreach(var item in projectsPerMonth.Buckets)
+			foreach (var item in projectsPerMonth.Buckets)
 			{
 				var commits = item.Sum("commits");
 				commits.Should().NotBeNull();

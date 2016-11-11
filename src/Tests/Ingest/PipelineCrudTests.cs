@@ -12,11 +12,11 @@ using Xunit;
 
 namespace Tests.Ingest
 {
-	[Collection(TypeOfCluster.Indexing)]
 	public class PipelineCrudTests
-		: CrudTestBase<IPutPipelineResponse, IGetPipelineResponse, IPutPipelineResponse, IDeletePipelineResponse>
+		: CrudTestBase<IntrusiveOperationCluster, IPutPipelineResponse, IGetPipelineResponse, IPutPipelineResponse, IDeletePipelineResponse>
 	{
-		public PipelineCrudTests(IndexingCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		//These calls have low priority and often cause `process_cluster_event_timeout_exception`'s
+		public PipelineCrudTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override LazyResponses Create() => Calls<PutPipelineDescriptor, PutPipelineRequest, IPutPipelineRequest, IPutPipelineResponse>(
 			CreateInitializer,
@@ -31,18 +31,21 @@ namespace Tests.Ingest
 		{
 			response.Pipelines.Should().NotBeNull().And.HaveCount(1);
 
-			var pipeline = response.Pipelines.First();
-			pipeline.Config.Should().NotBeNull();
-			pipeline.Id.Should().NotBeNullOrEmpty();
+			var kv = response.Pipelines.First();
+			kv.Should().NotBeNull();
+			kv.Key.Should().NotBeNullOrWhiteSpace();
 
-			var processors = pipeline.Config.Processors;
+			var pipeline = kv.Value;
+			pipeline.Description.Should().NotBeNull();
+
+			var processors = pipeline.Processors;
 			processors.Should().NotBeNull().And.HaveCount(2);
 
-			var uppercase = processors.Where(p => p.Name == "uppercase").FirstOrDefault() as UppercaseProcessor;
+			var uppercase = processors.FirstOrDefault(p => p.Name == "uppercase") as UppercaseProcessor;
 			uppercase.Should().NotBeNull();
 			uppercase.Field.Should().NotBeNull();
 
-			var set = processors.Where(p => p.Name == "set").FirstOrDefault() as SetProcessor;
+			var set = processors.FirstOrDefault(p => p.Name == "set") as SetProcessor;
 			set.Should().NotBeNull();
 			set.Field.Should().NotBeNull();
 			set.Value.Should().NotBeNull();
@@ -80,15 +83,15 @@ namespace Tests.Ingest
 		protected override LazyResponses Read() => Calls<GetPipelineDescriptor, GetPipelineRequest, IGetPipelineRequest, IGetPipelineResponse>(
 			GetInitializer,
 			GetFluent,
-			fluent: (s, c, f) => c.GetPipeline(s, f),
-			fluentAsync: (s, c, f) => c.GetPipelineAsync(s, f),
+			fluent: (s, c, f) => c.GetPipeline(f),
+			fluentAsync: (s, c, f) => c.GetPipelineAsync(f),
 			request: (s, c, r) => c.GetPipeline(r),
 			requestAsync: (s, c, r) => c.GetPipelineAsync(r)
 		);
 
 		protected GetPipelineRequest GetInitializer(string pipelineId) => new GetPipelineRequest(pipelineId);
 
-		protected IGetPipelineRequest GetFluent(string pipelineId, GetPipelineDescriptor d) => d;
+		protected IGetPipelineRequest GetFluent(string pipelineId, GetPipelineDescriptor d) => d.Id(pipelineId);
 
 		protected override LazyResponses Update() => Calls<PutPipelineDescriptor, PutPipelineRequest, IPutPipelineRequest, IPutPipelineResponse>(
 			UpdateInitializer,
@@ -141,23 +144,26 @@ namespace Tests.Ingest
 		{
 			response.Pipelines.Should().NotBeNull().And.HaveCount(1);
 
-			var pipeline = response.Pipelines.First();
-			pipeline.Config.Should().NotBeNull();
-			pipeline.Id.Should().NotBeNullOrEmpty();
+			var kv = response.Pipelines.First();
+			kv.Should().NotBeNull();
+			kv.Key.Should().NotBeNullOrWhiteSpace();
 
-			var processors = pipeline.Config.Processors;
+			var pipeline = kv.Value;
+			pipeline.Should().NotBeNull();
+
+			var processors = pipeline.Processors;
 			processors.Should().NotBeNull().And.HaveCount(3);
 
-			var uppercase = processors.Where(p => p.Name == "uppercase").FirstOrDefault() as UppercaseProcessor;
+			var uppercase = processors.FirstOrDefault(p => p.Name == "uppercase") as UppercaseProcessor;
 			uppercase.Should().NotBeNull();
 			uppercase.Field.Should().NotBeNull();
 
-			var set = processors.Where(p => p.Name == "set").FirstOrDefault() as SetProcessor;
+			var set = processors.FirstOrDefault(p => p.Name == "set") as SetProcessor;
 			set.Should().NotBeNull();
 			set.Field.Should().NotBeNull();
 			set.Value.Should().NotBeNull();
 
-			var rename = processors.Where(p => p.Name == "rename").FirstOrDefault() as RenameProcessor;
+			var rename = processors.FirstOrDefault(p => p.Name == "rename") as RenameProcessor;
 			rename.Should().NotBeNull();
 			rename.Field.Should().NotBeNull();
 			rename.TargetField.Should().NotBeNull();

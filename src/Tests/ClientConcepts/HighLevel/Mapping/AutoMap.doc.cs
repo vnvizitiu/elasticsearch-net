@@ -171,9 +171,10 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 										{
 											keyword = new
 											{
-												type = "keyword"
+												type = "keyword",
+												ignore_above = 256
 											}
-									},
+										},
 										type = "text"
 									},
 									hours = new
@@ -190,9 +191,10 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 										{
 											keyword = new
 											{
-												type = "keyword"
+												type = "keyword",
+												ignore_above = 256
 											}
-									},
+										},
 										type = "text"
 									},
 									salary = new
@@ -208,11 +210,12 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 								{
 									keyword = new
 									{
-										type = "keyword"
-							}
+										type = "keyword",
+										ignore_above = 256
+									}
 								},
 								type = "text"
-						}
+							}
 						}
 					},
 					employee = new
@@ -234,9 +237,10 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 								{
 									keyword = new
 									{
-										type = "keyword"
+										type = "keyword",
+										ignore_above = 256
 									}
-							},
+								},
 								type = "text"
 							},
 							hours = new
@@ -253,9 +257,10 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 								{
 									keyword = new
 									{
-										type = "keyword"
+										type = "keyword",
+										ignore_above = 256
 									}
-							},
+								},
 								type = "text"
 							},
 							salary = new
@@ -312,7 +317,8 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 								{
 									keyword = new
 									{
-										type = "keyword"
+										type = "keyword",
+										ignore_above = 256
 									}
 								}
 							},
@@ -356,13 +362,13 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 		[ElasticsearchType(Name = "company")]
 		public class CompanyWithAttributes
 		{
-			[Keyword(NullValue = "null", Similarity = SimilarityOption.BM25)]
+			[Keyword(NullValue = "null", Similarity = "BM25")]
 			public string Name { get; set; }
 
 			[Text(Name = "office_hours")]
 			public TimeSpan? HeadOfficeHours { get; set; }
 
-			[Object(Path = "employees", Store = false)]
+			[Object(Store = false)]
 			public List<Employee> Employees { get; set; }
 		}
 
@@ -378,13 +384,13 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 			[Number(DocValues = false, IgnoreMalformed = true, Coerce = true)]
 			public int Salary { get; set; }
 
-			[Date(Format = "MMddyyyy", NumericResolution = NumericResolutionUnit.Seconds)]
+			[Date(Format = "MMddyyyy")]
 			public DateTime Birthday { get; set; }
 
 			[Boolean(NullValue = false, Store = true)]
 			public bool IsManager { get; set; }
 
-			[Nested(Path = "employees")]
+			[Nested]
 			[JsonProperty("empl")]
 			public List<Employee> Employees { get; set; }
 		}
@@ -409,7 +415,6 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 						{
 							employees = new
 							{
-								path = "employees",
 								properties = new
 								{
 									birthday = new
@@ -427,9 +432,10 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 										{
 											keyword = new
 											{
-												type = "keyword"
+												type = "keyword",
+												ignore_above = 256
 											}
-									},
+										},
 										type = "text"
 									},
 									hours = new
@@ -446,9 +452,10 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 										{
 											keyword = new
 											{
-												type = "keyword"
+												type = "keyword",
+												ignore_above = 256
 											}
-									},
+										},
 										type = "text"
 									},
 									salary = new
@@ -478,12 +485,10 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 							birthday = new
 							{
 								format = "MMddyyyy",
-								numeric_resolution = "seconds",
 								type = "date"
 							},
 							empl = new
 							{
-								path = "employees",
 								properties = new
 								{
 									birthday = new
@@ -501,9 +506,10 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 										{
 											keyword = new
 											{
-												type = "keyword"
+												type = "keyword",
+												ignore_above = 256
 											}
-									},
+										},
 										type = "text"
 									},
 									hours = new
@@ -520,9 +526,10 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 										{
 											keyword = new
 											{
-												type = "keyword"
+												type = "keyword",
+												ignore_above = 256
 											}
-									},
+										},
 										type = "text"
 									},
 									salary = new
@@ -582,10 +589,6 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 					)
 					.Map<EmployeeWithAttributes>(m => m
 						.AutoMap()
-						.TtlField(ttl => ttl
-							.Enabled()
-							.Default("10m")
-						)
 						.Properties(ps => ps
 							.Text(s => s
 								.Name(e => e.FirstName)
@@ -638,11 +641,6 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 					},
 					employee = new
 					{
-						_ttl = new
-						{
-							@default = "10m",
-							enabled = true
-						},
 						properties = new
 						{
 							birthday = new
@@ -652,7 +650,6 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 							},
 							empl = new
 							{
-								path = "employees",
 								properties = new
 								{
 									birthday = new
@@ -670,7 +667,8 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 										{
 											keyword = new
 											{
-												type = "keyword"
+												type = "keyword",
+												ignore_above = 256
 											}
 										},
 										type = "text"
@@ -689,9 +687,10 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 										{
 											keyword = new
 											{
-												type = "keyword"
+												type = "keyword",
+												ignore_above = 256
 											}
-									},
+										},
 										type = "text"
 									},
 									salary = new
@@ -793,11 +792,12 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 								{
 									keyword = new
 									{
-										type = "keyword"
+										type = "keyword",
+										ignore_above = 256
+									}
+								}
 							}
 						}
-					}
-				}
 					}
 				}
 			};
@@ -969,7 +969,7 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 		//endhide
 
 		/**[float]
-         * == Applying conventions through the Visitor pattern
+		 * == Applying conventions through the Visitor pattern
 		 * It is also possible to apply a transformation on all or specific properties.
 		 *
 		 * `.AutoMap()` internally implements the https://en.wikipedia.org/wiki/Visitor_pattern[visitor pattern]. The default visitor, `NoopPropertyVisitor`,

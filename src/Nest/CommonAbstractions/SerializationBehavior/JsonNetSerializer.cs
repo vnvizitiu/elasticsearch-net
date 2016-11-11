@@ -15,38 +15,62 @@ namespace Nest
 	{
 		private static readonly Encoding ExpectedEncoding = new UTF8Encoding(false);
 
+
 		protected IConnectionSettingsValues Settings { get; }
 		protected ElasticContractResolver ContractResolver { get; }
 
 		//todo this internal smells
 		internal JsonSerializer Serializer => _defaultSerializer;
 
-		private readonly Dictionary<SerializationFormatting, JsonSerializer> _defaultSerializers;
-		private readonly JsonSerializer _defaultSerializer;
+		private Dictionary<SerializationFormatting, JsonSerializer> _defaultSerializers;
+		private JsonSerializer _defaultSerializer;
 
-		protected virtual void ModifyJsonSerializerSettings(JsonSerializerSettings settings) { }
 		protected virtual IList<Func<Type, JsonConverter>> ContractConverters => null;
 
-		public JsonNetSerializer(IConnectionSettingsValues settings) : this(settings, null) { }
+		public JsonNetSerializer(IConnectionSettingsValues settings, Action<JsonSerializerSettings, IConnectionSettingsValues> settingsModifier) : this(settings, null, settingsModifier) { }
+
+		public JsonNetSerializer(IConnectionSettingsValues settings) : this(settings, null, null) { }
 
 		/// <summary>
 		/// this constructor is only here for stateful (de)serialization
 		/// </summary>
-		internal JsonNetSerializer(IConnectionSettingsValues settings, JsonConverter stateFullConverter)
+		protected internal JsonNetSerializer(
+			IConnectionSettingsValues settings,
+			JsonConverter statefulConverter,
+			Action<JsonSerializerSettings, IConnectionSettingsValues> settingsModifier = null
+			)
 		{
 			this.Settings = settings;
-			var piggyBackState = stateFullConverter == null ? null : new JsonConverterPiggyBackState { ActualJsonConverter = stateFullConverter };
+			var piggyBackState = statefulConverter == null ? null : new JsonConverterPiggyBackState { ActualJsonConverter = statefulConverter };
 			// ReSharper disable once VirtualMemberCallInContructor
 			this.ContractResolver = new ElasticContractResolver(this.Settings, this.ContractConverters) { PiggyBackState = piggyBackState };
 
-			this._defaultSerializer = JsonSerializer.Create(this.CreateSettings(SerializationFormatting.None));
-			var indentedSerializer = JsonSerializer.Create(this.CreateSettings(SerializationFormatting.Indented));
+			OverwriteDefaultSerializers(settingsModifier ?? ((s, csv) => { }));
+		}
+
+		/// <summary>
+		/// If you subclass JsonNetSerializer and want to apply state passed in the constructor call this to
+		/// overwrite the DefaultSerializers's JsonSerializerSettings and/or connectionsettings.
+		/// </summary>
+		/// <param name="settingsModifier"></param>
+		protected void OverwriteDefaultSerializers(Action<JsonSerializerSettings, IConnectionSettingsValues> settingsModifier)
+		{
+			settingsModifier.ThrowIfNull(nameof(settingsModifier));
+			var collapsed = this.CreateSettings(SerializationFormatting.None);
+			var indented = this.CreateSettings(SerializationFormatting.Indented);
+			settingsModifier(collapsed, this.Settings);
+			settingsModifier(indented, this.Settings);
+
+			this._defaultSerializer = JsonSerializer.Create(collapsed);
+			var indentedSerializer = JsonSerializer.Create(indented);
 			this._defaultSerializers = new Dictionary<SerializationFormatting, JsonSerializer>
 			{
 				{ SerializationFormatting.None, this._defaultSerializer },
 				{ SerializationFormatting.Indented, indentedSerializer }
 			};
+
 		}
+
 
 		public virtual void Serialize(object data, Stream writableStream, SerializationFormatting formatting = SerializationFormatting.Indented)
 		{
@@ -60,14 +84,16 @@ namespace Nest
 			}
 		}
 
-		protected readonly ConcurrentDictionary<int, IPropertyMapping> Properties = new ConcurrentDictionary<int, IPropertyMapping>();
+		protected readonly ConcurrentDictionary<string, IPropertyMapping> Properties = new ConcurrentDictionary<string, IPropertyMapping>();
 
 		public virtual IPropertyMapping CreatePropertyMapping(MemberInfo memberInfo)
 		{
 			IPropertyMapping mapping;
-			if (Properties.TryGetValue(memberInfo.GetHashCode(), out mapping)) return mapping;
+			var memberInfoString = $"{memberInfo.DeclaringType?.FullName}.{memberInfo.Name}";
+			if (Properties.TryGetValue(memberInfoString, out mapping))
+				return mapping;
 			mapping =  PropertyMappingFromAtrributes(memberInfo);
-			this.Properties.TryAdd(memberInfo.GetHashCode(), mapping);
+			this.Properties.TryAdd(memberInfoString, mapping);
 			return mapping;
 		}
 
@@ -106,8 +132,6 @@ namespace Nest
 				DefaultValueHandling = DefaultValueHandling.Include,
 				NullValueHandling = NullValueHandling.Ignore
 			};
-
-			this.ModifyJsonSerializerSettings(settings);
 
 			var contract = settings.ContractResolver as ElasticContractResolver;
 			if (contract == null) throw new Exception($"NEST needs an instance of {nameof(ElasticContractResolver)} registered on Json.NET's JsonSerializerSettings");

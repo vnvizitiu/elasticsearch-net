@@ -9,9 +9,8 @@ using System.Collections.Generic;
 
 namespace Tests.Ingest.PutPipeline
 {
-	[Collection(TypeOfCluster.ReadOnly)]
 	public class PutPipelineApiTests
-		: ApiIntegrationTestBase<IPutPipelineResponse, IPutPipelineRequest, PutPipelineDescriptor, PutPipelineRequest>
+		: ApiIntegrationTestBase<ReadOnlyCluster, IPutPipelineResponse, IPutPipelineRequest, PutPipelineDescriptor, PutPipelineRequest>
 	{
 		public PutPipelineApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
@@ -74,14 +73,11 @@ namespace Tests.Ingest.PutPipeline
 					@foreach = new
 					{
 						field = "tags",
-						processors = new object[]
+						processor = new
 						{
-							new
+							uppercase = new
 							{
-								uppercase = new
-								{
-									field = "_value.name"
-								}
+								field = "_value.name"
 							}
 						}
 					}
@@ -196,7 +192,7 @@ namespace Tests.Ingest.PutPipeline
 				)
 				.Foreach<Project>(fe => fe
 					.Field(p => p.Tags)
-					.Processors(pps => pps
+					.Processor(pps => pps
 						.Uppercase<Tag>(uc => uc
 							.Field("_value.name")
 						)
@@ -275,12 +271,9 @@ namespace Tests.Ingest.PutPipeline
 				new ForeachProcessor
 				{
 					Field = Infer.Field<Project>(p => p.Tags),
-					Processors = new IProcessor[]
+					Processor = new UppercaseProcessor
 					{
-						new UppercaseProcessor
-						{
-							Field = "_value.name"
-						}
+						Field = "_value.name"
 					}
 				},
 				new GrokProcessor

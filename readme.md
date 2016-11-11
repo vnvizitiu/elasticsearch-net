@@ -22,17 +22,17 @@ Repository for both **NEST** and **Elasticsearch.Net**, the two official [elasti
     	<td><code>1.x</code></td>
     	<td><code>1.x</code></td>
     	<td>:white_check_mark:</td>
-    	<td><a href="http://elasticdotnettemp.westeurope.cloudapp.azure.com/project.html?projectId=Nest1x_BuildAndUnitTest&tab=projectOverview"><img src="http://elasticdotnettemp.westeurope.cloudapp.azure.com/app/rest/builds/buildType:(Nest_BuildAndUnitTest_RunBuildBat)/statusIcon.svg"></a></td>
+    	<td><a href="http://elastic-dotnet.westeurope.cloudapp.azure.com/project.html?projectId=Nest1x&tab=projectOverview&guest=1"><img src="http://elastic-dotnet.westeurope.cloudapp.azure.com/app/rest/builds/buildType:(Nest1x_RunBuildBat)/statusIcon.svg"></a></td>
     	<td><a href="https://www.myget.org/gallery/elasticsearch-net-legacy"><img src="https://www.myget.org/BuildSource/Badge/elasticsearch-net-legacy?identifier=46420967-3fd2-4104-b600-fab20d2b0d62"></a></td>
     	<td>
-    	<a href="https://www.nuget.org/packages/NEST/1.8.2"><img src="https://img.shields.io/badge/nuget-v1.8.2-blue.svg?style=flat-square">
+    	<a href="https://www.nuget.org/packages/NEST/1.9.1"><img src="https://img.shields.io/badge/nuget-v1.9.1-blue.svg?style=flat-square">
     	</td>
     </tr>
     <tr>
     	<td><code>2.x</code></td>
     	<td><code>2.x</code></td>
     	<td>:white_check_mark:</td>
-    	<td><a href="http://elasticdotnettemp.westeurope.cloudapp.azure.com/project.html?projectId=Nest2x_BuildTestAndIntegrate&tab=projectOverview"><img src="http://elasticdotnettemp.westeurope.cloudapp.azure.com/app/rest/builds/buildType:Nest2x_BuildTestAndIntegrate_Fake/statusIcon.svg"></a></td>
+    	<td><a href="http://elastic-dotnet.westeurope.cloudapp.azure.com/project.html?projectId=Nest2x&tab=projectOverview&guest=1"><img src="http://elastic-dotnet.westeurope.cloudapp.azure.com/app/rest/builds/buildType:(Nest2x_CanaryBuild_Fake)/statusIcon.svg"></a></td>
     	<td><a href="https://www.myget.org/gallery/elasticsearch-net"><img src="https://www.myget.org/Content/images/badges/pending.svg"></a></td>
     	<td><a href="https://www.nuget.org/packages/NEST"><img src="https://img.shields.io/nuget/v/NEST.svg?style=flat-square"></a>
     	</td>  
@@ -41,9 +41,9 @@ Repository for both **NEST** and **Elasticsearch.Net**, the two official [elasti
     	<td><code>5.x</code></td>
     	<td><code>5.x</code></td>
     	<td>:white_check_mark:</td>
-    	<td><a href="http://elasticdotnettemp.westeurope.cloudapp.azure.com/project.html?projectId=Nest5x_Canary&tab=projectOverview"><img src="http://elasticdotnettemp.westeurope.cloudapp.azure.com/app/rest/builds/buildType:Nest5x_Canary_Fake/statusIcon.svg"></a></td>
+    	<td><a href="http://elastic-dotnet.westeurope.cloudapp.azure.com/project.html?projectId=Nest5x&tab=projectOverview&guest=1"><img src="http://elastic-dotnet.westeurope.cloudapp.azure.com/app/rest/builds/buildType:(Nest5x_CanaryBuild_Fake)/statusIcon.svg"></a></td>
     	<td><a href="https://www.myget.org/gallery/elasticsearch-net-next"><img src="https://www.myget.org/Content/images/badges/pending.svg"></a></td>
-    	<td><a href="https://www.nuget.org/packages/NEST/5.0.0-alpha1"><img src="https://img.shields.io/nuget/vpre/NEST.svg"></a> </td>
+    	<td><a href="https://www.nuget.org/packages/NEST/5.0.0-beta1"><img src="https://img.shields.io/nuget/vpre/NEST.svg"></a> </td>
     </tr>
 </table>
 
@@ -258,6 +258,34 @@ This will execute the same request, but this time `myJson` will be serialized by
 ## Contributing
 
 [Pull requests](https://github.com/elastic/elasticsearch-net/pulls) and [issues](https://github.com/elastic/elasticsearch-net/issues) are very much welcomed and appreciated.  If you'd like to report a bug or submit a feature/bug fix then please read our [contributing guide](contributing.md) first!
+
+### Generating documentation from tests
+
+[All Elasticsearch.Net and NEST documentation on elastic.co](https://www.elastic.co/guide/en/elasticsearch/client/net-api/index.html) is generated from code within the [Tests project](src/Tests) using [Roslyn](https://github.com/dotnet/roslyn); multi-line comments serve as the main bodies of text, intermixed with code samples that test the documented components. The intention is to reduce the likelihood of documentation becoming outdated as the source changes. 
+
+Text within multi-line comments conforms to [asciidoc](http://asciidoc.org/), a lightweight markdown style text format well suited to technical documentation. To generate the asciidoc files from the test files, you need to run the [DocGenerator](src/CodeGeneration/DocGenerator) console application which will output the documentation files in the docs output directory. To verify that the generated asciidoc files can generate the documentation for the website, [clone the elastic docs repo](https://github.com/elastic/docs) and follow the instructions there for building documentation locally. as an example, suppose I have cloned the elastic docs to `c:\source\elastic-docs`, then to verify the generated asciidoc files for NEST are valid would be as following (using Cygwin on Windows)
+
+```sh
+cd /cygdrive/c/source/elastic-docs
+
+./build_docs.pl --doc /cygdrive/c/source/elasticsearch-net-master/docs/index.asciidoc
+```
+
+the result of running this for a successful build will be
+
+```sh
+Building HTML from /cygdrive/c/source/elasticsearch-net-master/docs/index.asciidoc
+Done
+See: /cygdrive/c/source/elasticsearch-docs/html_docs/index.html
+```
+
+[Pull Requests](https://github.com/elastic/elasticsearch-net/pulls) are most welcome for areas of documentation that need improving.
+
+## Blog posts 
+
+Starting this section (2016) to list blogposts from our users that might be super helpful in your journey to learn Elasticsearch from a .NET perspective
+
+- Read how buildclassifieds are using [ElasticSearch with ServiceStack (.NET)](http://buildclassifieds.com/2016/01/22/elasticsearch-and-servicestack/) in helping build a Classifieds Site.
 
 #### Many thanks to:
 * [Q42](https://q42.nl/) for supporting the development of NEST

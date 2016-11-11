@@ -6,11 +6,11 @@ using Xunit;
 
 namespace Tests.Search.SearchTemplate
 {
-	[Collection(TypeOfCluster.Indexing)]
 	public class SearchTemplateCrudTests
-		: CrudTestBase<IPutSearchTemplateResponse, IGetSearchTemplateResponse, IPutSearchTemplateResponse, IDeleteSearchTemplateResponse>
+		: CrudTestBase<IntrusiveOperationCluster, IPutSearchTemplateResponse, IGetSearchTemplateResponse, IPutSearchTemplateResponse, IDeleteSearchTemplateResponse>
 	{
-		public SearchTemplateCrudTests(IndexingCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		//These calls have low priority and often cause `process_cluster_event_timeout_exception`'s
+		public SearchTemplateCrudTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override bool SupportsDeletes => true;
 
@@ -23,7 +23,7 @@ namespace Tests.Search.SearchTemplate
 			requestAsync: (s, c, r) => c.PutSearchTemplateAsync(r)
 		);
 
-		protected PutSearchTemplateRequest CreateInitializer(string id) => 
+		protected PutSearchTemplateRequest CreateInitializer(string id) =>
 			new PutSearchTemplateRequest(id) { Template = "{}" };
 
 		protected IPutSearchTemplateRequest CreateFlunt(string id, PutSearchTemplateDescriptor d) => d.Template("{}");
@@ -65,13 +65,13 @@ namespace Tests.Search.SearchTemplate
 			fluent: (s, c, f) => c.DeleteSearchTemplate(s, f),
 			fluentAsync: (s, c, f) => c.DeleteSearchTemplateAsync(s, f),
 			request: (s, c, r) => c.DeleteSearchTemplate(r),
-			requestAsync: (s, c, r) => c.DeleteSearchTemplateAsync(r)	
+			requestAsync: (s, c, r) => c.DeleteSearchTemplateAsync(r)
 		);
 
 		protected DeleteSearchTemplateRequest DeleteInitializer(string id) => new DeleteSearchTemplateRequest(id);
 		protected IDeleteSearchTemplateRequest DeleteFluent(string id, DeleteSearchTemplateDescriptor d) => d;
 
-		protected override void ExpectAfterUpdate(IGetSearchTemplateResponse response) => 
+		protected override void ExpectAfterUpdate(IGetSearchTemplateResponse response) =>
 			response.Template.Should().Be(_updatedTemplate);
 	}
 }

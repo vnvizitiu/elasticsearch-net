@@ -9,10 +9,9 @@ using Xunit;
 
 namespace Tests.Modules.SnapshotAndRestore.Restore
 {
-	[Collection(TypeOfCluster.Indexing)]
-	public class RestoreApiTests : ApiTestBase<IRestoreResponse, IRestoreRequest, RestoreDescriptor, RestoreRequest>
+	public class RestoreApiTests : ApiTestBase<IntrusiveOperationCluster, IRestoreResponse, IRestoreRequest, RestoreDescriptor, RestoreRequest>
 	{
-		public RestoreApiTests(IndexingCluster cluster, EndpointUsage usage) : base(cluster, usage)
+		public RestoreApiTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage)
 		{
 			if (!TestClient.Configuration.RunIntegrationTests) return;
 
@@ -24,18 +23,18 @@ namespace Tests.Modules.SnapshotAndRestore.Restore
 			if (!createRepository.IsValid)
 				throw new Exception("Setup: failed to create snapshot repository");
 
-		    var getSnapshotResponse = this.Client.GetSnapshot(RepositoryName, SnapshotName);
+			var getSnapshotResponse = this.Client.GetSnapshot(RepositoryName, SnapshotName);
 
-		    if ((!getSnapshotResponse.IsValid && getSnapshotResponse.ApiCall.HttpStatusCode == 404) ||
-                !getSnapshotResponse.Snapshots.Any())
-		    {
-                    var snapshot = this.Client.Snapshot(RepositoryName, SnapshotName, s => s
-                        .WaitForCompletion()
-                    );
+			if ((!getSnapshotResponse.IsValid && getSnapshotResponse.ApiCall.HttpStatusCode == 404) ||
+				!getSnapshotResponse.Snapshots.Any())
+			{
+				var snapshot = this.Client.Snapshot(RepositoryName, SnapshotName, s => s
+					.WaitForCompletion()
+				);
 
-                    if (!snapshot.IsValid)
-                        throw new Exception($"Setup: snapshot failed. {snapshot.OriginalException}. {snapshot.ServerError?.Error}");
-		    }
+				if (!snapshot.IsValid)
+					throw new Exception($"Setup: snapshot failed. {snapshot.OriginalException}. {snapshot.ServerError?.Error}");
+			}
 		}
 
 		private static string RepositoryName { get; } = RandomString();

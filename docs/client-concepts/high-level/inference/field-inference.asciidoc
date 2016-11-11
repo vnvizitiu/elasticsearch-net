@@ -252,7 +252,7 @@ Expect("metadata.var").WhenSerializing(Field<Project>(p => p.Metadata[variable])
 Expect("metadata.var.created").WhenSerializing(Field<Project>(p => p.Metadata[variable].Created));
 ----
 
-If you are using Elasticearch's {ref_current}/mapping-types.html#_multi_fields[multi_fields], which you really should as they allow
+If you are using Elasticearch's multi fields, which you really should as they allow
 you to analyze a string in a number of different ways, these __"virtual"__ sub fields
 do not always map back on to your POCO. By calling `.Suffix()` on expressions, you describe the sub fields that
 should be mapped and <<auto-map, how they are mapped>>
@@ -311,7 +311,8 @@ var expressions = new List<Expression<Func<Project, object>>>
     p => p.Name,
     p => p.Description,
     p => p.CuratedTags.First().Name,
-    p => p.LeadDeveloper.FirstName
+    p => p.LeadDeveloper.FirstName,
+    p => p.Metadata["hardcoded"]
 };
 ----
 
@@ -329,6 +330,26 @@ Expect("description.raw").WhenSerializing(fieldExpressions[1]);
 Expect("curatedTags.name.raw").WhenSerializing(fieldExpressions[2]);
 
 Expect("leadDeveloper.firstName.raw").WhenSerializing(fieldExpressions[3]);
+
+Expect("metadata.hardcoded.raw").WhenSerializing(fieldExpressions[4]);
+----
+
+or we might even want to chain multiple `.AppendSuffix()` calls 
+
+[source,csharp]
+----
+var multiSuffixFieldExpressions =
+    expressions.Select<Expression<Func<Project, object>>, Field>(e => e.AppendSuffix("raw").AppendSuffix("evendeeper")).ToList();
+
+Expect("name.raw.evendeeper").WhenSerializing(multiSuffixFieldExpressions[0]);
+
+Expect("description.raw.evendeeper").WhenSerializing(multiSuffixFieldExpressions[1]);
+
+Expect("curatedTags.name.raw.evendeeper").WhenSerializing(multiSuffixFieldExpressions[2]);
+
+Expect("leadDeveloper.firstName.raw.evendeeper").WhenSerializing(multiSuffixFieldExpressions[3]);
+
+Expect("metadata.hardcoded.raw.evendeeper").WhenSerializing(multiSuffixFieldExpressions[4]);
 ----
 
 === Attribute based naming
@@ -410,9 +431,7 @@ class C
 
 [source,csharp]
 ----
-var connectionSettings = TestClient.CreateSettings(forceInMemory: true);
-
-var client = new ElasticClient(connectionSettings);
+var client = TestClient.Default;
 
 var fieldNameOnA = client.Infer.Field(Field<A>(p => p.C.Name));
 
@@ -435,7 +454,7 @@ for property `C` on `B`
 
 [source,csharp]
 ----
-var newConnectionSettings = TestClient.CreateSettings(forceInMemory: true, modifySettings: s => s
+var newConnectionSettings = TestClient.CreateSettings(modifySettings: s => s
     .InferMappingFor<A>(m => m
         .Rename(p => p.C, "d")
     )
@@ -502,13 +521,9 @@ class Precedence
 }
 ----
 <1> Even though this property has a NEST property mapping _and_ a `JsonProperty` attribute, We are going to provide a hard rename for it on ConnectionSettings later that should win.
-
 <2> This property has both a NEST attribute and a `JsonProperty`, NEST should win.
-
 <3> We should take the json property into account by itself
-
 <4> This property we are going to special case in our custom serializer to resolve to ask
-
 <5> We are going to register a DefaultFieldNameInferrer on ConnectionSettings that will uppercase all properties.
 
 Here we create a custom serializer that renames any property named `AskSerializer` to `ask`

@@ -1,12 +1,14 @@
 ﻿#I @"../../packages/build/FAKE/tools"
 #r @"FakeLib.dll"
-open Fake
 
 #load @"Paths.fsx"
 
 open System
 open System.IO
 open System.Diagnostics
+
+open Fake
+
 open Paths
 
 module Profiler =
@@ -31,6 +33,5 @@ module Benchmarker =
    let Run() =
         !! Paths.Source("Benchmarking/project.json") 
         |> Seq.map DirectoryName
-        |> Seq.map Paths.Quote
         |> Seq.iter(fun project -> 
-                Tooling.Dnx.Exec Tooling.DotNetRuntime.Both failure "." ["--project"; project; "run"; "-i false"; "-t 5"])
+                Tooling.DotNet.Exec ["--project"; project; "run"; "-i false"; "-t 5"])

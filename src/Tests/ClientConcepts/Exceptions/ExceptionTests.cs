@@ -9,12 +9,11 @@ using Xunit;
 
 namespace Tests.ClientConcepts.Exceptions
 {
-	[Collection(TypeOfCluster.Indexing)]
-	public class ExceptionTests
+	public class ExceptionTests : IClusterFixture<WritableCluster>
 	{
 		private readonly int _port;
 
-		public ExceptionTests(IndexingCluster cluster, EndpointUsage usage)
+		public ExceptionTests(WritableCluster cluster)
 		{
 			_port = cluster.Node.Port;
 		}
@@ -22,7 +21,7 @@ namespace Tests.ClientConcepts.Exceptions
 		//[I]
 		public void ServerTestWhenThrowExceptionsEnabled()
 		{
-			var settings = new ConnectionSettings(TestClient.CreateNode(_port))
+			var settings = new ConnectionSettings(TestClient.CreateUri(_port))
 				.ThrowExceptions();
 			var client = new ElasticClient(settings);
 			var exception = Assert.Throws<ElasticsearchClientException>(() => client.GetMapping<Project>(s => s.Index("doesntexist")));
@@ -56,17 +55,17 @@ namespace Tests.ClientConcepts.Exceptions
 		//[I]
 		public void ServerTestWhenThrowExceptionsDisabled()
 		{
-			var settings = new ConnectionSettings(TestClient.CreateNode(_port));
+			var settings = new ConnectionSettings(TestClient.CreateUri(_port));
 			var client = new ElasticClient(settings);
 			var response = client.GetMapping<Project>(s => s.Index("doesntexist"));
 #if DOTNETCORE
 			// HttpClient does not throw on "known error" status codes (i.e. 404) thus OriginalException should not be set
-			response.CallDetails.OriginalException.Should().BeNull();
+			response.ApiCall.OriginalException.Should().BeNull();
 #else
-			response.CallDetails.OriginalException.Should().NotBeNull();
+			response.ApiCall.OriginalException.Should().NotBeNull();
 #endif
-			response.CallDetails.ServerError.Should().NotBeNull();
-			response.CallDetails.ServerError.Status.Should().BeGreaterThan(0);
+			response.ApiCall.ServerError.Should().NotBeNull();
+			response.ApiCall.ServerError.Status.Should().BeGreaterThan(0);
 		}
 
 		//[I]
@@ -77,11 +76,11 @@ namespace Tests.ClientConcepts.Exceptions
 			var response = client.RootNodeInfo();
 #if DOTNETCORE
 			// HttpClient does not throw on "known error" status codes (i.e. 404) thus OriginalException should not be set
-			response.CallDetails.OriginalException.Should().BeNull();
+			response.ApiCall.OriginalException.Should().BeNull();
 #else
-			response.CallDetails.OriginalException.Should().NotBeNull();
+			response.ApiCall.OriginalException.Should().NotBeNull();
 #endif
-			response.CallDetails.ServerError.Should().BeNull();
+			response.ApiCall.ServerError.Should().BeNull();
 		}
 
 		//TODO figure out a way to trigger this again

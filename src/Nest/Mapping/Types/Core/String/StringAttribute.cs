@@ -1,5 +1,8 @@
-﻿namespace Nest
+﻿using System;
+
+namespace Nest
 {
+	[Obsolete("Only valid for indices created before Elasticsearch 5.0 and will be removed in the next major version.  For newly created indices, use Text or Keyword attribute instead.")]
 	public class StringAttribute : ElasticsearchDocValuesPropertyAttributeBase, IStringProperty
 	{
 		IStringProperty Self => this;
@@ -29,6 +32,7 @@
 		public TermVectorOption TermVector { get { return Self.TermVector.GetValueOrDefault(); } set { Self.TermVector = value; } }
 		public bool Norms { get { return Self.Norms.GetValueOrDefault(true); } set { Self.Norms = value; } }
 
+		[Obsolete("Only valid for indices created before Elasticsearch 5.0 and will be removed in the next major version.  For newly created indices, use Text or Keyword attribute instead.")]
 		public StringAttribute() : base("string") { }
 	}
 }

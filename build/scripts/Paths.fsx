@@ -1,62 +1,99 @@
 ﻿#I @"../../packages/build/FAKE/tools"
-#I @"../../packages/build/FSharp.Data/lib/net40"
 #r @"FakeLib.dll"
 #r @"System.IO.Compression.FileSystem.dll"
-#r @"FSharp.Data.dll"
-open Fake
 
 open System
-open System.Collections.Generic
 open System.IO
 open System.Diagnostics
 open System.Net
-open System.Linq
-open FSharp.Data
-open FSharp.Data.JsonExtensions
+
+open Fake
+
+module Projects = 
+    type DotNetFrameworkIdentifier = { MSBuild: string; Nuget: string; DefineConstants: string; }
+
+    type DotNetFramework = 
+        | Net45 
+        | Net46 
+        | NetStandard1_3
+        static member All = [Net45; Net46; NetStandard1_3] 
+        member this.Identifier = 
+            match this with
+            | Net45 -> { MSBuild = "v4.5"; Nuget = "net45"; DefineConstants = "TRACE;NET45"; }
+            | Net46 -> { MSBuild = "v4.6"; Nuget = "net46"; DefineConstants = "TRACE;NET46"; }
+            | NetStandard1_3 -> { MSBuild = "netstandard1.3"; Nuget = "netstandard1.3"; DefineConstants = "TRACE;DOTNETCORE"; }
+
+    type Project =
+        | Nest
+        | ElasticsearchNet
+
+    type PrivateProject =
+        | Tests
+
+    type DotNetProject = 
+        | Project of Project
+        | PrivateProject of PrivateProject
+
+        static member All = 
+            seq [
+                Project Project.ElasticsearchNet; 
+                Project Project.Nest; 
+                PrivateProject PrivateProject.Tests
+            ]
+
+        static member AllPublishable = seq [Project Project.ElasticsearchNet; Project Project.Nest;] 
+        static member Tests = seq [PrivateProject PrivateProject.Tests;] 
+
+        member this.Name =
+            match this with
+            | Project p ->
+                match p with
+                | Nest -> "Nest"
+                | ElasticsearchNet -> "Elasticsearch.Net"
+            | PrivateProject p ->
+                match p with
+                | Tests -> "Tests"
+       
+        static member TryFindName (name: string) =
+            DotNetProject.All
+            |> Seq.map(fun p -> p.Name)
+            |> Seq.tryFind(fun p -> p.ToLowerInvariant() = name.ToLowerInvariant())
+
 
 module Paths =
+    open Projects
+
+    let Repository = "https://github.com/elastic/elasticsearch-net"
 
     let BuildFolder = "build"
-
     let BuildOutput = sprintf "%s/output" BuildFolder
-    let ToolsFolder = "packages/build"
+
+
+    let ProjectOutputFolder (project:DotNetProject) (framework:DotNetFramework) = 
+        sprintf "%s/%s/%s" BuildOutput framework.Identifier.MSBuild project.Name
+
+    let Tool tool = sprintf "packages/build/%s" tool
     let CheckedInToolsFolder = "build/Tools"
     let KeysFolder = sprintf "%s/keys" BuildFolder
     let NugetOutput = sprintf "%s/_packages" BuildOutput
     let SourceFolder = "src"
     
-    let Repository = "https://github.com/elastic/elasticsearch-net"
 
-    let MsBuildOutput =
-        !! "src/**/bin/**"
-        |> Seq.map DirectoryName
-        |> Seq.distinct
-        |> Seq.filter (fun f -> (f.EndsWith("Debug") || f.StartsWith("Release")) && not (f.Contains "CodeGeneration")) 
-
-    let Tool(tool) = sprintf "%s/%s" ToolsFolder tool
     let CheckedInTool(tool) = sprintf "%s/%s" CheckedInToolsFolder tool
     let Keys(keyFile) = sprintf "%s/%s" KeysFolder keyFile
     let Output(folder) = sprintf "%s/%s" BuildOutput folder
     let Source(folder) = sprintf "%s/%s" SourceFolder folder
     let Build(folder) = sprintf "%s/%s" BuildFolder folder
+
     let BinFolder(folder) = 
         let f = replace @"\" "/" folder
         sprintf "%s/%s/bin/Release" SourceFolder f
-    let Quote(path) = sprintf "\"%s\"" path
 
-    let Net45BinFolder(projectName) =
-        let binFolder = BinFolder projectName
-        sprintf "%s/net45" binFolder
-
-    let Net46BinFolder(projectName) =
-        let binFolder = BinFolder projectName
-        sprintf "%s/net46" binFolder
-
-    let DotNet51BinFolder(projectName) =
-        let binFolder = BinFolder(projectName)
-        sprintf "%s/dotnet5.1" binFolder
+    let ProjectJson(projectName) =
+        Source(sprintf "%s/project.json" projectName)
 
 module Tooling = 
+
     let private fileDoesNotExist path = path |> Path.GetFullPath |> File.Exists |> not
     let private dirDoesNotExist path = path |> Path.GetFullPath |> Directory.Exists |> not
     let private doesNotExist path = (fileDoesNotExist path) && (dirDoesNotExist path)
@@ -90,7 +127,6 @@ module Tooling =
             exit exitCode
         ()
 
-    let private exec = execAt Environment.CurrentDirectory
 
     let execProcessWithTimeout proc arguments timeout = 
         let args = arguments |> String.concat " "
@@ -108,32 +144,35 @@ module Tooling =
             info.WorkingDirectory <- "."
             info.Arguments <- args
             ) timeout
-
         code
 
-    let private defaultTimeout = TimeSpan.FromMinutes (if isLocalBuild then 5.0 else 15.0)
+    let private defaultTimeout = TimeSpan.FromMinutes 15.0
 
     let execProcess proc arguments =
-        execProcessWithTimeout proc arguments defaultTimeout
+        let exitCode = execProcessWithTimeout proc arguments defaultTimeout
+        match exitCode with
+        | 0 -> exitCode
+        | _ -> failwithf "Calling %s resulted in unexpected exitCode %i" proc exitCode 
+
 
     let execProcessAndReturnMessages proc arguments =
         execProcessWithTimeoutAndReturnMessages proc arguments defaultTimeout
 
-    type NugetTooling(nugetId, path) =
-        member this.Path = Paths.Tool(path)
-        member this.Exec arguments = exec this.Path arguments
-
-    let NugetFile = fun _ ->
+    let nugetFile =
         let targetLocation = "build/tools/nuget/nuget.exe" 
         if (not (File.Exists targetLocation))
         then
-            trace "Nuget not found %s. Downloading now"
-            let url = "http://nuget.org/nuget.exe" 
+            trace (sprintf "Nuget not found at %s. Downloading now" targetLocation)
+            let url = "http://dist.nuget.org/win-x86-commandline/latest/nuget.exe" 
             Directory.CreateDirectory("build/tools/nuget") |> ignore
             use webClient = new WebClient()
             webClient.DownloadFile(url, targetLocation)
             trace "nuget downloaded"
-        targetLocation
+        targetLocation 
+
+    type BuildTooling(path) =
+        member this.Path = path
+        member this.Exec arguments = execProcess this.Path arguments
 
     type ProfilerTooling(path) =
         let dotTraceCommandLineTools = "JetBrains.dotTrace.CommandLineTools.10.0.20151114.191633"
@@ -153,157 +192,51 @@ module Tooling =
         member this.Path = sprintf "%s/%s" dotTraceDirectory path
         member this.Exec arguments = 
             this.Bootstrap()
-            exec this.Path arguments
+            execAt Environment.CurrentDirectory this.Path arguments
 
-    let GitLink = new NugetTooling("GitLink", "gitlink/lib/net45/gitlink.exe")
-    let Node = new NugetTooling("node.js", "Node.js/node.exe")
-    let private npmCli = "Npm/node_modules/npm/cli.js"
-    let Npm = new NugetTooling("npm", npmCli)
-    let XUnit = new NugetTooling("xunit.runner.console", "xunit.runner.console/tools/xunit.console.exe")
+    let Nuget = new BuildTooling(nugetFile)
+    let GitLink = new BuildTooling(Paths.Tool("gitlink/lib/net45/gitlink.exe"))
+    let Node = new BuildTooling(Paths.Tool("Node.js/node.exe"))
+    let Npm = new BuildTooling(Paths.Tool("Npm/node_modules/npm/cli.js"))
+    let XUnit = new BuildTooling(Paths.Tool("xunit.runner.console/tools/xunit.console.exe"))
     let DotTraceProfiler = new ProfilerTooling("ConsoleProfiler.exe")
     let DotTraceReporter = new ProfilerTooling("Reporter.exe")
     let DotTraceSnapshotStats = new ProfilerTooling("SnapshotStat.exe")
 
     //only used to boostrap fake itself
-    let Fake = new NugetTooling("FAKE", "FAKE/tools/FAKE.exe")
+    let Fake = new BuildTooling("FAKE/tools/FAKE.exe")
 
-    type NpmTooling(npmId, binJs) =
-        let modulePath =  sprintf "%s/node_modules/%s" Paths.ToolsFolder npmId
-        let binPath =  sprintf "%s/%s" modulePath binJs
-        let npm =  sprintf "%s/%s" Paths.ToolsFolder npmCli
-        do
-            if doesNotExist modulePath then
-                traceFAKE "npm module %s not found installing in %s" npmId modulePath
-                if (isMono) then
-                    execProcess "npm" ["install"; npmId; "--prefix"; "./packages/build" ] |> ignore
-                else 
-                Node.Exec [npm; "install"; npmId; "--prefix"; "./packages/build" ]
-        member this.Path = binPath
-
-        member this.Exec arguments =
-                if (isMono) then
-                    (execProcess "node" <| binPath :: arguments) |> ignore
-                else
-                    exec Node.Path <| binPath :: arguments
-
-    let Notifier = new NpmTooling("node-notifier", "bin.js")
-
-    let private userProfileDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-
-    type DnvmVersion(str:string) =
-        let p = str.Split([|' '|], StringSplitOptions.RemoveEmptyEntries)
-        let parts = 
-            match p.Length with
-            | 6 -> List.ofArray p
-            | 5 -> 
-                match p.[0] with
-                | "*" -> (List.ofArray p) @ [""]
-                | _ -> "" :: List.ofArray p
-            | 4 -> "" :: (List.ofArray p) @ [""]
-            | _ -> raise(BuildException(sprintf "Invalid number of arguments to dnvm version: %i" p.Length, List.ofArray p)) 
- 
-        member this.Active = isNotNullOrEmpty parts.[0] 
-        member this.Version = parts.[1]          
-        member this.Runtime = parts.[2] 
-        member this.Architecture = parts.[3] 
-        member this.OperatingSystem = parts.[4] 
-        member this.Alias = parts.[5]
-
-        member this.Location = Path.Combine(userProfileDir,
-            sprintf ".dnx/runtimes/dnx-%s-%s-%s.%s"
-                this.Runtime
-                this.OperatingSystem 
-                this.Architecture 
-                this.Version)
-
-        member this.Process proc =
-            sprintf "%s/bin/%s" this.Location proc
-
-    type DnvmTooling() =
-        let dnvmUserLocation = Path.Combine(userProfileDir, ".dnx/bin/dnvm.cmd")
-        let dnvmProgramFilesLocation = "C:/Program Files/Microsoft DNX/Dnvm/dnvm.cmd"
-        let dnvm = 
-            match fileExists dnvmUserLocation with
-            | true -> dnvmUserLocation
-            | false -> dnvmProgramFilesLocation
-
-        member this.Exec arguments =
-            execProcessWithTimeoutAndReturnMessages dnvm arguments (TimeSpan.FromSeconds 30.)
-
-        member this.UpdateSelf() =
-            this.Exec ["update-self"] |> ignore
-
-        member this.List() =
-            this.Exec ["list"]
-
-        member this.Install version runtime arch os =
-            match (arch, os) with
-            | (Some a, Some o) -> this.Exec ["install"; "-Version"; version; "-r"; runtime; "-a"; a; "-os"; o]
-            | (Some a, None) -> this.Exec ["install"; "-Version"; version; "-r"; runtime; "-a"; a]
-            | (None, Some o) -> this.Exec ["install"; "-Version"; version; "-r"; runtime; "-os"; o]
-            | (None, None) -> this.Exec ["install"; "-Version"; version; "-r"; runtime]
-            
-    let Dnvm = new DnvmTooling()
-
-    // update dnvm first
-    Dnvm.UpdateSelf()
-
-    let dnxVersions = 
-        let result = Dnvm.List()
-        match result.OK with
-        | true ->
-            result.Messages
-            |> Seq.skip 3
-            |> Seq.filter isNotNullOrEmpty
-            |> Seq.map DnvmVersion
-        | _ -> raise(BuildException("No dnvm versions found on the machine. Please install dnx", []))
-
-    type GlobalJson = JsonProvider<"../../src/global.json">
-    let desiredDnxVersion = GlobalJson.GetSample().Sdk.Version
-    printfn "Expect %s to be installed (both clr and coreclr and runtimes)" desiredDnxVersion
-    let hasClr = dnxVersions |> Seq.tryFind (fun v -> v.Version = desiredDnxVersion && v.Runtime = "clr")
-    let hasCoreClr = dnxVersions |> Seq.tryFind (fun v -> v.Version = desiredDnxVersion && v.Runtime = "coreclr")
-
-    let failure errors =
-        raise (BuildException("The project build failed.", errors |> List.ofSeq))
-
-    match (hasClr, hasCoreClr) with
-    | (None, None) -> 
-        let installClr = Dnvm.Install desiredDnxVersion "clr" None None
-        if not installClr.OK then failure installClr.Errors
-        let installCoreClr = Dnvm.Install desiredDnxVersion "coreclr" None None
-        if not installCoreClr.OK then failure installCoreClr.Errors
-    | (Some _, None) -> 
-        let installCoreClr = Dnvm.Install desiredDnxVersion "coreclr" None None
-        if not installCoreClr.OK then failure installCoreClr.Errors
-    | (None, Some _) -> 
-        let installClr = Dnvm.Install desiredDnxVersion "clr" None None
-        if not installClr.OK then failure installClr.Errors
-    | _ -> ()
-    
     type DotNetRuntime = | Desktop | Core | Both
 
-    type DnxTooling(exe) =
-        member this.Exec runtime failedF workingDirectory arguments =
-            this.ExecWithTimeout runtime failedF workingDirectory arguments (TimeSpan.FromMinutes 30.)
+    type DotNetTooling(exe) =
+       member this.Exec arguments =
+            this.ExecWithTimeout arguments (TimeSpan.FromMinutes 30.)
 
-        member this.ExecWithTimeout runtime failedF workingDirectory arguments timeout =
-            match (runtime, hasClr, hasCoreClr) with
-            | (Core, _, Some c) ->
-                let proc = c.Process exe
-                execProcessWithTimeout proc arguments timeout
-            | (Desktop, Some d, _) ->
-                let proc = d.Process exe
-                execProcessWithTimeout proc arguments timeout
-            | (Both, Some d, Some c) ->
-                let proc = d.Process exe
-                let result = execProcessWithTimeout proc arguments timeout
-                if result <> 0 then failwith (sprintf "Failed to run dnx tooling for %s args: %A" proc arguments)
-                let proc = c.Process exe
-                execProcessWithTimeout proc arguments (TimeSpan.FromMinutes 30.)
-            | _ -> failwith "Tried to run dnx tooling in unknown state"
-            |> ignore
+        member this.ExecWithTimeout arguments timeout =
+            let result = execProcessWithTimeout exe arguments timeout
+            if result <> 0 then failwith (sprintf "Failed to run dotnet tooling for %s args: %A" exe arguments)
 
-    let Dnu = new DnxTooling("dnu.cmd")
-    let Dnx = new DnxTooling("dnx.exe")
+    let DotNet = new DotNetTooling("dotnet.exe")
+
+    type MsBuildTooling() =
+
+        member this.Build(target, framework:Projects.DotNetFrameworkIdentifier) =
+            let solution = Paths.Source "Elasticsearch.sln";
+            let setParams defaults =
+                { defaults with
+                    Verbosity = Some(Quiet)
+                    Targets = [target]
+                    Properties =
+                        [
+                            "OutputPathBaseDir", Path.GetFullPath "build\\output"
+                            "Optimize", "True"
+                            "Configuration", "Release"
+                            "TargetFrameworkVersion", framework.MSBuild
+                            "DefineConstants", framework.DefineConstants
+                        ]
+                 }
+        
+            build setParams solution 
+
+    let MsBuild = new MsBuildTooling()
 

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Elasticsearch.Net;
-using Nest;
 using FluentAssertions;
 using Tests.Document.Multiple.Reindex;
 using Tests.Framework;
@@ -13,8 +12,8 @@ using Tests.Framework.MockData;
 
 namespace Tests.Reproduce
 {
-	[Collection(TypeOfCluster.ReadOnly)]
-	public class GithubIssue1863
+	[SkipVersion("<2.1.0", "")]
+	public class GithubIssue1863 : IClusterFixture<ReadOnlyCluster>
 	{
 		private readonly ReadOnlyCluster _cluster;
 
@@ -24,15 +23,15 @@ namespace Tests.Reproduce
 		}
 
 		[I]
-		public void ConcreteTypeConverterThrowsExceptionOnNullScore()
+		public void ConcreteTypeConverterReturnsNullScores()
 		{
-			var client = _cluster.Client(s => s);
+			var client = _cluster.Client;
 			var response = client.Search<Project>(s => s
 				.ConcreteTypeSelector((d,h) => typeof(Project))
 				.Sort(srt => srt.Ascending(p => p.StartedOn))
 			);
 			response.Hits.Count().Should().BeGreaterThan(0);
-			response.Hits.All(h => h.Score == 0).Should().BeTrue();
+			response.Hits.All(h => h.Score.HasValue).Should().BeFalse();
 		}
 	}
 }

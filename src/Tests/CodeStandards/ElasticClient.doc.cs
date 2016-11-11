@@ -7,6 +7,7 @@ using FluentAssertions.Common;
 using Nest;
 using Tests.Framework;
 using System.Reflection;
+using System.Threading;
 
 namespace Tests.CodeStandards
 {
@@ -85,7 +86,9 @@ namespace Tests.CodeStandards
 					var parameterInfo = concreteParameters[i];
 					var interfaceParameter = interfaceParameters[i];
 
-					parameterInfo.Name.Should().Be(interfaceParameter.Name);
+					parameterInfo.Name.Should().Be(
+						interfaceParameter.Name,
+						$"{nameof(ElasticClient)}.{interfaceMethodInfo.Name} should have parameter named {interfaceParameter.Name}");
 
 					if (parameterInfo.HasDefaultValue != interfaceParameter.HasDefaultValue)
 						concreteMethodParametersDoNotMatchInterface.Add(
@@ -118,7 +121,7 @@ namespace Tests.CodeStandards
 			{
 				foreach (var asyncMethod in methodGroup.Where(g => g.IsAsync))
 				{
-					var parameters = asyncMethod.MethodInfo.GetParameters();
+					var parameters = asyncMethod.MethodInfo.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
 
 					var syncMethod = methodGroup.First(g =>
 						!g.IsAsync

@@ -21,6 +21,7 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 		{
 			Nest.Indices singleIndexFromString = "name";
 			Nest.Indices multipleIndicesFromString = "name1, name2";
+			Nest.Indices multipleIndicesFromStringArray = new [] { "name1", "name2" };
 			Nest.Indices allFromString = "_all";
 			Nest.Indices allWithOthersFromString = "_all, name2";
 
@@ -43,6 +44,10 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 				all => all.Should().NotBeNull(),
 				many => many.Indices.Should().BeNull()
 			);
+			multipleIndicesFromStringArray.Match(
+				all => all.Should().BeNull(),
+				many => many.Indices.Should().HaveCount(2).And.Contain("name2")
+			);
 		}
 
 		/**[[nest-indices]]
@@ -54,6 +59,9 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 		*/
 		[U] public void UsingStaticPropertyField()
 		{
+
+			var client = TestClient.Default;
+
 			var singleString = Index("name1"); // <1> specifying a single index using a string
 			var singleTyped = Index<Project>(); //<2> specifying a single index using a type
 
@@ -73,12 +81,19 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 		{
 			var manyStrings = Index("name1", "name2"); //<1> specifying multiple indices using strings
 			var manyTypes = Index<Project>().And<Developer>(); //<2> specifying multiple indices using types
+			var client = TestClient.Default;
 
 			ISearchRequest manyStringRequest = new SearchDescriptor<Project>().Index(manyStrings);
 			ISearchRequest manyTypedRequest = new SearchDescriptor<Project>().Index(manyTypes);
 
 			((IUrlParameter)manyStringRequest.Index).GetString(this.Client.ConnectionSettings).Should().Be("name1,name2");
 			((IUrlParameter)manyTypedRequest.Index).GetString(this.Client.ConnectionSettings).Should().Be("project,devs"); // <3> The index names here come from the Connection Settings passed to `TestClient`. See the documentation on <<index-name-inference, Index Name Inference>> for more details.
+
+			manyStringRequest = new SearchDescriptor<Project>().Index(new[] { "name1", "name2" });
+			((IUrlParameter)manyStringRequest.Index).GetString(this.Client.ConnectionSettings).Should().Be("name1,name2");
+
+			manyStringRequest = new SearchDescriptor<Project>().Type(new[] { "name1", "name2" });
+			((IUrlParameter)manyStringRequest.Type).GetString(this.Client.ConnectionSettings).Should().Be("name1,name2");
 		}
 
 		/**==== Specifying All Indices
@@ -94,6 +109,7 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 		{
 			var indicesAll = All;
 			var allIndices = AllIndices;
+			var client = TestClient.Default;
 
 			ISearchRequest indicesAllRequest = new SearchDescriptor<Project>().Index(indicesAll);
 			ISearchRequest allIndicesRequest = new SearchDescriptor<Project>().Index(allIndices);

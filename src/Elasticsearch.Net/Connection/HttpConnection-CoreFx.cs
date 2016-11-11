@@ -6,7 +6,10 @@ using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using static System.Net.DecompressionMethods;
 
@@ -39,22 +42,7 @@ namespace Elasticsearch.Net
 			{
 				if (this._clients.TryGetValue(hashCode, out client)) return client;
 
-				var handler = new HttpClientHandler
-				{
-					AutomaticDecompression = requestData.HttpCompression ? GZip | Deflate : None
-				};
-
-				if (!requestData.ProxyAddress.IsNullOrEmpty())
-				{
-					var uri = new Uri(requestData.ProxyAddress);
-					var proxy = new WebProxy(uri);
-					var credentials = new NetworkCredential(requestData.ProxyUsername, requestData.ProxyPassword);
-					proxy.Credentials = credentials;
-					handler.Proxy = proxy;
-				}
-
-				if (requestData.DisableAutomaticProxyDetection)
-					handler.Proxy = null;
+				var handler = CreateHttpClientHandler(requestData);
 
 				client = new HttpClient(handler, false)
 				{
@@ -63,8 +51,6 @@ namespace Elasticsearch.Net
 
 				client.DefaultRequestHeaders.ExpectContinue = false;
 
-				//TODO add headers
-				//client.DefaultRequestHeaders =
 				this._clients.TryAdd(hashCode, client);
 				return client;
 			}
@@ -78,7 +64,8 @@ namespace Elasticsearch.Net
 			try
 			{
 				var requestMessage = CreateHttpRequestMessage(requestData);
-				var response = client.SendAsync(requestMessage, requestData.CancellationToken).GetAwaiter().GetResult();
+				var response = client.SendAsync(requestMessage).GetAwaiter().GetResult();
+				requestData.MadeItToResponse = true;
 				builder.StatusCode = (int)response.StatusCode;
 
 				if (response.Content != null)
@@ -92,14 +79,15 @@ namespace Elasticsearch.Net
 			return builder.ToResponse();
 		}
 
-		public virtual async Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData) where TReturn : class
+		public virtual async Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData, CancellationToken cancellationToken) where TReturn : class
 		{
 			var client = this.GetClient(requestData);
-			var builder = new ResponseBuilder<TReturn>(requestData);
+			var builder = new ResponseBuilder<TReturn>(requestData, cancellationToken);
 			try
 			{
 				var requestMessage = CreateHttpRequestMessage(requestData);
-				var response = await client.SendAsync(requestMessage, requestData.CancellationToken).ConfigureAwait(false);
+				var response = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
+				requestData.MadeItToResponse = true;
 				builder.StatusCode = (int)response.StatusCode;
 
 				if (response.Content != null)
@@ -111,6 +99,28 @@ namespace Elasticsearch.Net
 			}
 
 			return await builder.ToResponseAsync().ConfigureAwait(false);
+		}
+
+		protected virtual HttpClientHandler CreateHttpClientHandler(RequestData requestData)
+		{
+			var handler = new HttpClientHandler
+			{
+				AutomaticDecompression = requestData.HttpCompression ? GZip | Deflate : None
+			};
+
+			if (!requestData.ProxyAddress.IsNullOrEmpty())
+			{
+				var uri = new Uri(requestData.ProxyAddress);
+				var proxy = new WebProxy(uri);
+				var credentials = new NetworkCredential(requestData.ProxyUsername, requestData.ProxyPassword);
+				proxy.Credentials = credentials;
+				handler.Proxy = proxy;
+			}
+
+			if (requestData.DisableAutomaticProxyDetection)
+				handler.Proxy = null;
+
+			return handler;
 		}
 
 		protected virtual HttpRequestMessage CreateHttpRequestMessage(RequestData requestData)
@@ -140,21 +150,18 @@ namespace Elasticsearch.Net
 			if (data != null)
 			{
 				var stream = requestData.MemoryStreamFactory.Create();
-
+				requestMessage.Content = new StreamContent(stream);
 				if (requestData.HttpCompression)
 				{
-					using (var zipStream = new GZipStream(stream, CompressionMode.Compress))
-						data.Write(zipStream, requestData.ConnectionSettings);
-
-					requestMessage.Headers.Add("Content-Encoding", "gzip");
+					requestMessage.Content.Headers.Add("Content-Encoding", "gzip");
 					requestMessage.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
 					requestMessage.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("deflate"));
+					using (var zipStream = new GZipStream(stream, CompressionMode.Compress, true))
+						data.Write(zipStream, requestData.ConnectionSettings);
 				}
 				else
 					data.Write(stream, requestData.ConnectionSettings);
-
 				stream.Position = 0;
-				requestMessage.Content = new StreamContent(stream);
 			}
 			else
 			{
@@ -162,7 +169,9 @@ namespace Elasticsearch.Net
 				// Content gets diposed so can't be shared instance
 				requestMessage.Content = new ByteArrayContent(new byte[0]);
 			}
+
 			requestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue(requestData.ContentType);
+
 			return requestMessage;
 		}
 

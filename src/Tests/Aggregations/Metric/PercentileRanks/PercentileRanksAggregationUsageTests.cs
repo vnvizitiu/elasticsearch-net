@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using FluentAssertions;
 using Nest;
+using Tests.Framework;
 using Tests.Framework.Integration;
 using Tests.Framework.MockData;
 using static Nest.Infer;
@@ -21,14 +22,15 @@ namespace Tests.Aggregations.Metric.PercentileRanks
 					percentile_ranks = new
 					{
 						field = "numberOfCommits",
-						values = new [] { 15.0, 30.0 },
+						values = new[] { 15.0, 30.0 },
 						tdigest = new
 						{
 							compression = 200.0
 						},
 						script = new
 						{
-							inline = "doc['numberOfCommits'].value * 1.2"
+							inline = "doc['numberOfCommits'].value * 1.2",
+							lang = "groovy"
 						},
 						missing = 0.0
 					}
@@ -46,7 +48,7 @@ namespace Tests.Aggregations.Metric.PercentileRanks
 							.Compression(200)
 						)
 					)
-					.Script("doc['numberOfCommits'].value * 1.2")
+					.Script(ss => ss.Inline("doc['numberOfCommits'].value * 1.2").Lang("groovy"))
 					.Missing(0)
 				)
 			);
@@ -61,14 +63,14 @@ namespace Tests.Aggregations.Metric.PercentileRanks
 					{
 						Compression = 200
 					},
-					Script = (InlineScript)"doc['numberOfCommits'].value * 1.2",
+					Script = new InlineScript("doc['numberOfCommits'].value * 1.2") { Lang = "groovy" },
 					Missing = 0
 				}
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 			var commitsOutlier = response.Aggs.PercentileRanks("commits_outlier");
 			commitsOutlier.Should().NotBeNull();
 			commitsOutlier.Items.Should().NotBeNullOrEmpty();

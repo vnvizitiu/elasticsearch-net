@@ -8,6 +8,7 @@ using Tests.Framework.MockData;
 using FluentAssertions;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Tests.Framework;
 
 namespace Tests.Search.Request
 {
@@ -52,6 +53,7 @@ namespace Tests.Search.Request
 					{ "leadDeveloper.firstName", new JObject
 						{
 							{ "type", "fvh" },
+							{ "boundary_max_scan", 50 },
 							{ "pre_tags", new JArray { "<name>" } },
 							{ "post_tags", new JArray { "</name>" } },
 							{ "highlight_query", new JObject
@@ -102,7 +104,7 @@ namespace Tests.Search.Request
 				.Fields(
 					fs => fs
 						.Field(p => p.Name.Suffix("standard"))
-						.Type(HighlighterType.Plain)
+						.Type("plain")
 						.ForceSource()
 						.FragmentSize(150)
 						.NumberOfFragments(3)
@@ -112,6 +114,7 @@ namespace Tests.Search.Request
 						.Type(HighlighterType.Fvh)
 						.PreTags("<name>")
 						.PostTags("</name>")
+						.BoundaryMaxScan(50)
 						.HighlightQuery(q => q
 							.Match(m => m
 								.Field(p => p.LeadDeveloper.FirstName)
@@ -160,7 +163,8 @@ namespace Tests.Search.Request
 						},
 						{ "leadDeveloper.firstName", new HighlightField
 							{
-								Type = HighlighterType.Fvh,
+								Type = "fvh",
+								BoundaryMaxScan = 50,
 								PreTags = new[] { "<name>"},
 								PostTags = new[] { "</name>"},
 								HighlightQuery = new MatchQuery
@@ -188,31 +192,31 @@ namespace Tests.Search.Request
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 
-			foreach (var highlightsByDocumentId in response.Highlights)
+			foreach (var highlightsInEachHit in response.Hits.Select(d=>d.Highlights))
 			{
-				foreach (var highlightHit in highlightsByDocumentId.Value)
+				foreach (var highlightField in highlightsInEachHit)
 				{
-					if (highlightHit.Key == "name.standard")
+					if (highlightField.Key == "name.standard")
 					{
-						foreach (var highlight in highlightHit.Value.Highlights)
+						foreach (var highlight in highlightField.Value.Highlights)
 						{
 							highlight.Should().Contain("<tag1>");
 							highlight.Should().Contain("</tag1>");
 						}
 					}
-					else if (highlightHit.Key == "leadDeveloper.firstName")
+					else if (highlightField.Key == "leadDeveloper.firstName")
 					{
-						foreach (var highlight in highlightHit.Value.Highlights)
+						foreach (var highlight in highlightField.Value.Highlights)
 						{
 							highlight.Should().Contain("<name>");
 							highlight.Should().Contain("</name>");
 						}
 					}
-					else if (highlightHit.Key == "state.offsets")
+					else if (highlightField.Key == "state.offsets")
 					{
-						foreach (var highlight in highlightHit.Value.Highlights)
+						foreach (var highlight in highlightField.Value.Highlights)
 						{
 							highlight.Should().Contain("<state>");
 							highlight.Should().Contain("</state>");
@@ -220,7 +224,7 @@ namespace Tests.Search.Request
 					}
 					else
 					{
-						Assert.True(false, $"highlights contains unexpected key {highlightHit.Key}");
+						Assert.True(false, $"highlights contains unexpected key {highlightField.Key}");
 					}
 				}
 			}

@@ -2,6 +2,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Nest;
 using Tests.Framework.MockData;
+using Elasticsearch.Net;
 
 namespace Profiling.Async
 {
@@ -19,10 +20,10 @@ namespace Profiling.Async
 		{
 			_developer = Developer.Generator.Generate();
 
-			var indexResponse = await client.IndexAsync(_developer, d => d.Index<Developer>().Refresh()).ConfigureAwait(false);
+			var indexResponse = await client.IndexAsync(_developer, d => d.Index<Developer>().Refresh(Refresh.True)).ConfigureAwait(false);
 
 			if (!indexResponse.IsValid)
-				output.WriteOrange($"error with id {indexResponse.Id}. message: {indexResponse.CallDetails.OriginalException}");
+				output.WriteOrange($"error with id {indexResponse.Id}. message: {indexResponse.ApiCall.OriginalException}");
 		}
 
 		public override async Task ProfileAsync(IElasticClient client, ColoredConsoleWriter output)
@@ -45,7 +46,7 @@ namespace Profiling.Async
 
 				if (!searchResponse.IsValid)
 					output.WriteOrange(
-						$"error searching for {nameof(Developer)}. message: {searchResponse.CallDetails.OriginalException}");
+						$"error searching for {nameof(Developer)}. message: {searchResponse.ApiCall.OriginalException}");
 
 				if (!searchResponse.Documents.Any())
 					output.WriteOrange($"did not find matching {nameof(Developer)} for search.");
@@ -57,7 +58,7 @@ namespace Profiling.Async
 			var deleteResponse = await client.DeleteAsync<Developer>(_developer, d => d.Index<Developer>()).ConfigureAwait(false);
 
 			if (!deleteResponse.IsValid)
-				output.WriteOrange($"error with id {deleteResponse.Id}. message: {deleteResponse.CallDetails.OriginalException}");
+				output.WriteOrange($"error with id {deleteResponse.Id}. message: {deleteResponse.ApiCall.OriginalException}");
 		}
 	}
 }

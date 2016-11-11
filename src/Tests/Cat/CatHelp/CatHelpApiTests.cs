@@ -7,8 +7,7 @@ using Xunit;
 
 namespace Tests.Cat.CatHelp
 {
-	[Collection(TypeOfCluster.ReadOnly)]
-	public class CatHelpApiTests : ApiIntegrationTestBase<ICatResponse<CatHelpRecord>, ICatHelpRequest, CatHelpDescriptor, CatHelpRequest>
+	public class CatHelpApiTests : ApiIntegrationTestBase<ReadOnlyCluster, ICatResponse<CatHelpRecord>, ICatHelpRequest, CatHelpDescriptor, CatHelpRequest>
 	{
 		public CatHelpApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 		protected override LazyResponses ClientUsage() => Calls(
@@ -26,7 +25,7 @@ namespace Tests.Cat.CatHelp
 		protected override void ExpectResponse(ICatResponse<CatHelpRecord> response)
 		{
 			response.Records.Should().NotBeEmpty()
-				.And.Contain(a => a.Endpoint == "/_cat/shards")
+				.And.Contain(a => a.Endpoint == "/_cat/shards/{index}")
 				.And.NotContain(a=>a.Endpoint == "=^.^=");
 		}
 	}

@@ -11,6 +11,9 @@ using Newtonsoft.Json;
 using Tests.Framework;
 using Tests.Framework.MockData;
 using Xunit;
+#if DOTNETCORE
+using System.Net.Http;
+#endif
 
 namespace Tests.ClientConcepts.LowLevel
 {
@@ -139,14 +142,14 @@ namespace Tests.ClientConcepts.LowLevel
 		}
 
 		/** === OnRequestCompleted
-         * You can pass a callback of type `Action<IApiCallDetails>` that can eavesdrop every time a response (good or bad) is created.
-         * If you have complex logging needs this is a good place to add that in.
-        */
+		 * You can pass a callback of type `Action<IApiCallDetails>` that can eavesdrop every time a response (good or bad) is created.
+		 * If you have complex logging needs this is a good place to add that in.
+		*/
 		[U]
 		public void OnRequestCompletedIsCalled()
 		{
 			var counter = 0;
-			var client = TestClient.GetClient(s => s.OnRequestCompleted(r => counter++));
+			var client = TestClient.GetInMemoryClient(s => s.OnRequestCompleted(r => counter++));
 			client.RootNodeInfo();
 			counter.Should().Be(1);
 			client.RootNodeInfoAsync();
@@ -171,10 +174,10 @@ namespace Tests.ClientConcepts.LowLevel
 		}
 
 		/** [[complex-logging]]
-	* === Complex logging with OnRequestCompleted
-	* Here's an example of using `OnRequestCompleted()` for complex logging. Remember, if you would also like
-        * to capture the request and/or response bytes, you also need to set `.DisableDirectStreaming()` to `true`
-	*/
+		* === Complex logging with OnRequestCompleted
+		* Here's an example of using `OnRequestCompleted()` for complex logging. Remember, if you would also like
+		* to capture the request and/or response bytes, you also need to set `.DisableDirectStreaming()` to `true`
+		*/
 		[U]
 		public async Task UsingOnRequestCompletedForLogging()
 		{
@@ -249,67 +252,88 @@ namespace Tests.ClientConcepts.LowLevel
 			/**
 			 * [[configuring-ssl]]
 			 * === Configuring SSL
-			 * SSL must be configured outside of the client using .NET's
-			 * http://msdn.microsoft.com/en-us/library/system.net.servicepointmanager%28v=vs.110%29.aspx[ServicePointManager]
-			 * class and setting the http://msdn.microsoft.com/en-us/library/system.net.servicepointmanager.servercertificatevalidationcallback.aspx[ServerCertificateValidationCallback]
-			 * property.
+			 * SSL can be configured via the `ServerCertificateValidationCallback` property on either `ServerPointManager` or `HttpClientHandler`
+			 * depending on which version of the .NET framework is in use.
 			 *
-			 * The bare minimum to make .NET accept self-signed SSL certs that are not in the Windows CA store would be to have the callback simply return `true`:
+			 * On the full .NET Framework, this must be done outside of the client using .NET's built-in
+			 * http://msdn.microsoft.com/en-us/library/system.net.servicepointmanager%28v=vs.110%29.aspx[ServicePointManager] class:
+			 *
 			 */
-
 #if !DOTNETCORE
 			ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, errors) => true;
 #endif
 			/**
+			 * The bare minimum to make .NET accept self-signed SSL certs that are not in the Windows CA store would be to have the callback simply return `true`.
+			 *
 			 * However, this will accept **all** requests from the AppDomain to untrusted SSL sites,
 			 * therefore **we recommend doing some minimal introspection on the passed in certificate.**
-			 *
-			 * IMPORTANT: Using `ServicePointManager` does not work on **Core CLR** as the request does not go through `ServicePointManager`; please file an {github}/issues[issue] if you need support for certificate validation on Core CLR.
 			 */
 		}
 
-		/**=== Overriding default Json.NET behavior
+#if DOTNETCORE
+		/**
+		 * If running on Core CLR, then a custom connection type must be created by deriving from `HttpConnection` and
+		 * overriding the `CreateHttpClientHandler` method in order to set the `ServerCertificateCustomValidationCallback` property:
+		*/
+		public class SecureHttpConnection : HttpConnection
+		{
+			protected override HttpClientHandler CreateHttpClientHandler(RequestData requestData)
+			{
+				var handler = base.CreateHttpClientHandler(requestData);
+				handler.ServerCertificateCustomValidationCallback = (sender, cert, chain, errors) => true;
+				return handler;
+			}
+		}
+#endif
+
+		/**=== Overriding Json.NET settings
 		*
 		* Overriding the default Json.NET behaviour in NEST is an expert behavior but if you need to get to the nitty gritty, this can be really useful.
-		* First, create a subclass of the `JsonNetSerializer`
 		*/
+
+		/**
+		 * The easiest way is to create an instance of `SerializerFactory` that allows you to register a modification callback
+		 * in the constructor
+		 */
+		public void EasyWay()
+		{
+			var pool = new SingleNodeConnectionPool(new Uri("http://localhost:9200"));
+			var connectionSettings = new ConnectionSettings(
+				pool,
+				new HttpConnection(),
+				new SerializerFactory((jsonSettings, nestSettings) => jsonSettings.PreserveReferencesHandling = PreserveReferencesHandling.All));
+
+			var client = new ElasticClient(connectionSettings);
+		}
+
+
+		/**
+		 * A more involved and explicit way would be to implement your own JsonNetSerializer subclass.
+		 *
+		 * NOTE: this is subject to change in the next major release. NEST relies heavily on stateful deserializers (that have access to the original
+		 * request) for specialized features such a covariant search results. This requirement leaks into this abstraction.
+		 *
+		 *
+		 */
 		public class MyJsonNetSerializer : JsonNetSerializer
 		{
-			public MyJsonNetSerializer(IConnectionSettingsValues settings) : base(settings) { }
+			public MyJsonNetSerializer(IConnectionSettingsValues settings)
+				: base(settings, (s, csv) => s.PreserveReferencesHandling = PreserveReferencesHandling.All) //<1> Call this constructor if you only need access to `JsonSerializerSettings` without local state (properties on MyJsonNetSerializer)
+			{
+				OverwriteDefaultSerializers((s, cvs) => s.PreserveReferencesHandling = PreserveReferencesHandling.All); //<2> Call OverwriteDefaultSerializers if you need access to `JsonSerializerSettings` with local state
+			}
 
 			public int CallToModify { get; set; } = 0;
 
-			protected override void ModifyJsonSerializerSettings(JsonSerializerSettings settings) => ++CallToModify; //<1> Override ModifyJsonSerializerSettings if you need access to `JsonSerializerSettings`
-
 			public int CallToContractConverter { get; set; } = 0;
 
-			protected override IList<Func<Type, JsonConverter>> ContractConverters => new List<Func<Type, JsonConverter>> //<2> You can inject contract resolved converters by implementing the ContractConverters property. This can be much faster then registering them on `JsonSerializerSettings.Converters`
+			protected override IList<Func<Type, JsonConverter>> ContractConverters => new List<Func<Type, JsonConverter>> //<3> You can inject contract resolved converters by implementing the ContractConverters property. This can be much faster then registering them on `JsonSerializerSettings.Converters`
 			{
 				t => {
 					CallToContractConverter++;
 					return null;
 				}
 			};
-
-		}
-
-		/**
-		* You can then register a factory on `ConnectionSettings` to create an instance of your subclass instead.
-		* This is **_called once per instance_** of ConnectionSettings.
-		*/
-		[U]
-		public void ModifyJsonSerializerSettingsIsCalled()
-		{
-			var connectionPool = new SingleNodeConnectionPool(new Uri("http://localhost:9200"));
-			var settings = new ConnectionSettings(connectionPool, new InMemoryConnection(), s => new MyJsonNetSerializer(s));
-			var client = new ElasticClient(settings);
-			client.RootNodeInfo();
-			client.RootNodeInfo();
-			var serializer = ((IConnectionSettingsValues)settings).Serializer as MyJsonNetSerializer;
-			serializer.CallToModify.Should().BeGreaterThan(0);
-
-			serializer.SerializeToString(new Project { });
-			serializer.CallToContractConverter.Should().BeGreaterThan(0);
 		}
 	}
 }

@@ -12,9 +12,8 @@ using static Nest.Infer;
 
 namespace Tests.Document.Multiple.UpdateByQuery
 {
-	[Collection(TypeOfCluster.OwnIndex)]
-	public class UpdateByQueryApiTests
-		: ApiIntegrationTestBase<IUpdateByQueryResponse, IUpdateByQueryRequest, UpdateByQueryDescriptor<UpdateByQueryApiTests.Test>, UpdateByQueryRequest>
+	[SkipVersion("<2.3.0", "")]
+	public class UpdateByQueryApiTests : ApiIntegrationTestBase<IntrusiveOperationCluster, IUpdateByQueryResponse, IUpdateByQueryRequest, UpdateByQueryDescriptor<UpdateByQueryApiTests.Test>, UpdateByQueryRequest>
 	{
 		public class Test
 		{
@@ -22,12 +21,13 @@ namespace Tests.Document.Multiple.UpdateByQuery
 			public string Flag { get; set; }
 		}
 
-		public UpdateByQueryApiTests(OwnIndexCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		public UpdateByQueryApiTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override void IntegrationSetup(IElasticClient client, CallUniqueValues values)
 		{
 			foreach (var index in values.Values)
 			{
+#pragma warning disable 618
 				this.Client.CreateIndex(index, c => c
 					.Mappings(m => m
 						.Map<Test>(map => map
@@ -38,8 +38,9 @@ namespace Tests.Document.Multiple.UpdateByQuery
 						)
 					)
 				);
-				this.Client.Index(new Test { Text = "words words", Flag = "bar" }, i=>i.Index(index).Refresh());
-				this.Client.Index(new Test { Text = "words words", Flag = "foo" }, i=>i.Index(index).Refresh());
+#pragma warning restore 618
+				this.Client.Index(new Test { Text = "words words", Flag = "bar" }, i => i.Index(index).Refresh(Refresh.True));
+				this.Client.Index(new Test { Text = "words words", Flag = "foo" }, i => i.Index(index).Refresh(Refresh.True));
 				this.Client.Map<Test>(m => m
 					.Index(index)
 					.Properties(props => props
@@ -102,10 +103,10 @@ namespace Tests.Document.Multiple.UpdateByQuery
 		}
 	}
 
-	[Collection(TypeOfCluster.OwnIndex)]
+	[SkipVersion("<2.3.0", "")]
 	public class UpdateByQueryWaitForCompletionApiTests : UpdateByQueryApiTests
 	{
-		public UpdateByQueryWaitForCompletionApiTests(OwnIndexCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		public UpdateByQueryWaitForCompletionApiTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override string UrlPath => $"/{CallIsolatedValue}/test/_update_by_query?wait_for_completion=false&conflicts=proceed";
 
@@ -129,22 +130,22 @@ namespace Tests.Document.Multiple.UpdateByQuery
 		}
 	}
 
-	[Collection(TypeOfCluster.OwnIndex)]
+	[SkipVersion("<2.3.0", "")]
 	public class UpdateByQueryWithFailuresApiTests : UpdateByQueryApiTests
 	{
-		public UpdateByQueryWithFailuresApiTests(OwnIndexCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		public UpdateByQueryWithFailuresApiTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override void IntegrationSetup(IElasticClient client, CallUniqueValues values)
 		{
 			foreach (var index in values.Values)
 			{
 				this.Client.CreateIndex(index, c => c
-					.Settings(s=>s
+					.Settings(s => s
 						.RefreshInterval(-1)
 					)
 				);
-				this.Client.Index(new Test { Text = "test1", Flag = "bar" }, i=>i.Index(index).Id(1).Refresh());
-				this.Client.Index(new Test { Text = "test2", Flag = "bar" }, i=>i.Index(index).Id(1));
+				this.Client.Index(new Test { Text = "test1", Flag = "bar" }, i => i.Index(index).Id(1).Refresh(Refresh.True));
+				this.Client.Index(new Test { Text = "test2", Flag = "bar" }, i => i.Index(index).Id(1));
 			}
 		}
 		private static string _script = "ctx._source.text = 'x'";
@@ -157,23 +158,23 @@ namespace Tests.Document.Multiple.UpdateByQuery
 			new
 			{
 				query = new { match = new { flag = new { query = "bar" } } },
-				script = new { inline = "ctx._source.text = 'x'" }
+				script = new { inline = "ctx._source.text = 'x'", lang = "groovy" }
 			};
 
 		protected override Func<UpdateByQueryDescriptor<Test>, IUpdateByQueryRequest> Fluent => d => d
 			.Index(CallIsolatedValue)
-			.Query(q=>q.Match(m=>m.Field(p=>p.Flag).Query("bar")))
-			.Script(_script)
+			.Query(q => q.Match(m => m.Field(p => p.Flag).Query("bar")))
+			.Script(ss => ss.Inline(_script).Lang("groovy"))
 			;
 
 		protected override UpdateByQueryRequest Initializer => new UpdateByQueryRequest(CallIsolatedValue, Type<Test>())
 		{
 			Query = new MatchQuery
 			{
-				Field = Field<Test>(p=>p.Flag),
+				Field = Field<Test>(p => p.Flag),
 				Query = "bar"
 			},
-			Script = new InlineScript(_script),
+			Script = new InlineScript(_script) { Lang = "groovy" },
 		};
 
 		protected override void ExpectResponse(IUpdateByQueryResponse response)

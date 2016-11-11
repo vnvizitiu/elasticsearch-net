@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace Nest
@@ -136,7 +137,7 @@ namespace Nest
 							.Select(x =>
 								new HistogramBucket
 								{
-									Key = long.Parse(x.Key),
+									Key = double.Parse(x.Key, CultureInfo.InvariantCulture),
 									KeyAsString = x.Key,
 									DocCount = x.DocCount.GetValueOrDefault(0),
 									Aggregations = x.Aggregations
@@ -159,6 +160,9 @@ namespace Nest
 		public MultiBucketAggregate<RangeBucket> GeoDistance(string key) => GetBucket<RangeBucket>(key);
 
 		public MultiBucketAggregate<DateHistogramBucket> DateHistogram(string key) => GetBucket<DateHistogramBucket>(key);
+
+		public MatrixStatsAggregate MatrixStats(string key) => this.TryGet<MatrixStatsAggregate>(key);
+
 
 		private TAggregation TryGet<TAggregation>(string key)
 			where TAggregation : class, IAggregate

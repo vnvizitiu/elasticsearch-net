@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Elasticsearch.Net;
+using System.Threading;
 
 namespace Nest
 {
@@ -13,10 +14,10 @@ namespace Nest
 		IGetLicenseResponse GetLicense(IGetLicenseRequest request);
 
 		/// <inheritdoc/>
-		Task<IGetLicenseResponse> GetLicenseAsync(Func<GetLicenseDescriptor, IGetLicenseRequest> selector = null);
+		Task<IGetLicenseResponse> GetLicenseAsync(Func<GetLicenseDescriptor, IGetLicenseRequest> selector = null, CancellationToken cancellationToken = default(CancellationToken));
 
 		/// <inheritdoc/>
-		Task<IGetLicenseResponse> GetLicenseAsync(IGetLicenseRequest request);
+		Task<IGetLicenseResponse> GetLicenseAsync(IGetLicenseRequest request, CancellationToken cancellationToken = default(CancellationToken));
 	}
 
 	public partial class ElasticClient
@@ -29,18 +30,19 @@ namespace Nest
 		public IGetLicenseResponse GetLicense(IGetLicenseRequest request) =>
 			this.Dispatcher.Dispatch<IGetLicenseRequest, GetLicenseRequestParameters, GetLicenseResponse>(
 				request,
-				(p, d) =>this.LowLevelDispatch.LicenseGetDispatch<GetLicenseResponse>(p)
+				(p, d) =>this.LowLevelDispatch.XpackLicenseGetDispatch<GetLicenseResponse>(p)
 			);
 
 		/// <inheritdoc/>
-		public Task<IGetLicenseResponse> GetLicenseAsync(Func<GetLicenseDescriptor, IGetLicenseRequest> selector = null) =>
-			this.GetLicenseAsync(selector.InvokeOrDefault(new GetLicenseDescriptor()));
+		public Task<IGetLicenseResponse> GetLicenseAsync(Func<GetLicenseDescriptor, IGetLicenseRequest> selector = null, CancellationToken cancellationToken = default(CancellationToken)) =>
+			this.GetLicenseAsync(selector.InvokeOrDefault(new GetLicenseDescriptor()), cancellationToken);
 
 		/// <inheritdoc/>
-		public Task<IGetLicenseResponse> GetLicenseAsync(IGetLicenseRequest request) =>
+		public Task<IGetLicenseResponse> GetLicenseAsync(IGetLicenseRequest request, CancellationToken cancellationToken = default(CancellationToken)) =>
 			this.Dispatcher.DispatchAsync<IGetLicenseRequest, GetLicenseRequestParameters, GetLicenseResponse, IGetLicenseResponse>(
 				request,
-				(p,d ) => this.LowLevelDispatch.LicenseGetDispatchAsync<GetLicenseResponse>(p)
+				cancellationToken,
+				(p, d, c) => this.LowLevelDispatch.XpackLicenseGetDispatchAsync<GetLicenseResponse>(p, c)
 			);
 	}
 }

@@ -1,7 +1,9 @@
 ﻿using System;
+using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 // ReSharper disable VirtualMemberNeverOverriden.Global
@@ -132,6 +134,7 @@ namespace Elasticsearch.Net
 							data.Write(stream, requestData.ConnectionSettings);
 					}
 				}
+				requestData.MadeItToResponse = true;
 
 				//http://msdn.microsoft.com/en-us/library/system.net.httpwebresponse.getresponsestream.aspx
 				//Either the stream or the response object needs to be closed but not both although it won't
@@ -140,6 +143,9 @@ namespace Elasticsearch.Net
 				var response = (HttpWebResponse)request.GetResponse();
 				builder.StatusCode = (int)response.StatusCode;
 				builder.Stream = response.GetResponseStream();
+				// https://github.com/elastic/elasticsearch-net/issues/2311
+				// if stream is null call dispose on response instead.
+				if (builder.Stream == null || builder.Stream == Stream.Null) response.Dispose();
 			}
 			catch (WebException e)
 			{
@@ -149,9 +155,9 @@ namespace Elasticsearch.Net
 			return builder.ToResponse();
 		}
 
-		public virtual async Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData) where TReturn : class
+		public virtual async Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData, CancellationToken cancellationToken) where TReturn : class
 		{
-			var builder = new ResponseBuilder<TReturn>(requestData);
+			var builder = new ResponseBuilder<TReturn>(requestData, cancellationToken);
 			try
 			{
 				var request = this.CreateHttpWebRequest(requestData);
@@ -163,11 +169,12 @@ namespace Elasticsearch.Net
 					{
 						if (requestData.HttpCompression)
 							using (var zipStream = new GZipStream(stream, CompressionMode.Compress))
-								await data.WriteAsync(zipStream, requestData.ConnectionSettings).ConfigureAwait(false);
+								await data.WriteAsync(zipStream, requestData.ConnectionSettings, cancellationToken).ConfigureAwait(false);
 						else
-							await data.WriteAsync(stream, requestData.ConnectionSettings).ConfigureAwait(false);
+							await data.WriteAsync(stream, requestData.ConnectionSettings, cancellationToken).ConfigureAwait(false);
 					}
 				}
+				requestData.MadeItToResponse = true;
 
 				//http://msdn.microsoft.com/en-us/library/system.net.httpwebresponse.getresponsestream.aspx
 				//Either the stream or the response object needs to be closed but not both although it won't
@@ -176,6 +183,9 @@ namespace Elasticsearch.Net
 				var response = (HttpWebResponse)(await request.GetResponseAsync().ConfigureAwait(false));
 				builder.StatusCode = (int)response.StatusCode;
 				builder.Stream = response.GetResponseStream();
+				// https://github.com/elastic/elasticsearch-net/issues/2311
+				// if stream is null call dispose on response instead.
+				if (builder.Stream == null || builder.Stream == Stream.Null) response.Dispose();
 			}
 			catch (WebException e)
 			{
@@ -194,6 +204,9 @@ namespace Elasticsearch.Net
 			{
 				builder.StatusCode = (int)response.StatusCode;
 				builder.Stream = response.GetResponseStream();
+				// https://github.com/elastic/elasticsearch-net/issues/2311
+				// if stream is null call dispose on response instead.
+				if (builder.Stream == null || builder.Stream == Stream.Null) response.Dispose();
 			}
 		}
 

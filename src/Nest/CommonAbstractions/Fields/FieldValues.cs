@@ -1,12 +1,11 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Nest
 {
@@ -51,16 +50,33 @@ namespace Nest
 			return this.FieldArray<K[]>(field);
 		}
 
+
+		private static readonly JsonSerializer ForceNoDateInferrence = new JsonSerializer
+		{
+			DateParseHandling = DateParseHandling.None
+		};
+
 		private K FieldArray<K>(string field)
 		{
 			object o;
 			if (this.BackingDictionary != null && this.BackingDictionary.TryGetValue(field, out o))
 			{
 				var t = typeof(K);
-				if (o is JArray && t.GetInterfaces().Contains(typeof(IEnumerable)))
+				var jArray = o as JArray;
+				if (jArray != null && t.GetInterfaces().Contains(typeof(IEnumerable)))
 				{
-					var array = (JArray)o;
-					return array.ToObject<K>();
+					if (typeof(K) == typeof(string[]) && jArray.Any(p=>p.Type == JTokenType.Date))
+					{
+						// https://github.com/elastic/elasticsearch-net/issues/2155
+						// o of type JArray has already decided the values are dates so there is no
+						// way around this.
+						// incredibly ugly and sad but the only way I found to cover this edgecase
+						var s = jArray.Root.ToString();
+						using (var sr = new StringReader(s))
+						using (var jr = new JsonTextReader(sr) { DateParseHandling = DateParseHandling.None })
+							return ForceNoDateInferrence.Deserialize<K>(jr);
+					}
+					return jArray.ToObject<K>();
 				}
 				return (K)Convert.ChangeType(o, typeof(K));
 			}

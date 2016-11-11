@@ -9,16 +9,15 @@ using Xunit;
 
 namespace Tests.XPack.Security.Role
 {
-	[Collection(TypeOfCluster.Shield)]
+	[SkipVersion("<2.3.0", "")]
 	public class RoleCrudTests
-		: CrudTestBase<IPutRoleResponse, IGetRoleResponse, IPutRoleResponse, IDeleteRoleResponse>
+		: CrudTestBase<XPackCluster, IPutRoleResponse, IGetRoleResponse, IPutRoleResponse, IDeleteRoleResponse>
 	{
 		private string[] _roles = { "user" };
-		public RoleCrudTests(ShieldCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		public RoleCrudTests(XPackCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		//callisolated value can sometimes start with a digit which is not allowed for rolenames
 		private string CreateRoleName(string s) => $"role-{s}";
-
 
 		protected override LazyResponses Create() => Calls<PutRoleDescriptor, PutRoleRequest, IPutRoleRequest, IPutRoleResponse>(
 			CreateInitializer,
@@ -36,7 +35,10 @@ namespace Tests.XPack.Security.Role
 			{
 				new IndicesPrivileges
 				{
-					Fields = Infer.Fields<Project>(p=>p.Name).And<Project>(p=>p.Description),
+					FieldSecurity = new FieldSecurity
+					{
+						Grant = Infer.Fields<Project>(p=>p.Name).And<Project>(p=>p.Description),
+					},
 					Names = Infer.Indices<Project>(),
 					Privileges = new [] { "all" },
 					Query = new MatchAllQuery()
@@ -47,9 +49,11 @@ namespace Tests.XPack.Security.Role
 			.Cluster("all")
 			.Indices(i => i
 				.Add<Project>(ii => ii
-					.Fields(f => f
-						.Field(p => p.Name)
-						.Field(p => p.Description)
+					.FieldSecurity(fs=>fs
+						.Grant(f => f
+							.Field(p => p.Name)
+							.Field(p => p.Description)
+						)
 					)
 					.Names(Infer.Indices<Project>())
 					.Privileges("all")
@@ -86,7 +90,10 @@ namespace Tests.XPack.Security.Role
 			{
 				new IndicesPrivileges
 				{
-					Fields = Infer.Fields<Project>(p=>p.Name).And<Project>(p=>p.Description),
+					FieldSecurity = new FieldSecurity
+					{
+						Grant =Infer.Fields<Project>(p=>p.Name).And<Project>(p=>p.Description)
+					},
 					Names = Infer.Indices<Project>(),
 					Privileges = new [] { "all" },
 					Query = new MatchAllQuery()
@@ -98,9 +105,11 @@ namespace Tests.XPack.Security.Role
 			.Cluster("all")
 			.Indices(i => i
 				.Add<Project>(ii => ii
-					.Fields(f => f
-						.Field(p => p.Name)
-						.Field(p => p.Description)
+					.FieldSecurity(fs=>fs
+						.Grant(f => f
+							.Field(p => p.Name)
+							.Field(p => p.Description)
+						)
 					)
 					.Names(Infer.Indices<Project>())
 					.Privileges("all")
@@ -130,7 +139,8 @@ namespace Tests.XPack.Security.Role
 
 			var indexPrivilege = role.Indices.First();
 			indexPrivilege.Names.Should().NotBeNull().And.Be(Infer.Indices("project"));
-			indexPrivilege.Fields.Should().NotBeNull().And.HaveCount(2);
+			indexPrivilege.FieldSecurity.Should().NotBeNull();
+			indexPrivilege.FieldSecurity.Grant.Should().NotBeNull().And.HaveCount(2);
 			indexPrivilege.Privileges.Should().NotBeNull().And.Contain("all");
 			indexPrivilege.Query.Should().NotBeNull();
 			var q = indexPrivilege.Query as IQueryContainer;
@@ -146,7 +156,8 @@ namespace Tests.XPack.Security.Role
 
 			var indexPrivilege = role.Indices.First();
 			indexPrivilege.Names.Should().NotBeNull().And.Be(Infer.Indices("project"));
-			indexPrivilege.Fields.Should().NotBeNull().And.HaveCount(2);
+			indexPrivilege.FieldSecurity.Should().NotBeNull();
+			indexPrivilege.FieldSecurity.Grant.Should().NotBeNull().And.HaveCount(2);
 			indexPrivilege.Privileges.Should().NotBeNull().And.Contain("all");
 			indexPrivilege.Query.Should().NotBeNull();
 			var q = indexPrivilege.Query as IQueryContainer;

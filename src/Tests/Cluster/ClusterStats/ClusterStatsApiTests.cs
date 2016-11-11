@@ -8,8 +8,7 @@ using Xunit;
 
 namespace Tests.Cluster.ClusterStats
 {
-	[Collection(TypeOfCluster.ReadOnly)]
-	public class ClusterStatsApiTests : ApiIntegrationTestBase<IClusterStatsResponse, IClusterStatsRequest, ClusterStatsDescriptor, ClusterStatsRequest>
+	public class ClusterStatsApiTests : ApiIntegrationTestBase<ReadOnlyCluster, IClusterStatsResponse, IClusterStatsRequest, ClusterStatsDescriptor, ClusterStatsRequest>
 	{
 		public ClusterStatsApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 		protected override LazyResponses ClientUsage() => Calls(
@@ -98,7 +97,6 @@ namespace Tests.Cluster.ClusterStats
 			indices.Segments.Should().NotBeNull();
 			indices.Segments.Count.Should().BeGreaterThan(0);
 			indices.Segments.DocValuesMemoryInBytes.Should().BeGreaterThan(0);
-			indices.Segments.IndexWriterMaxMemoryInBytes.Should().BeGreaterThan(0);
 			indices.Segments.MemoryInBytes.Should().BeGreaterThan(0);
 			indices.Segments.NormsMemoryInBytes.Should().BeGreaterThan(0);
 			indices.Segments.StoredFieldsMemoryInBytes.Should().BeGreaterThan(0);

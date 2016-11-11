@@ -14,12 +14,9 @@ using static Nest.Infer;
 
 namespace Tests.Document.Multiple.ReindexRethrottle
 {
-	[Collection(TypeOfCluster.Reindex)]
 	public class ReindexRethrottleReindexApiTests : ReindexRethrottleApiTests
 	{
-		public ReindexRethrottleReindexApiTests(ReindexCluster cluster, EndpointUsage usage) : base(cluster, usage)
-		{
-		}
+		public ReindexRethrottleReindexApiTests(ReindexCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override void OnBeforeCall(IElasticClient client)
 		{
@@ -41,7 +38,6 @@ namespace Tests.Document.Multiple.ReindexRethrottle
 		}
 	}
 
-	[Collection(TypeOfCluster.Reindex)]
 	public class ReindexRethrottleUpdateByQueryTests : ReindexRethrottleApiTests
 	{
 		public ReindexRethrottleUpdateByQueryTests(ReindexCluster cluster, EndpointUsage usage) : base(cluster, usage)
@@ -53,7 +49,7 @@ namespace Tests.Document.Multiple.ReindexRethrottle
 			var reindex = client.UpdateByQuery<Project>(u => u
 				.Conflicts(Conflicts.Proceed)
 				.Query(q => q.MatchAll())
-				.Script(s => s.Inline("ctx._source.numberOfCommits+10"))
+				.Script(s => s.Inline("ctx._source.numberOfCommits+10").Lang("groovy"))
 				.Refresh()
 				.RequestsPerSecond(1)
 				.WaitForCompletion(false)
@@ -65,7 +61,7 @@ namespace Tests.Document.Multiple.ReindexRethrottle
 	}
 
 	public abstract class ReindexRethrottleApiTests
-		: ApiIntegrationTestBase<IReindexRethrottleResponse, IReindexRethrottleRequest, ReindexRethrottleDescriptor, ReindexRethrottleRequest>
+		: ApiIntegrationTestBase<ReindexCluster, IReindexRethrottleResponse, IReindexRethrottleRequest, ReindexRethrottleDescriptor, ReindexRethrottleRequest>
 	{
 		protected TaskId TaskId => this.RanIntegrationSetup ? this.ExtendedValue<TaskId>(TaskIdKey) : "foo:1";
 
@@ -90,17 +86,17 @@ namespace Tests.Document.Multiple.ReindexRethrottle
 		protected override int ExpectStatusCode => 200;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
 
-		protected override string UrlPath => $"/_reindex/{TaskId.NodeId}%3A{TaskId.TaskNumber}/_rethrottle?requests_per_second=unlimited";
+		protected override string UrlPath => $"/_reindex/{TaskId.NodeId}%3A{TaskId.TaskNumber}/_rethrottle?requests_per_second=-1";
 
 		protected override bool SupportsDeserialization => false;
 
 		protected override Func<ReindexRethrottleDescriptor, IReindexRethrottleRequest> Fluent => d => d
 			.TaskId(TaskId)
-			.RequestsPerSecond(float.PositiveInfinity);
+			.RequestsPerSecond(-1);
 
 		protected override ReindexRethrottleRequest Initializer => new ReindexRethrottleRequest(TaskId)
 		{
-			RequestsPerSecond = float.PositiveInfinity,
+			RequestsPerSecond = -1,
 		};
 
 		protected override void ExpectResponse(IReindexRethrottleResponse response)
@@ -128,10 +124,7 @@ namespace Tests.Document.Multiple.ReindexRethrottle
 			task.Type.Should().NotBeNullOrEmpty();
 			task.Action.Should().NotBeNullOrEmpty();
 
-			task.Status.RequestsPerSecond.Match(
-				s => s.Should().Be("unlimited"),
-				l => l.Should().Be(0)
-			);
+			task.Status.RequestsPerSecond.Should().Be(-1);
 
 			task.StartTimeInMilliseconds.Should().BeGreaterThan(0);
 			task.RunningTimeInNanoseconds.Should().BeGreaterThan(0);

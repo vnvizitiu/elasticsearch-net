@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
 using System.Linq;
 using System.Text;
 
@@ -32,15 +30,16 @@ namespace Elasticsearch.Net
 		{
 			var auditExceptions = auditTrail.Select((audit, i) => new {audit, i}).Where(a => a.audit.Exception != null);
 			foreach (var a in auditExceptions)
-				sb.AppendLine($"# Audit exception in step {a.i} {a.audit.Event.GetStringValue()}:\r\n{a.audit.Exception}");
+				sb.AppendLine($"# Audit exception in step {a.i + 1} {a.audit.Event.GetStringValue()}:\r\n{a.audit.Exception}");
 		}
 
 		public static void DebugAuditTrail(List<Audit> auditTrail, StringBuilder sb)
 		{
 			if (auditTrail == null) return;
-			foreach (var audit in auditTrail)
+			foreach (var a in auditTrail.Select((a, i)=> new { a, i }))
 			{
-				sb.Append($" - {audit.Event.GetStringValue()}:");
+				var audit = a.a;
+				sb.Append($" - [{a.i + 1}] {audit.Event.GetStringValue()}:");
 				if (audit.Node?.Uri != null) sb.Append($" Node: {audit.Node.Uri}");
 				if (audit.Exception != null) sb.Append($" Exception: {audit.Exception.GetType().Name}");
 				sb.AppendLine($" Took: {(audit.Ended - audit.Started)}");
@@ -69,11 +68,12 @@ namespace Elasticsearch.Net
 		public List<Audit> AuditTrail { get; internal set; }
 
 		/// <summary>
-		/// The response is succesful or has a response code between 400-599 the call should not be retried.
-		/// Only on 502 and 503 will this return false;
+		/// The response is successful or has a response code between 400-599, the call should not be retried.
+		/// Only on 502,503 and 504 will this return false;
 		/// </summary>
 		public bool SuccessOrKnownError =>
 			this.Success || (HttpStatusCode >= 400 && HttpStatusCode < 599
+				&& HttpStatusCode != 504 //Gateway timeout needs to be retried
 				&& HttpStatusCode != 503 //service unavailable needs to be retried
 				&& HttpStatusCode != 502 //bad gateway needs to be retried
 			);

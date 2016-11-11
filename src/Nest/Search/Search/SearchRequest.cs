@@ -45,6 +45,9 @@ namespace Nest
 		[JsonProperty(PropertyName = "sort")]
 		IList<ISort> Sort { get; set; }
 
+		[JsonProperty(PropertyName = "search_after")]
+		IList<object> SearchAfter { get; set; }
+
 		[JsonProperty(PropertyName = "suggest")]
 		ISuggestContainer Suggest { get; set; }
 
@@ -54,8 +57,8 @@ namespace Nest
 		[JsonProperty(PropertyName = "rescore")]
 		IList<IRescore> Rescore { get; set; }
 
-		[JsonProperty(PropertyName = "fields")]
-		Fields Fields { get; set; }
+		[JsonProperty(PropertyName = "stored_fields")]
+		Fields StoredFields { get; set; }
 
 		[JsonProperty(PropertyName = "fielddata_fields")]
 		Fields FielddataFields { get; set; }
@@ -64,8 +67,7 @@ namespace Nest
 		IScriptFields ScriptFields { get; set; }
 
 		[JsonProperty(PropertyName = "_source")]
-		[JsonConverter(typeof(ReadAsTypeJsonConverter<SourceFilter>))]
-		ISourceFilter Source { get; set; }
+		Union<bool, ISourceFilter> Source { get; set; }
 
 		[JsonProperty(PropertyName = "aggs")]
 		AggregationDictionary Aggregations { get; set; }
@@ -104,11 +106,12 @@ namespace Nest
 		public bool? Profile { get; set; }
 		public double? MinScore { get; set; }
 		public long? TerminateAfter { get; set; }
-		public Fields Fields { get; set; }
+		public Fields StoredFields { get; set; }
 		public Fields FielddataFields { get; set; }
 		public IScriptFields ScriptFields { get; set; }
-		public ISourceFilter Source { get; set; }
+		public Union<bool, ISourceFilter> Source { get; set; }
 		public IList<ISort> Sort { get; set; }
+		public IList<object> SearchAfter { get; set; }
 		public IDictionary<IndexName, double> IndicesBoost { get; set; }
 		public QueryContainer PostFilter { get; set; }
 		public QueryContainer Query { get; set; }
@@ -146,11 +149,12 @@ namespace Nest
 		public bool? Profile { get; set; }
 		public double? MinScore { get; set; }
 		public long? TerminateAfter { get; set; }
-		public Fields Fields { get; set; }
+		public Fields StoredFields { get; set; }
 		public Fields FielddataFields { get; set; }
 		public IScriptFields ScriptFields { get; set; }
-		public ISourceFilter Source { get; set; }
+		public Union<bool, ISourceFilter> Source { get; set; }
 		public IList<ISort> Sort { get; set; }
+		public IList<object> SearchAfter { get; set; }
 		public IDictionary<IndexName, double> IndicesBoost { get; set; }
 		public QueryContainer PostFilter { get; set; }
 		public QueryContainer Query { get; set; }
@@ -204,24 +208,25 @@ namespace Nest
 
 		IDictionary<IndexName, double> ISearchRequest.IndicesBoost { get; set; }
 		IList<ISort> ISearchRequest.Sort { get; set; }
+		IList<object> ISearchRequest.SearchAfter { get; set; }
 		ISuggestContainer ISearchRequest.Suggest { get; set; }
 		IHighlight ISearchRequest.Highlight { get; set; }
 		IList<IRescore> ISearchRequest.Rescore { get; set; }
 		QueryContainer ISearchRequest.Query { get; set; }
 		QueryContainer ISearchRequest.PostFilter { get; set; }
-		Fields ISearchRequest.Fields { get; set; }
+		Fields ISearchRequest.StoredFields { get; set; }
 		Fields ISearchRequest.FielddataFields { get; set; }
 		IScriptFields ISearchRequest.ScriptFields { get; set; }
-		ISourceFilter ISearchRequest.Source { get; set; }
+		Union<bool, ISourceFilter> ISearchRequest.Source { get; set; }
 		AggregationDictionary ISearchRequest.Aggregations { get; set; }
 
 		public SearchDescriptor<T> Aggregations(Func<AggregationContainerDescriptor<T>, IAggregationContainer> aggregationsSelector) =>
 			Assign(a => a.Aggregations = aggregationsSelector(new AggregationContainerDescriptor<T>())?.Aggregations);
 
-		public SearchDescriptor<T> Source(bool include = true) => Assign(a => a.Source = !include ? SourceFilter.ExcludeAll : null);
+		public SearchDescriptor<T> Source(bool enabled = true) => Assign(a => a.Source = enabled);
 
-		public SearchDescriptor<T> Source(Func<SourceFilterDescriptor<T>, ISourceFilter> sourceSelector) =>
-			Assign(a => a.Source = sourceSelector?.Invoke(new SourceFilterDescriptor<T>()));
+		public SearchDescriptor<T> Source(Func<SourceFilterDescriptor<T>, ISourceFilter> selector) =>
+			Assign(a => a.Source = new Union<bool, ISourceFilter>(selector?.Invoke(new SourceFilterDescriptor<T>())));
 
 		/// <summary>
 		/// The number of hits to return. Defaults to 10. When using scroll search type
@@ -353,10 +358,10 @@ namespace Nest
 		/// Allows to selectively load specific fields for each document
 		/// represented by a search hit. Defaults to load the internal _source field.
 		/// </summary>
-		public SearchDescriptor<T> Fields(Func<FieldsDescriptor<T>, IPromise<Fields>> fields) =>
-			Assign(a => a.Fields = fields?.Invoke(new FieldsDescriptor<T>())?.Value);
+		public SearchDescriptor<T> StoredFields(Func<FieldsDescriptor<T>, IPromise<Fields>> fields) =>
+			Assign(a => a.StoredFields = fields?.Invoke(new FieldsDescriptor<T>())?.Value);
 
-		public SearchDescriptor<T> Fields(Fields fields) => Assign(a => a.Fields = fields);
+		public SearchDescriptor<T> StoredFields(Fields fields) => Assign(a => a.StoredFields = fields);
 
 		///<summary>
 		///A comma-separated list of fields to return as the field data representation of a field for each hit
@@ -371,6 +376,16 @@ namespace Nest
 		///A comma-separated list of fields to return as the field data representation of a field for each hit
 		///</summary>
 		public SearchDescriptor<T> Sort(Func<SortDescriptor<T>, IPromise<IList<ISort>>> selector) => Assign(a => a.Sort = selector?.Invoke(new SortDescriptor<T>())?.Value);
+
+		///<summary>
+		/// Sort values that can be used to start returning results "after" any document in the result list.
+		///</summary>
+		public SearchDescriptor<T> SearchAfter(IList<object> searchAfter) => Assign(a => a.SearchAfter = searchAfter);
+
+		///<summary>
+		/// Sort values that can be used to start returning results "after" any document in the result list.
+		///</summary>
+		public SearchDescriptor<T> SearchAfter(params object[] searchAfter) => Assign(a => a.SearchAfter = searchAfter);
 
 		///<summary>
 		/// The suggest feature suggests similar looking terms based on a provided text by using a suggester

@@ -41,14 +41,10 @@ namespace Nest
 		[JsonProperty("_size")]
 		ISizeField SizeField { get; set; }
 
-		[JsonProperty("_timestamp")]
-		ITimestampField TimestampField { get; set; }
 
 		[JsonProperty("_field_names")]
 		IFieldNamesField FieldNamesField { get; set; }
 
-		[JsonProperty("_ttl")]
-		ITtlField TtlField { get; set; }
 
 		[JsonProperty("_meta")]
 		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
@@ -58,7 +54,7 @@ namespace Nest
 		IDynamicTemplateContainer DynamicTemplates { get; set; }
 
 		[JsonProperty("dynamic")]
-		DynamicMapping? Dynamic { get; set; }
+		Union<bool, DynamicMapping> Dynamic { get; set; }
 
 		[JsonProperty("properties", TypeNameHandling = TypeNameHandling.None)]
 		IProperties Properties { get; set; }
@@ -73,7 +69,7 @@ namespace Nest
 		/// <inheritdoc/>
 		public bool? DateDetection { get; set; }
 		/// <inheritdoc/>
-		public DynamicMapping? Dynamic { get; set; }
+		public Union<bool, DynamicMapping> Dynamic { get; set; }
 		/// <inheritdoc/>
 		public IEnumerable<string> DynamicDateFormats { get; set; }
 		/// <inheritdoc/>
@@ -99,9 +95,6 @@ namespace Nest
 		/// <inheritdoc/>
 		public ISourceField SourceField { get; set; }
 		/// <inheritdoc/>
-		public ITimestampField TimestampField { get; set; }
-		/// <inheritdoc/>
-		public ITtlField TtlField { get; set; }
 	}
 
 
@@ -111,7 +104,7 @@ namespace Nest
 		IAllField ITypeMapping.AllField { get; set; }
 		string ITypeMapping.Analyzer { get; set; }
 		bool? ITypeMapping.DateDetection { get; set; }
-		DynamicMapping? ITypeMapping.Dynamic { get; set; }
+		Union<bool, DynamicMapping> ITypeMapping.Dynamic { get; set; }
 		IEnumerable<string> ITypeMapping.DynamicDateFormats { get; set; }
 		IDynamicTemplateContainer ITypeMapping.DynamicTemplates { get; set; }
 		IFieldNamesField ITypeMapping.FieldNamesField { get; set; }
@@ -124,8 +117,6 @@ namespace Nest
 		string ITypeMapping.SearchAnalyzer { get; set; }
 		ISizeField ITypeMapping.SizeField { get; set; }
 		ISourceField ITypeMapping.SourceField { get; set; }
-		ITimestampField ITypeMapping.TimestampField { get; set; }
-		ITtlField ITypeMapping.TtlField { get; set; }
 
 		/// <summary>
 		/// Convenience method to map as much as it can based on ElasticType attributes set on the type.
@@ -140,10 +131,12 @@ namespace Nest
 		public TypeMappingDescriptor<T> AutoMap(int maxRecursion) => AutoMap(null, maxRecursion);
 
 		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> Dynamic(DynamicMapping dynamic) => Assign(a => a.Dynamic = dynamic);
+		public TypeMappingDescriptor<T> Dynamic(Union<bool, DynamicMapping> dynamic) => Assign(a => a.Dynamic = dynamic);
+
 
 		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> Dynamic(bool dynamic = true) => this.Dynamic(dynamic ? DynamicMapping.Allow : DynamicMapping.Ignore);
+		public TypeMappingDescriptor<T> Dynamic(bool dynamic = true) => Assign(a => a.Dynamic = dynamic);
+
 
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> Parent(TypeName parentType) => Assign(a => a.ParentField = new ParentField { Type = parentType });
@@ -166,11 +159,11 @@ namespace Nest
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> SizeField(Func<SizeFieldDescriptor, ISizeField> sizeFieldSelector) => Assign(a => a.SizeField = sizeFieldSelector?.Invoke(new SizeFieldDescriptor()));
 
-        /// <inheritdoc/>
-        public TypeMappingDescriptor<T> SourceField(Func<SourceFieldDescriptor, ISourceField> sourceFieldSelector) => Assign(a => a.SourceField = sourceFieldSelector?.Invoke(new SourceFieldDescriptor()));
+		/// <inheritdoc/>
+		public TypeMappingDescriptor<T> SourceField(Func<SourceFieldDescriptor, ISourceField> sourceFieldSelector) => Assign(a => a.SourceField = sourceFieldSelector?.Invoke(new SourceFieldDescriptor()));
 
-        /// <inheritdoc/>
-        public TypeMappingDescriptor<T> DisableSizeField(bool disabled = true) => Assign(a => a.SizeField = new SizeField { Enabled = !disabled });
+		/// <inheritdoc/>
+		public TypeMappingDescriptor<T> DisableSizeField(bool disabled = true) => Assign(a => a.SizeField = new SizeField { Enabled = !disabled });
 
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> DisableIndexField(bool disabled = true) => Assign(a => a.IndexField = new IndexField { Enabled = !disabled });
@@ -187,14 +180,10 @@ namespace Nest
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> RoutingField(Func<RoutingFieldDescriptor<T>, IRoutingField> routingFieldSelector) => Assign(a => a.RoutingField = routingFieldSelector?.Invoke(new RoutingFieldDescriptor<T>()));
 
-		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> TimestampField(Func<TimestampFieldDescriptor<T>, ITimestampField> timestampFieldSelector) => Assign(a => a.TimestampField = timestampFieldSelector?.Invoke(new TimestampFieldDescriptor<T>()));
 
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> FieldNamesField(Func<FieldNamesFieldDescriptor<T>, IFieldNamesField> fieldNamesFieldSelector) => Assign(a => a.FieldNamesField = fieldNamesFieldSelector.Invoke(new FieldNamesFieldDescriptor<T>()));
 
-		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> TtlField(Func<TtlFieldDescriptor, ITtlField> ttlFieldSelector) => Assign(a => a.TtlField = ttlFieldSelector?.Invoke(new TtlFieldDescriptor()));
 
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> Meta(Func<FluentDictionary<string, object>, FluentDictionary<string, object>> metaSelector) => Assign(a => a.Meta = metaSelector(new FluentDictionary<string, object>()));

@@ -134,6 +134,8 @@ namespace Nest
 
 		public virtual void Visit(ISpanTermQuery query) => Write("span_term");
 
+		public virtual void Visit(ISpanFieldMaskingQuery query) => Write("field_masking_span");
+
 		public virtual void Visit(ITermQuery query) => Write("term", query.Field);
 
 		public virtual void Visit(IWildcardQuery query) => Write("wildcard");
@@ -142,15 +144,13 @@ namespace Nest
 
 		public virtual void Visit(ITypeQuery query) => Write("type");
 
-		public virtual void Visit(IMissingQuery query) => Write("missing");
-
 		public virtual void Visit(IGeoPolygonQuery query) => Write("geo_polygon");
 
 		public virtual void Visit(IGeoDistanceRangeQuery query) => Write("geo_distance_range");
 
 		public virtual void Visit(IGeoDistanceQuery query) => Write("geo_distance");
 
-        public virtual void Visit(IGeoHashCellQuery filter) => Write("geohash_cell");
+		public virtual void Visit(IGeoHashCellQuery filter) => Write("geohash_cell");
 
 		public virtual void Visit(ITemplateQuery query) => Write("template");
 

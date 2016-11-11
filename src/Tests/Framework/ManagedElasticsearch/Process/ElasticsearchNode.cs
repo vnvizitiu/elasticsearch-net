@@ -6,11 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Threading;
 using Elasticsearch.Net;
 using Nest;
-using Tests.Framework;
-using System.Xml.Linq;
 using Tests.Framework.Versions;
 #if !DOTNETCORE
 using XplatManualResetEvent = System.Threading.ManualResetEvent;
@@ -38,7 +35,6 @@ namespace Tests.Framework.Integration
 		public int Port { get; private set; }
 		private int? ProcessId { get; set; }
 
-
 		private readonly Subject<XplatManualResetEvent> _blockingSubject = new Subject<XplatManualResetEvent>();
 		public IObservable<XplatManualResetEvent> BootstrapWork => _blockingSubject;
 
@@ -57,7 +53,9 @@ namespace Tests.Framework.Integration
 				$"{es}cluster.name={this.FileSystem.ClusterName}",
 				$"{es}node.name={this.FileSystem.NodeName}",
 				$"{es}path.repo={this.FileSystem.RepositoryPath}",
+				$"{es}path.data={Path.Combine(this.FileSystem.DataPath, this.FileSystem.ClusterName)}",
 				$"{es}script.inline=true",
+				$"{es}script.max_compilations_per_minute=10000",
 				$"{es}script.{indexedOrStored}=true",
 				$"{es}node.{attr}testingcluster=true"
 			};
@@ -65,8 +63,30 @@ namespace Tests.Framework.Integration
 			if (!this.Version.IsSnapshot)
 				this.DefaultNodeSettings.Add($"{es}xpack.{shieldOrSecurity}.enabled={this._config.ShieldEnabled.ToString().ToLowerInvariant()}");
 
-			if (this._config.RunIntegrationTests) return;
+			if (this._config.RunIntegrationTests && !this._config.TestAgainstAlreadyRunningElasticsearch) return;
 			this.Port = 9200;
+		}
+
+		private object _lockGetClient = new object { };
+		private IElasticClient _client;
+		public IElasticClient Client
+		{
+			get
+			{
+				if (!this.Started && TestClient.Configuration.RunIntegrationTests)
+					throw new Exception("can not request a client from an ElasticsearchNode if that node hasn't started yet");
+
+				if (this._client != null) return this._client;
+
+				lock (_lockGetClient)
+				{
+					if (this._client != null) return this._client;
+
+					var port = this.Started ? this.Port : 9200;
+					this._client = TestClient.GetClient(ComposeSettings, port);
+					return this.Client;
+				}
+			}
 		}
 
 		public IObservable<ElasticsearchConsoleOut> Start(string[] additionalSettings = null)
@@ -93,8 +113,10 @@ namespace Tests.Framework.Integration
 			var observable = Observable.Using(() => this._process, process => process.Start())
 				.Select(c => new ElasticsearchConsoleOut(c.Error, c.Data));
 
+			Console.WriteLine($"Starting: {_process.Binary} {_process.Arguments}");
+
 			this._processListener = observable
-				.Subscribe(s => this.HandleConsoleMessage(s, handle));
+				.Subscribe(s => this.HandleConsoleMessage(s, handle), (e) => this.Stop(),  () => { });
 
 			if (!handle.WaitOne(HandleTimeout, true))
 			{
@@ -115,32 +137,37 @@ namespace Tests.Framework.Integration
 			if (exception != null) this._blockingSubject.OnError(exception);
 		}
 
+		private readonly object _stopLock = new object();
+
 		public void Stop()
 		{
-			var hasStarted = this.Started;
-			this.Started = false;
-
-			this._processListener?.Dispose();
-			this._process?.Dispose();
-
-			if (this.ProcessId != null)
+			lock (_stopLock)
 			{
-				var esProcess = Process.GetProcesses()
-					.FirstOrDefault(p => p.Id == this.ProcessId.Value);
-				if (esProcess != null)
+				var hasStarted = this.Started;
+				this.Started = false;
+
+				this._processListener?.Dispose();
+				this._process?.Dispose();
+
+				if (this.ProcessId != null)
 				{
-					Console.WriteLine($"Killing elasticsearch PID {this.ProcessId}");
-					esProcess.Kill();
-					esProcess.WaitForExit(5000);
-					esProcess.Close();
+					var esProcess = Process.GetProcesses()
+						.FirstOrDefault(p => p.Id == this.ProcessId.Value);
+					if (esProcess != null)
+					{
+						Console.WriteLine($"Killing elasticsearch PID {this.ProcessId}");
+						esProcess.Kill();
+						esProcess.WaitForExit(5000);
+						esProcess.Close();
+					}
 				}
+
+				this.FileSystem?.Dispose();
+
+				if (!this._config.RunIntegrationTests || !hasStarted) return;
+				Console.WriteLine($"Stopping... node has started and ran integrations: {this._config.RunIntegrationTests}");
+				Console.WriteLine($"Node started on port: {this.Port} using PID: {this.ProcessId}");
 			}
-
-			this.FileSystem?.Dispose();
-
-			if (!this._config.RunIntegrationTests || !hasStarted) return;
-			Console.WriteLine($"Stopping... node has started and ran integrations: {this._config.RunIntegrationTests}");
-			Console.WriteLine($"Node started on port: {this.Port} using PID: {this.ProcessId}");
 		}
 
 		private IObservable<ElasticsearchConsoleOut> UseAlreadyRunningInstance(XplatManualResetEvent handle)
@@ -158,7 +185,7 @@ namespace Tests.Framework.Integration
 			this.WaitForClusterBootstrap(client, handle, alreadyRunningInstance: true);
 
 			this.ValidateLicense(client, handle);
-			return null;
+			return Observable.Empty<ElasticsearchConsoleOut>();
 		}
 
 		private bool ValidateRunningVersion(IElasticClient client, XplatManualResetEvent handle)
@@ -212,6 +239,7 @@ namespace Tests.Framework.Integration
 
 			var exceptionMessageStart = "Server has license plugin installed, ";
 #if DOTNETCORE
+			//TODO Why is this here hardcoded ?
 			var licensePath = @"C:\license.json";
 			var licenseFile = File.Exists(licensePath) ? licensePath : string.Empty;
 #else
@@ -279,7 +307,7 @@ namespace Tests.Framework.Integration
 
 			string version; int? pid; int port;
 
-			if (consoleOut.TryParseNodeInfo(out version, out pid))
+			if (this.ProcessId == null && consoleOut.TryParseNodeInfo(out version, out pid))
 			{
 				var startedVersion = new ElasticsearchVersion(version);
 				this.ProcessId = pid;
@@ -297,14 +325,6 @@ namespace Tests.Framework.Integration
 			}
 		}
 
-		public IElasticClient Client(Func<ConnectionSettings, ConnectionSettings> settings = null, bool forceInMemory = false)
-		{
-			if (!this.Started && TestClient.Configuration.RunIntegrationTests)
-				throw new Exception("can not request a client from an ElasticsearchNode if that node hasn't started yet");
-			var port = this.Started ? this.Port : 9200;
-			return GetPrivateClient(settings, forceInMemory, port);
-		}
-
 		private ConnectionSettings ClusterSettings(ConnectionSettings s, Func<ConnectionSettings, ConnectionSettings> settings) =>
 			AddBasicAuthentication(AppendClusterNameToHttpHeaders(settings(s)));
 
@@ -316,6 +336,8 @@ namespace Tests.Framework.Integration
 				: TestClient.GetClient(s => ClusterSettings(s, settings), port);
 			return client;
 		}
+
+		private ConnectionSettings ComposeSettings(ConnectionSettings s) => AddBasicAuthentication(AppendClusterNameToHttpHeaders(s));
 
 		private ConnectionSettings AddBasicAuthentication(ConnectionSettings settings) =>
 			!this._config.ShieldEnabled ? settings : settings.BasicAuthentication("es_admin", "es_admin");

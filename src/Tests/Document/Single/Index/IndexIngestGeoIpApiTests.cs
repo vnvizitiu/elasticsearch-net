@@ -12,13 +12,12 @@ using Xunit;
 
 namespace Tests.Document.Single.Index
 {
-	[Collection(TypeOfCluster.Indexing)]
 	public class IndexIngestGeoIpApiTests :
-		ApiIntegrationTestBase<IIndexResponse, IIndexRequest<Project>, IndexDescriptor<Project>, IndexRequest<Project>>
+		ApiIntegrationTestBase<IntrusiveOperationCluster, IIndexResponse, IIndexRequest<Project>, IndexDescriptor<Project>, IndexRequest<Project>>
 	{
 		private static string PipelineId { get; } = "pipeline-" + Guid.NewGuid().ToString("N").Substring(0, 8);
 
-		public IndexIngestGeoIpApiTests(IndexingCluster cluster, EndpointUsage usage) : base(cluster, usage)
+		public IndexIngestGeoIpApiTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage)
 		{
 		}
 
@@ -103,13 +102,13 @@ namespace Tests.Document.Single.Index
 		protected override IndexDescriptor<Project> NewDescriptor() => new IndexDescriptor<Project>(this.Document);
 
 		protected override Func<IndexDescriptor<Project>, IIndexRequest<Project>> Fluent => s => s
-			.Refresh()
+			.Refresh(Refresh.True)
 			.Pipeline(PipelineId);
 
 		protected override IndexRequest<Project> Initializer =>
 			new IndexRequest<Project>(this.Document)
 			{
-				Refresh = true,
+				Refresh = Refresh.True,
 				Pipeline = PipelineId
 			};
 

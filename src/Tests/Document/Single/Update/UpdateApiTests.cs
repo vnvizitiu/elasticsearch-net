@@ -6,13 +6,13 @@ using Tests.Framework;
 using Tests.Framework.Integration;
 using Tests.Framework.MockData;
 using Xunit;
+using FluentAssertions;
 
 namespace Tests.Document.Single.Update
 {
-	[Collection(TypeOfCluster.Indexing)]
-	public class UpdateApiTests : ApiIntegrationTestBase<IUpdateResponse<Project>, IUpdateRequest<Project, Project>, UpdateDescriptor<Project, Project>, UpdateRequest<Project, Project>>
+	public class UpdateApiTests : ApiIntegrationTestBase<WritableCluster, IUpdateResponse<Project>, IUpdateRequest<Project, Project>, UpdateDescriptor<Project, Project>, UpdateRequest<Project, Project>>
 	{
-		public UpdateApiTests(IndexingCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		public UpdateApiTests(WritableCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override void IntegrationSetup(IElasticClient client, CallUniqueValues values)
 		{
@@ -54,5 +54,11 @@ namespace Tests.Document.Single.Update
 			DocAsUpsert = true,
 			DetectNoop = true
 		};
+
+		protected override void ExpectResponse(IUpdateResponse<Project> response)
+		{
+			response.IsValid.Should().BeTrue();
+			response.Result.Should().Be(Result.Noop);
+		}
 	}
 }

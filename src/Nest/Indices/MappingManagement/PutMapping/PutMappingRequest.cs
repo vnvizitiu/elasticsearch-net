@@ -25,7 +25,7 @@ namespace Nest
 		/// <inheritdoc/>
 		public IDynamicTemplateContainer DynamicTemplates { get; set; }
 		/// <inheritdoc/>
-		public DynamicMapping? Dynamic { get; set; }
+		public Union<bool, DynamicMapping> Dynamic { get; set; }
 		/// <inheritdoc/>
 		public string Analyzer { get; set; }
 		/// <inheritdoc/>
@@ -48,11 +48,6 @@ namespace Nest
 		public ISizeField SizeField { get; set; }
 		/// <inheritdoc/>
 		public ISourceField SourceField { get; set; }
-		/// <inheritdoc/>
-		public ITimestampField TimestampField { get; set; }
-		/// <inheritdoc/>
-		public ITtlField TtlField { get; set; }
-		/// <inheritdoc/>
 	}
 
 	public partial class PutMappingRequest<T> where T : class
@@ -68,7 +63,7 @@ namespace Nest
 		/// <inheritdoc/>
 		public IDynamicTemplateContainer DynamicTemplates { get; set; }
 		/// <inheritdoc/>
-		public DynamicMapping? Dynamic { get; set; }
+		public Union<bool, DynamicMapping> Dynamic { get; set; }
 		/// <inheritdoc/>
 		public string Analyzer { get; set; }
 		/// <inheritdoc/>
@@ -91,10 +86,6 @@ namespace Nest
 		public ISizeField SizeField { get; set; }
 		/// <inheritdoc/>
 		public ISourceField SourceField { get; set; }
-		/// <inheritdoc/>
-		public ITimestampField TimestampField { get; set; }
-		/// <inheritdoc/>
-		public ITtlField TtlField { get; set; }
 	}
 
 	[DescriptorFor("IndicesPutMapping")]
@@ -111,7 +102,7 @@ namespace Nest
 		string ITypeMapping.Analyzer { get; set; }
 		string ITypeMapping.SearchAnalyzer { get; set; }
 		IDynamicTemplateContainer ITypeMapping.DynamicTemplates { get; set; }
-		DynamicMapping? ITypeMapping.Dynamic { get; set; }
+		Union<bool, DynamicMapping> ITypeMapping.Dynamic { get; set; }
 		IFieldNamesField ITypeMapping.FieldNamesField { get; set; }
 		IIndexField ITypeMapping.IndexField { get; set; }
 		FluentDictionary<string, object> ITypeMapping.Meta { get; set; }
@@ -121,8 +112,6 @@ namespace Nest
 		IRoutingField ITypeMapping.RoutingField { get; set; }
 		ISizeField ITypeMapping.SizeField { get; set; }
 		ISourceField ITypeMapping.SourceField { get; set; }
-		ITimestampField ITypeMapping.TimestampField { get; set; }
-		ITtlField ITypeMapping.TtlField { get; set; }
 
 		/// <summary>
 		/// Convenience method to map as much as it can based on ElasticType attributes set on the type.
@@ -137,10 +126,10 @@ namespace Nest
 		public PutMappingDescriptor<T> AutoMap(int maxRecursion) => AutoMap(null, maxRecursion);
 
 		/// <inheritdoc/>
-		public PutMappingDescriptor<T> Dynamic(DynamicMapping dynamic) => Assign(a => a.Dynamic = dynamic);
+		public PutMappingDescriptor<T> Dynamic(Union<bool, DynamicMapping> dynamic) => Assign(a => a.Dynamic = dynamic);
 
 		/// <inheritdoc/>
-		public PutMappingDescriptor<T> Dynamic(bool dynamic = true) => this.Dynamic(dynamic ? DynamicMapping.Allow : DynamicMapping.Ignore);
+		public PutMappingDescriptor<T> Dynamic(bool dynamic = true) => Assign(a => a.Dynamic = dynamic);
 
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> Parent(TypeName parentType) => Assign(a => a.ParentField = new ParentField { Type = parentType });
@@ -184,14 +173,9 @@ namespace Nest
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> RoutingField(Func<RoutingFieldDescriptor<T>, IRoutingField> routingFieldSelector) => Assign(a => a.RoutingField = routingFieldSelector?.Invoke(new RoutingFieldDescriptor<T>()));
 
-		/// <inheritdoc/>
-		public PutMappingDescriptor<T> TimestampField(Func<TimestampFieldDescriptor<T>, ITimestampField> timestampFieldSelector) => Assign(a => a.TimestampField = timestampFieldSelector?.Invoke(new TimestampFieldDescriptor<T>()));
 
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> FieldNamesField(Func<FieldNamesFieldDescriptor<T>, IFieldNamesField> fieldNamesFieldSelector) => Assign(a => a.FieldNamesField = fieldNamesFieldSelector.Invoke(new FieldNamesFieldDescriptor<T>()));
-
-		/// <inheritdoc/>
-		public PutMappingDescriptor<T> TtlField(Func<TtlFieldDescriptor, ITtlField> ttlFieldSelector) => Assign(a => a.TtlField = ttlFieldSelector?.Invoke(new TtlFieldDescriptor()));
 
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> Meta(Func<FluentDictionary<string, object>, FluentDictionary<string, object>> metaSelector) => Assign(a => a.Meta = metaSelector(new FluentDictionary<string, object>()));

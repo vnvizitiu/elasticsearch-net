@@ -11,8 +11,7 @@ using Xunit;
 
 namespace Tests.Search.Search
 {
-	[Collection(TypeOfCluster.ReadOnly)]
-	public class SearchApiTests : ApiIntegrationTestBase<ISearchResponse<Project>, ISearchRequest, SearchDescriptor<Project>, SearchRequest<Project>>
+	public class SearchApiTests : ApiIntegrationTestBase<ReadOnlyCluster, ISearchResponse<Project>, ISearchRequest, SearchDescriptor<Project>, SearchRequest<Project>>
 	{
 		public SearchApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
@@ -102,7 +101,6 @@ namespace Tests.Search.Search
 		};
 	}
 
-	[Collection(TypeOfCluster.ReadOnly)]
 	public class SearchApiFieldsTests : SearchApiTests
 	{
 		public SearchApiFieldsTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
@@ -136,7 +134,7 @@ namespace Tests.Search.Search
 
 				}
 			},
-			fields = new[] { "name", "numberOfCommits" }
+			stored_fields = new[] { "name", "numberOfCommits" }
 		};
 
 		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
@@ -153,7 +151,7 @@ namespace Tests.Search.Search
 		.PostFilter(f => f
 			.Term(p => p.State, StateOfBeing.Stable)
 		)
-		.Fields(fs => fs
+		.StoredFields(fs => fs
 			.Field(p => p.Name)
 			.Field(p => p.NumberOfCommits)
 		);
@@ -172,7 +170,7 @@ namespace Tests.Search.Search
 				Field = "state",
 				Value = "Stable"
 			}),
-			Fields = Infer.Fields<Project>(p => p.Name, p => p.NumberOfCommits)
+			StoredFields = Infer.Fields<Project>(p => p.Name, p => p.NumberOfCommits)
 		};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
@@ -187,7 +185,6 @@ namespace Tests.Search.Search
 		}
 	}
 
-	[Collection(TypeOfCluster.ReadOnly)]
 	public class SearchApiContainingConditionlessQueryContainerTests : SearchApiTests
 	{
 		public SearchApiContainingConditionlessQueryContainerTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
@@ -265,11 +262,10 @@ namespace Tests.Search.Search
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 		}
 	}
 
-	[Collection(TypeOfCluster.ReadOnly)]
 	public class SearchApiNullQueryContainerTests : SearchApiTests
 	{
 		public SearchApiNullQueryContainerTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
@@ -297,14 +293,18 @@ namespace Tests.Search.Search
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 		}
 	}
 
-	[Collection(TypeOfCluster.ReadOnly)]
 	public class SearchApiNullQueriesInQueryContainerTests : SearchApiTests
 	{
 		public SearchApiNullQueriesInQueryContainerTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+
+		// when we serialize we write and empty bool, when we read the fact it was verbatim is lost so while
+		// we technically DO support deserialization here (and empty bool will get set) when we write it a second
+		// time it will NOT write that bool because the is verbatim did not carry over.
+		protected override bool SupportsDeserialization => false;
 
 		protected override object ExpectJson => new
 		{
@@ -342,7 +342,7 @@ namespace Tests.Search.Search
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 		}
 	}
 }

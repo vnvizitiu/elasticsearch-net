@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Elasticsearch.Net;
@@ -14,11 +15,10 @@ namespace Nest
 
 		PropertyName IProperty.Name { get; set; }
 		TypeName IProperty.Type { get; set; }
-		string IProperty.IndexName { get; set; }
+		IDictionary<string, object> IProperty.LocalMetadata { get; set; }
 
 		public string Name { get; set; }
 		public bool Ignore { get; set; }
-		public string IndexName { get { return Self.IndexName; } set { Self.IndexName = value; } }
 
 		protected ElasticsearchPropertyAttributeBase(string typeName)
 		{

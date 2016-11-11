@@ -9,8 +9,7 @@ using Xunit;
 
 namespace Tests.Cluster.NodesInfo
 {
-	[Collection(TypeOfCluster.ReadOnly)]
-	public class NodesInfoApiTests : ApiIntegrationTestBase<INodesInfoResponse, INodesInfoRequest, NodesInfoDescriptor, NodesInfoRequest>
+	public class NodesInfoApiTests : ApiIntegrationTestBase<ReadOnlyCluster, INodesInfoResponse, INodesInfoRequest, NodesInfoDescriptor, NodesInfoRequest>
 	{
 		public NodesInfoApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 		protected override LazyResponses ClientUsage() => Calls(
@@ -51,7 +50,6 @@ namespace Tests.Cluster.NodesInfo
 			node.Ip.Should().NotBeNullOrWhiteSpace();
 			node.Version.Should().NotBeNullOrWhiteSpace();
 			node.BuildHash.Should().NotBeNullOrWhiteSpace();
-			node.HttpAddress.Should().NotBeNullOrWhiteSpace();
 			node.Roles.Should().NotBeNullOrEmpty();
 		}
 
