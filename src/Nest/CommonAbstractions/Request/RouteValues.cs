@@ -7,8 +7,8 @@ namespace Nest
 	//TODO INTERNAL ?
 	public class RouteValues
 	{
-		private Dictionary<string, IUrlParameter> _routeValues = new Dictionary<string, IUrlParameter>();
-		private Dictionary<string, string> _resolved = new Dictionary<string, string>();
+		private readonly Dictionary<string, IUrlParameter> _routeValues = new Dictionary<string, IUrlParameter>();
+		private readonly Dictionary<string, string> _resolved = new Dictionary<string, string>();
 
 		public string Index => GetResolved("index");
 		public string Type => GetResolved("type");
@@ -30,6 +30,10 @@ namespace Nest
 		public string Target => GetResolved("target");
 		public string NewIndex => GetResolved("new_index");
 		public string Alias => GetResolved("alias");
+		public string WatchId => GetResolved("watch_id");
+		public string ThreadPoolPatterns => GetResolved("thread_pool_patterns");
+		public string ActionId => GetResolved("action_id");
+		public WatcherStatsMetric? WatcherStatsMetric => GetResolved("watcher_stats_metric").ToEnum<WatcherStatsMetric>();
 
 		private string GetResolved(string route)
 		{
@@ -51,6 +55,7 @@ namespace Nest
 			this._routeValues[name] = routeValue;
 			return this;
 		}
+
 		public void Resolve(IConnectionSettingsValues settings)
 		{
 			foreach (var kv in _routeValues)

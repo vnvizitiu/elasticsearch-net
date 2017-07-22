@@ -9,6 +9,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 using static Nest.Infer;
@@ -55,6 +56,7 @@ namespace Tests.Search.Request
 				.Settings(s => s
 					.NumberOfReplicas(0)
 					.NumberOfShards(1)
+					.Setting("mapping.single_type", "false")
 				)
 				.Mappings(map => map
 					.Map<King>(m => m.AutoMap()
@@ -111,7 +113,8 @@ namespace Tests.Search.Request
 		}
 	}
 
-	/**[[inner-hits-usage]]
+	/**
+	 * [[inner-hits-usage]]
 	*== Inner Hits Usage
 	*
 	* The {ref_current}/mapping-parent-field.html[parent/child] and {ref_current}/nested.html[nested] features allow the
@@ -132,7 +135,7 @@ namespace Tests.Search.Request
 	public abstract class InnerHitsApiTestsBase<TRoyal> : ApiIntegrationTestBase<IntrusiveOperationCluster, ISearchResponse<TRoyal>, ISearchRequest, SearchDescriptor<TRoyal>, SearchRequest<TRoyal>>
 		where TRoyal : class, IRoyal
 	{
-		public InnerHitsApiTestsBase(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		protected InnerHitsApiTestsBase(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected abstract IndexName Index { get; }
 		protected override void IntegrationSetup(IElasticClient client, CallUniqueValues values) => new RoyalSeeder(this.Client, Index).Seed();
@@ -155,7 +158,7 @@ namespace Tests.Search.Request
 	}
 
 	/**[float]
-	*== Query Inner Hits
+	*=== Query Inner Hits
 	*/
 	public class QueryInnerHitsApiTests : InnerHitsApiTestsBase<King>
 	{

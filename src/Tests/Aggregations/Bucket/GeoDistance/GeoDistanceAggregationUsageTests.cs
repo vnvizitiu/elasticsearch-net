@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using Nest;
+using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 
@@ -58,23 +60,23 @@ namespace Tests.Aggregations.Bucket.GeoDistance
 				{
 					Field = Field((Project p) => p.Location),
 					Origin = "52.376, 4.894",
-					Ranges = new List<Nest.Range>
+					Ranges = new List<AggregationRange>
 					{
-						new Nest.Range { To = 100 },
-						new Nest.Range { From = 100, To = 300 },
-						new Nest.Range { From = 300 }
+						new AggregationRange { To = 100 },
+						new AggregationRange { From = 100, To = 300 },
+						new AggregationRange { From = 300 }
 					}
 				}
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 			var ringsAroundAmsterdam = response.Aggs.GeoDistance("rings_around_amsterdam");
 			ringsAroundAmsterdam.Should().NotBeNull();
-			ringsAroundAmsterdam.Buckets.Where(r => r.Key == "*-100.0").FirstOrDefault().Should().NotBeNull();
-			ringsAroundAmsterdam.Buckets.Where(r => r.Key == "100.0-300.0").FirstOrDefault().Should().NotBeNull();
-			ringsAroundAmsterdam.Buckets.Where(r => r.Key == "300.0-*").FirstOrDefault().Should().NotBeNull();
+			ringsAroundAmsterdam.Buckets.FirstOrDefault(r => r.Key == "*-100.0").Should().NotBeNull();
+			ringsAroundAmsterdam.Buckets.FirstOrDefault(r => r.Key == "100.0-300.0").Should().NotBeNull();
+			ringsAroundAmsterdam.Buckets.FirstOrDefault(r => r.Key == "300.0-*").Should().NotBeNull();
 		}
 	}
 }

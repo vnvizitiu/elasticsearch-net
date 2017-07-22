@@ -6,6 +6,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Xunit;
 
 namespace Tests.Cluster.TaskManagement.TasksCancel
@@ -41,9 +42,10 @@ namespace Tests.Cluster.TaskManagement.TasksCancel
 				);
 
 				var taskId = reindex.Task;
+
 				//TODO change this to GetTasks when it's implemented
 				var taskInfo = client.ListTasks(new ListTasksRequest());
-				taskInfo.IsValid.Should().BeTrue();
+				taskInfo.ShouldBeValid();
 				values.ExtendedValue("taskId", taskId);
 			}
 		}
@@ -57,7 +59,7 @@ namespace Tests.Cluster.TaskManagement.TasksCancel
 		protected override bool ExpectIsValid => true;
 		protected override int ExpectStatusCode => 200;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
-		protected override string UrlPath => $"/_tasks/{Uri.EscapeDataString(this.TaskId.ToString())}/_cancel";
+		protected override string UrlPath => $"/_tasks/{UrlEncode(this.TaskId.ToString())}/_cancel";
 		protected override bool SupportsDeserialization => false;
 
 

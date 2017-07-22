@@ -1,5 +1,6 @@
 using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.QueryDsl.TermLevel.Range
@@ -19,7 +20,8 @@ namespace Tests.QueryDsl.TermLevel.Range
 					gt = 1.0,
 					gte = 1.1,
 					lt = 2.1,
-					lte = 2.0
+					lte = 2.0,
+					relation = "within"
 				}
 			}
 		};
@@ -32,7 +34,8 @@ namespace Tests.QueryDsl.TermLevel.Range
 			GreaterThan = 1.0,
 			GreaterThanOrEqualTo = 1.1,
 			LessThan = 2.1,
-			LessThanOrEqualTo = 2.0
+			LessThanOrEqualTo = 2.0,
+			Relation = RangeRelation.Within
 		};
 
 		protected override QueryContainer QueryFluent(QueryContainerDescriptor<Project> q) => q
@@ -44,6 +47,7 @@ namespace Tests.QueryDsl.TermLevel.Range
 				.GreaterThanOrEquals(1.1)
 				.LessThan(2.1)
 				.LessThanOrEquals(2.0)
+				.Relation(RangeRelation.Within)
 			);
 
 		protected override ConditionlessWhen ConditionlessWhen => new ConditionlessWhen<INumericRangeQuery>(q => q.Range as INumericRangeQuery)

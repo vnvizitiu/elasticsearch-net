@@ -4,6 +4,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 
@@ -128,6 +129,8 @@ namespace Tests.Aggregations.Bucket.DateHistogram
 			dateHistogram.Should().NotBeNull();
 			dateHistogram.Buckets.Should().NotBeNull();
 			dateHistogram.Buckets.Count.Should().BeGreaterThan(10);
+			dateHistogram.Buckets.Should().NotBeNull();
+			dateHistogram.Buckets.Count.Should().BeGreaterThan(0);
 			foreach (var item in dateHistogram.Buckets)
 			{
 				item.Date.Should().NotBe(default(DateTime));

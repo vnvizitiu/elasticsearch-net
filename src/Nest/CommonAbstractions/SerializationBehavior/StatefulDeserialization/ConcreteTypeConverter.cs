@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reflection;
 using Elasticsearch.Net;
 using Newtonsoft.Json;
@@ -92,7 +94,16 @@ namespace Nest
 
 		private static JObject CreateIntermediateJObject(JsonReader reader)
 		{
+			var original = reader.DateParseHandling;
+			// Temporarily turn off DateTime parsing since we deserialize
+			// to a dynamic object and the date could be stored as a string
+			// in the users POCO and we need to preserve its format. This is
+			// side-effect free since we read the reader to completion using
+			// JObject.Load before handing off a new one to the deserialized
+			// hit object.
+			reader.DateParseHandling = DateParseHandling.None;
 			var jObject = JObject.Load(reader);
+			reader.DateParseHandling = original;
 			return jObject;
 		}
 
@@ -128,11 +139,13 @@ namespace Nest
 				Id = d._id,
 				Parent = d._parent,
 				Routing = d._routing,
-				Sorts = d.sort,
 				_Highlight = d.highlight is Dictionary<string, List<string>> ? d.highlight : null,
 				Explanation = d._explanation is Explanation ? d._explanation : null,
 				Nested = d._nested
 			};
+			JArray sorts = d.sort;
+			if (sorts != null)
+				hitDynamic.Sorts = new ReadOnlyCollection<object>(sorts.ToObject<IEnumerable<object>>().ToList());
 
 			object o = d._source ?? DynamicResponse.Create(fieldsDictionary) ?? new object();
 			var concreteType = selector(o, hitDynamic);

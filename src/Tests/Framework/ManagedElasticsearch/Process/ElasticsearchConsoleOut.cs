@@ -1,8 +1,9 @@
 using System;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Tests.Framework.Versions;
 
-namespace Tests.Framework.Integration
+namespace Tests.Framework.ManagedElasticsearch.Process
 {
 	public class ElasticsearchConsoleOut : ConsoleOut
 	{
@@ -40,13 +41,16 @@ namespace Tests.Framework.Integration
 		private static readonly Regex ConsoleLineParser =
 			new Regex(@"\[(?<date>.*?)\]\[(?<level>.*?)\]\[(?<section>.*?)\] \[(?<node>.*?)\] (?<message>.+)");
 
-		public ElasticsearchConsoleOut(bool error, string consoleLine) : base(error, consoleLine)
+		public ElasticsearchConsoleOut(ElasticsearchVersion version, bool error, string consoleLine) : base(error, consoleLine)
 		{
 			if (string.IsNullOrEmpty(consoleLine)) return;
 			var match = ConsoleLineParser.Match(consoleLine);
 			if (!match.Success) return;
 			var dateString = match.Groups["date"].Value.Trim();
-			Date = DateTime.ParseExact(dateString, "yyyy-MM-ddTHH:mm:ss,fff", CultureInfo.CurrentCulture);
+			if (version.Major >= 5)
+				Date = DateTime.ParseExact(dateString, "yyyy-MM-ddTHH:mm:ss,fff", CultureInfo.CurrentCulture);
+			else
+				Date = DateTime.ParseExact(dateString, "yyyy-MM-dd HH:mm:ss,fff", CultureInfo.CurrentCulture);
 			Level = match.Groups["level"].Value.Trim();
 			Section = match.Groups["section"].Value.Trim().Replace("org.elasticsearch.", "");
 			Node = match.Groups["node"].Value.Trim();
@@ -57,8 +61,8 @@ namespace Tests.Framework.Integration
 		private static readonly Regex InfoParser =
 			new Regex(@"version\[(?<version>.*)\], pid\[(?<pid>.*)\], build\[(?<build>.+)\]");
 
-		public bool InNodeSection => this.Section != "o.e.n.Node" || this.Section != "node";
-		public bool InHttpSection => this.Section != "o.e.h.HttpServer" || this.Section != "http";
+		public bool InNodeSection => this.Section == "o.e.n.Node" || this.Section == "node";
+		public bool InHttpSection => this.Section == "o.e.h.HttpServer" || this.Section == "http";
 
 		public bool TryParseNodeInfo(out string version, out int? pid)
 		{
@@ -77,7 +81,7 @@ namespace Tests.Framework.Integration
 		public bool TryGetStartedConfirmation()
 		{
 			if (!this.InNodeSection) return false;
-			return this.Message == "started";
+			return this.Message.Trim() == "started";
 		}
 
 		private static readonly Regex PortParser =

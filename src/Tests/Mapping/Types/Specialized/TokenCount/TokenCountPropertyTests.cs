@@ -4,6 +4,7 @@ using Nest;
 using Tests.Framework;
 using Tests.Framework.MockData;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Mapping.Types.Core.TokenCount
 {
@@ -21,8 +22,7 @@ namespace Tests.Mapping.Types.Core.TokenCount
 					analyzer = "standard",
 					index = false,
 					boost = 1.2,
-					null_value = 0.0,
-					include_in_all = true
+					null_value = 0.0
 				}
 			}
 		};
@@ -34,7 +34,6 @@ namespace Tests.Mapping.Types.Core.TokenCount
 					.Index(false)
 					.Boost(1.2)
 					.NullValue(0.0)
-					.IncludeInAll()
 				);
 
 
@@ -45,8 +44,7 @@ namespace Tests.Mapping.Types.Core.TokenCount
 					Index = false,
 					Analyzer = "standard",
 					Boost = 1.2,
-					NullValue = 0.0,
-					IncludeInAll = true
+					NullValue = 0.0
 				}
 			}
 		};

@@ -1,43 +1,50 @@
 ﻿#I @"../../packages/build/FAKE/tools"
 #r @"FakeLib.dll"
 
+#load @"Commandline.fsx"
+#load @"Projects.fsx"
 #load @"Paths.fsx"
+#load @"Tooling.fsx"
 
 open System.IO
 open Fake 
 open Paths
 open Projects
 open Tooling
+open Commandline
 
-module Tests = 
-    let private testProjectJson parallelization =
-        DotNetProject.All
-        |> Seq.iter(fun p -> 
-            let path = Paths.ProjectJson p.Name
-            DotNet.Exec ["restore"; path; "--verbosity Warning"]
-        )
+module Tests =
+    open System
 
-        let testPath = Paths.Source "Tests/project.json"
-        DotNet.Exec ["restore"; testPath; "--verbosity Warning"]
-        DotNet.Exec ["build"; testPath; "--configuration Release"; "-f"; "netcoreapp1.0"]
-        DotNet.Exec ["test"; testPath; "-parallel"; parallelization; "-xml"; Paths.Output("TestResults-Core-Clr.xml")]
+    let private buildingOnTravis = getEnvironmentVarAsBool "TRAVIS"
 
-    let private testDesktopClr parallelization = 
-        let folder = Paths.ProjectOutputFolder (PrivateProject PrivateProject.Tests) DotNetFramework.Net46
-        let testDll = Path.Combine(folder, "Tests.dll")
-        XUnit.Exec [testDll; "-parallel"; parallelization; "-xml"; Paths.Output("TestResults-Desktop-Clr.xml")] 
-        |> ignore
-        
+    let private setLocalEnvVars() = 
+        let clusterFilter =  getBuildParamOrDefault "clusterfilter" ""
+        let testFilter = getBuildParamOrDefault "testfilter" ""
+        let numberOfConnections = getBuildParamOrDefault "numberOfConnections" ""
+        setProcessEnvironVar "NEST_INTEGRATION_CLUSTER" clusterFilter
+        setProcessEnvironVar "NEST_TEST_FILTER" testFilter
+        setProcessEnvironVar "NEST_NUMBER_OF_CONNECTIONS" numberOfConnections
 
-    let RunUnitTestsForever() = 
-        while true do testDesktopClr "all"
-        
-    let RunUnitTests() = 
-        testDesktopClr "all"
-        testProjectJson "all"
+    let private dotnetTest (target: Commandline.MultiTarget) =
+        CreateDir Paths.BuildOutput
+        let command = 
+            let p = ["xunit"; "-parallel"; "all"; "-xml"; "../.." @@ Paths.Output("TestResults-Desktop-Clr.xml")] 
+            match (target, buildingOnTravis) with 
+            | (_, true) 
+            | (Commandline.MultiTarget.One, _) -> ["-framework"; "netcoreapp1.1"] |> List.append p
+            | _  -> p
 
+        let dotnet = Tooling.BuildTooling("dotnet")
+        dotnet.ExecIn "src/Tests" command |> ignore
 
-    let RunIntegrationTests() commaSeparatedEsVersions =
+    let RunUnitTests() =
+        setLocalEnvVars()
+        dotnetTest Commandline.multiTarget
+
+    let RunIntegrationTests() =
+        setLocalEnvVars()
+        let commaSeparatedEsVersions = getBuildParamOrDefault "esversions" "" 
         let esVersions = 
             match commaSeparatedEsVersions with
             | "" -> failwith "when running integrate you have to pass a comma separated list of elasticsearch versions to test"
@@ -45,4 +52,4 @@ module Tests =
         
         for esVersion in esVersions do
             setProcessEnvironVar "NEST_INTEGRATION_VERSION" esVersion
-            testDesktopClr "all"
+            dotnetTest Commandline.multiTarget |> ignore

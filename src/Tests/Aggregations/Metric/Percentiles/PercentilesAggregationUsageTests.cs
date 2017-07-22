@@ -3,6 +3,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 
@@ -29,7 +30,6 @@ namespace Tests.Aggregations.Metric.Percentiles
 						script = new
 						{
 							inline = "doc['numberOfCommits'].value * 1.2",
-							lang = "groovy"
 						},
 						missing = 0.0
 					}
@@ -47,7 +47,7 @@ namespace Tests.Aggregations.Metric.Percentiles
 							.NumberOfSignificantValueDigits(3)
 						)
 					)
-					.Script(ss => ss.Inline("doc['numberOfCommits'].value * 1.2").Lang("groovy"))
+					.Script(ss => ss.Inline("doc['numberOfCommits'].value * 1.2"))
 					.Missing(0)
 				)
 			);
@@ -62,7 +62,7 @@ namespace Tests.Aggregations.Metric.Percentiles
 					{
 						NumberOfSignificantValueDigits = 3
 					},
-					Script = new InlineScript("doc['numberOfCommits'].value * 1.2") { Lang = "groovy" },
+					Script = new InlineScript("doc['numberOfCommits'].value * 1.2"),
 					Missing = 0
 				}
 			};

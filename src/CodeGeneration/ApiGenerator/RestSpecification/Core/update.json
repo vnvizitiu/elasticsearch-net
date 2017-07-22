@@ -45,7 +45,7 @@
         },
         "lang": {
           "type": "string",
-          "description": "The script language (default: groovy)"
+          "description": "The script language (default: painless)"
         },
         "parent": {
           "type": "string",
@@ -73,7 +73,7 @@
           "description": "Explicit timestamp for the document"
         },
         "ttl": {
-          "type": "duration",
+          "type": "time",
           "description": "Expiration time for the document"
         },
         "version": {

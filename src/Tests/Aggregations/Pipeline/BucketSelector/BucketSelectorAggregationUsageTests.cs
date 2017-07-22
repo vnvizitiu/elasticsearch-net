@@ -3,6 +3,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.Aggregations.Pipeline.BucketSelector
@@ -42,8 +43,7 @@ namespace Tests.Aggregations.Pipeline.BucketSelector
 								},
 								script = new
 								{
-									inline = "totalCommits >= 500",
-									lang = "groovy"
+									inline = "params.totalCommits >= 500",
 								}
 							}
 						}
@@ -66,7 +66,7 @@ namespace Tests.Aggregations.Pipeline.BucketSelector
 							.BucketsPath(bp => bp
 								.Add("totalCommits", "commits")
 							)
-							.Script(ss => ss.Inline("totalCommits >= 500").Lang("groovy"))
+							.Script(ss => ss.Inline("params.totalCommits >= 500"))
 						)
 					)
 				)
@@ -86,7 +86,7 @@ namespace Tests.Aggregations.Pipeline.BucketSelector
 							{ "totalCommits", "commits" },
 						})
 					{
-						Script = new InlineScript("totalCommits >= 500") { Lang = "groovy" }
+						Script = new InlineScript("params.totalCommits >= 500")
 					}
 			}
 		};

@@ -7,6 +7,7 @@ using Tests.Framework.Integration;
 using Tests.Framework.MockData;
 using Xunit;
 using FluentAssertions;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Document.Single.Update
 {
@@ -57,7 +58,7 @@ namespace Tests.Document.Single.Update
 
 		protected override void ExpectResponse(IUpdateResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 			response.Result.Should().Be(Result.Noop);
 		}
 	}

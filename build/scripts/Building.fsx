@@ -1,53 +1,81 @@
 ﻿#I @"../../packages/build/FAKE/tools"
+#I @"../../packages/build/FSharp.Data/lib/net40"
 #r @"FakeLib.dll"
+#r @"FSharp.Data.dll"
+#nowarn "0044" //TODO sort out FAKE 5
 
 #load @"Paths.fsx"
+#load @"Tooling.fsx"
+#load @"Versioning.fsx"
 
+open System 
 open Fake 
+open FSharp.Data 
 
 open Paths
 open Projects
-open Tooling;
+open Tooling
+open Versioning
 
-type Build() = 
+module Build =
 
-    static let runningRelease = hasBuildParam "version" || hasBuildParam "apikey" || getBuildParam "target" = "canary" || getBuildParam "target" = "release"
+    let private runningRelease = hasBuildParam "version" || hasBuildParam "apikey" || getBuildParam "target" = "canary" || getBuildParam "target" = "release"
+    let private quickBuild = not (getBuildParam "target" = "release" || getBuildParam "target" = "canary")
 
-    static let compileCore() =
-        DotNetProject.AllPublishable
-        |> Seq.iter(fun p -> 
-            let path = Paths.ProjectJson p.Name
-            let o = Paths.ProjectOutputFolder p DotNetFramework.NetStandard1_3
-            DotNet.Exec ["restore"; path; "--verbosity Warning"]
-            DotNet.Exec ["build"; path; "--configuration Release"; "-o"; o; "-f"; DotNetFramework.NetStandard1_3.Identifier.MSBuild]
-        )
+    type private GlobalJson = JsonProvider<"../../global.json">
+    let private pinnedSdkVersion = GlobalJson.GetSample().Sdk.Version
+    if isMono then setProcessEnvironVar "TRAVIS" "true"
+    let private buildingOnTravis = getEnvironmentVarAsBool "TRAVIS" 
 
-    static let compileDesktop target =
-        MsBuild.Build(target, DotNetFramework.Net45.Identifier)
-        MsBuild.Build(target, DotNetFramework.Net46.Identifier)
+    let private sln = sprintf "src/Elasticsearch%s.sln" (if buildingOnTravis then ".DotNetCoreOnly" else "")
 
-    static let gitLink() =
-        DotNetProject.AllPublishable
-        |> Seq.iter(fun p ->
-            let projectName = (p.Name |> directoryInfo).Name
-            let link framework = 
-                GitLink.Exec ["."; "-u"; Paths.Repository; "-d"; (Paths.ProjectOutputFolder p framework); "-include"; projectName] 
-                |> ignore
-            link DotNetFramework.Net45
-            link DotNetFramework.Net46
-            link DotNetFramework.NetStandard1_3
-        )
+    let private compileCore incremental =
+        if not (DotNetCli.isInstalled()) then failwith  "You need to install the dotnet command line SDK to build for .NET Core"
+        let runningSdkVersion = DotNetCli.getVersion()
+        if (runningSdkVersion <> pinnedSdkVersion) then failwithf "Attempting to run with dotnet.exe with %s but global.json mandates %s" runningSdkVersion pinnedSdkVersion
+        let incrementalFramework = DotNetFramework.Net45
+        let sourceLink = if not incremental && not isMono && runningRelease then "1" else ""
+        let props = 
+            [ 
+                "CurrentVersion", (Versioning.CurrentVersion.ToString());
+                "CurrentAssemblyVersion", (Versioning.CurrentAssemblyVersion.ToString());
+                "CurrentAssemblyFileVersion", (Versioning.CurrentAssemblyFileVersion.ToString());
+                "DoSourceLink", sourceLink;
+                "DotNetCoreOnly", if buildingOnTravis then "1" else "";
+            ] 
+            |> List.map (fun (p,v) -> sprintf "%s=%s" p v)
+            |> String.concat ";"
+            |> sprintf "/property:%s"
         
-    static let compile target = 
-        compileDesktop target
-        //we only need this output when doing a release otherwise depend on test to validate the build
-        if runningRelease then compileCore()
-        if not isMono && runningRelease then gitLink()
+        DotNetCli.Build
+            (fun p -> 
+                { p with 
+                    Configuration = "Release" 
+                    Project = sln
+                    TimeOut = TimeSpan.FromMinutes(3.)
+                    AdditionalArgs = if incremental then ["-f"; incrementalFramework.Identifier.Nuget; props] else [props]
+                }
+            ) |> ignore
 
-    static member QuickCompile() = compile "Build"
+    let Restore() =
+        DotNetCli.Restore
+            (fun p -> 
+                { p with 
+                    Project = sln
+                    TimeOut = TimeSpan.FromMinutes(3.)
+                }
+            ) |> ignore
+        
+    let Compile incremental = 
+        compileCore incremental
 
-    static member Compile() = compile "Rebuild"
-
-    static member Clean() =
-        CleanDir Paths.BuildOutput
-        DotNetProject.All |> Seq.iter(fun p -> CleanDir(Paths.BinFolder p.Name))
+    let Clean() =
+        match (quickBuild, getBuildParam "target" = "clean") with
+        | (false, _) 
+        | (_, true) -> 
+            tracefn "Cleaning known output folders"
+            CleanDir Paths.BuildOutput
+            DotNetCli.RunCommand (fun p -> { p with TimeOut = TimeSpan.FromMinutes(3.) }) "clean src/Elasticsearch.sln -c Release" |> ignore
+            DotNetProject.All |> Seq.iter(fun p -> CleanDir(Paths.BinFolder p.Name))
+        | (_, _) -> 
+            tracefn "Skiping clean target only run when calling 'release', 'canary', 'clean' as targets directly"

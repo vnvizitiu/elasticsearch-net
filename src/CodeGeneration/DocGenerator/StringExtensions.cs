@@ -14,6 +14,10 @@ namespace DocGenerator
 {
 	public static class StringExtensions
 	{
+        private static readonly Regex LeadingSpacesAndAsterisk = new Regex(@"^(?<value>[ \t]*\*\s?).*", RegexOptions.Compiled);
+        private static readonly Regex LeadingMultiLineComment = new Regex(@"^(?<value>[ \t]*\/\*)", RegexOptions.Compiled);
+        private static readonly Regex TrailingMultiLineComment = new Regex(@"(?<value>\*\/[ \t]*)$", RegexOptions.Compiled);
+
 		public static string PascalToHyphen(this string input)
 		{
 			if (string.IsNullOrEmpty(input)) return string.Empty;
@@ -21,12 +25,15 @@ namespace DocGenerator
 			return Regex.Replace(
 				Regex.Replace(
 					Regex.Replace(input, @"([A-Z]+)([A-Z][a-z])", "$1-$2"), @"([a-z\d])([A-Z])", "$1-$2")
-				, @"[-\s]+", "-").TrimEnd('-').ToLower();
+				, @"[-\s]+", "-", RegexOptions.Compiled).TrimEnd('-').ToLower();
 		}
 
 		public static string LowercaseHyphenToPascal(this string lowercaseHyphenatedInput)
 		{
-			return Regex.Replace(lowercaseHyphenatedInput.Replace("-", " "), @"\b([a-z])", m => m.Captures[0].Value.ToUpper());
+			return Regex.Replace(
+                lowercaseHyphenatedInput.Replace("-", " "), 
+                @"\b([a-z])", 
+                m => m.Captures[0].Value.ToUpper());
 		}
 
 		public static string TrimEnd(this string input, string trim)
@@ -40,14 +47,14 @@ namespace DocGenerator
 
 		public static string RemoveLeadingAndTrailingMultiLineComments(this string input)
 		{
-			var match = Regex.Match(input, @"^(?<value>[ \t]*\/\*)");
+			var match = LeadingMultiLineComment.Match(input);
 
 			if (match.Success)
 			{
 				input = input.Substring(match.Groups["value"].Value.Length);
 			}
 
-			match = Regex.Match(input, @"(?<value>\*\/[ \t]*)$");
+			match = TrailingMultiLineComment.Match(input);
 
 			if (match.Success)
 			{
@@ -59,8 +66,7 @@ namespace DocGenerator
 
 		public static string RemoveLeadingSpacesAndAsterisk(this string input)
 		{
-			var match = Regex.Match(input, @"^(?<value>[ \t]*\*\s?).*");
-
+			var match = LeadingSpacesAndAsterisk.Match(input);
 			if (match.Success)
 			{
 				input = input.Substring(match.Groups["value"].Value.Length);
@@ -69,56 +75,66 @@ namespace DocGenerator
 			return input;
 		}
 
-		public static string RemoveNumberOfLeadingTabsAfterNewline(this string input, int numberOfTabs)
-		{
-			var firstTab = input.IndexOf("\t", StringComparison.OrdinalIgnoreCase);
+        ///<summary>
+        /// Removes the specified number of tabs (or spaces, assuming 4 spaces = 1 tab) 
+        /// from each line of the input
+        /// </summary>
+        public static string RemoveNumberOfLeadingTabsOrSpacesAfterNewline(this string input, int numberOfTabs)
+        {
+            var leadingCharacterIndex = input.IndexOf("\t", StringComparison.OrdinalIgnoreCase);
 
-			if (firstTab == -1)
-			{
-				return input;
-			}
-			int count = 0;
-			char firstNonTabCharacter = Char.MinValue;
+            if (leadingCharacterIndex == -1)
+            {
+                leadingCharacterIndex = input.IndexOf(" ", StringComparison.OrdinalIgnoreCase);
 
-			for (int i = firstTab; i < input.Length; i++)
-			{
-				if (input[i] != '\t')
-				{
-					firstNonTabCharacter = input[i];
-					count = i - firstTab;
-					break;
-				}
-			}
+                if (leadingCharacterIndex == -1)
+                {
+                    return input;
+                }
+            }
 
-			if (firstNonTabCharacter == '{' && numberOfTabs != count)
-			{
-				numberOfTabs = count;
-			}
+            int count = 0;
+            char firstNonTabCharacter = char.MinValue;
 
-			return Regex.Replace(
-				Regex.Replace(
-					input,
-					$"(?<tabs>[\n|\r\n]+\t{{{numberOfTabs}}})",
-					m => m.Value.Replace("\t", string.Empty)
-				),
-				$"(?<spaces>[\n|\r\n]+\\s{{{numberOfTabs * 4}}})",
-				m => m.Value.Replace(" ", string.Empty)
-			);
-		}
+            for (int i = leadingCharacterIndex; i < input.Length; i++)
+            {
+                if (input[i] != '\t' && input[i] != ' ')
+                {
+                    firstNonTabCharacter = input[i];
+                    count = i - leadingCharacterIndex;
+                    break;
+                }
+            }
 
-		public static string[] SplitOnNewLines(this string input, StringSplitOptions options)
+            if (firstNonTabCharacter == '{' && numberOfTabs != count)
+            {
+                numberOfTabs = count;
+            }
+
+            return Regex.Replace(
+                Regex.Replace(
+                    input,
+                    $"(?<tabs>[\n|\r\n]+\t{{{numberOfTabs}}})",
+                    m => m.Value.Replace("\t", string.Empty)
+                    ),
+                $"(?<spaces>[\n|\r\n]+\\s{{{numberOfTabs * 4}}})",
+                m => m.Value.Replace(" ", string.Empty)
+                );
+        }
+
+        public static string[] SplitOnNewLines(this string input, StringSplitOptions options)
 		{
 			return input.Split(new[] { "\r\n", "\n" }, options);
 		}
 
-		// TODO: Hack of replacements in anonymous types that represent json. This can be resolved by referencing tests assembly when building the dynamic assembly,
+		// TODO: Total Hack of replacements in anonymous types that represent json. This can be resolved by referencing tests assembly when building the dynamic assembly,
 		// but might want to put doc generation at same directory level as Tests to reference project directly.
 		private static Dictionary<string, string> Substitutions = new Dictionary<string, string>
 		{
 			{ "FixedDate", "new DateTime(2015, 06, 06, 12, 01, 02, 123)" },
 			{ "FirstNameToFind", "\"pierce\"" },
-			{ "Project.Projects.First().Suggest.Context.Values.SelectMany(v => v).First()", "\"red\"" },
-			{ "Project.Projects.First().Suggest.Contexts.Values.SelectMany(v => v).First()", "\"red\"" },
+			{ "Project.First.Suggest.Context.Values.SelectMany(v => v).First()", "\"red\"" },
+			{ "Project.First.Suggest.Contexts.Values.SelectMany(v => v).First()", "\"red\"" },
 			{ "Project.Instance.Name", "\"Durgan LLC\"" },
 			{ "Project.InstanceAnonymous", "new {name = \"Koch, Collier and Mohr\", state = \"BellyUp\",startedOn = " +
 			                               "\"2015-01-01T00:00:00\",lastActivity = \"0001-01-01T00:00:00\",leadDeveloper = " +
@@ -128,9 +144,9 @@ namespace DocGenerator
 			{ "base.QueryJson", "new{ @bool = new { must = new[] { new { match_all = new { } } }, must_not = new[] { new { match_all = new { } } }, should = new[] { new { match_all = new { } } }, filter = new[] { new { match_all = new { } } }, minimum_should_match = 1, boost = 2.0, } }" },
 			{ "ExpectedTerms", "new [] { \"term1\", \"term2\" }" },
 			{ "_ctxNumberofCommits", "\"_source.numberOfCommits > 0\"" },
-			{ "Project.Projects.First().Name", "\"Lesch Group\"" },
-			{ "Project.Projects.FirstOrDefault().NumberOfCommits", "775" },
-			{ "Project.Projects.FirstOrDefault().Name", "\"Dickinson - Beier\"" },
+			{ "Project.First.Name", "\"Lesch Group\"" },
+			{ "Project.First.NumberOfCommits", "775" },
+			{ "LastNameSearch", "\"Stokes\"" }
 		};
 
 		public static bool TryGetJsonForAnonymousType(this string anonymousTypeString, out string json)
@@ -190,7 +206,7 @@ namespace DocGenerator
 						diagnostic.IsWarningAsError ||
 						diagnostic.Severity == DiagnosticSeverity.Error);
 
-					var builder = new StringBuilder($"Unable to serialize: {anonymousTypeString}");
+					var builder = new StringBuilder($"Unable to serialize the following C# anonymous type string to json: {anonymousTypeString}");
 					foreach (var diagnostic in failures)
 					{
 						builder.AppendLine($"{diagnostic.Id}: {diagnostic.GetMessage()}");
@@ -217,5 +233,19 @@ namespace DocGenerator
 				return true;
 			}
 		}
+
+	    public static string ReplaceArityWithGenericSignature(this string value)
+	    {
+            var indexOfBackTick = value.IndexOf("`");
+
+            if (indexOfBackTick == -1)
+                return value;
+
+            var arity = value[indexOfBackTick + 1];
+            value = value.Substring(0, indexOfBackTick);
+
+            return Enumerable.Range(1, int.Parse(arity.ToString()))
+                .Aggregate(value + "<", (l, i) => l = l + (i == 1 ? "T" : $"T{i}")) + ">";
+	    }
 	}
 }

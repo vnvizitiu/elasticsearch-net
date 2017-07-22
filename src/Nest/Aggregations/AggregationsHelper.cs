@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -6,13 +7,19 @@ namespace Nest
 {
 	public class AggregationsHelper
 	{
-		public IDictionary<string, IAggregate> Aggregations { get; protected internal set; }
+		public IReadOnlyDictionary<string, IAggregate> Aggregations { get; protected internal set; } = EmptyReadOnly<string, IAggregate>.Dictionary;
 
 		public AggregationsHelper() { }
 
-		public AggregationsHelper(IDictionary<string, IAggregate> aggregations)
+		protected AggregationsHelper(IDictionary<string, IAggregate> aggregations)
 		{
-			this.Aggregations = aggregations;
+			this.Aggregations = aggregations != null ?
+				new Dictionary<string, IAggregate>(aggregations)
+				: EmptyReadOnly<string, IAggregate>.Dictionary;
+		}
+		public AggregationsHelper(IReadOnlyDictionary<string, IAggregate> aggregations)
+		{
+			this.Aggregations = aggregations ?? EmptyReadOnly<string, IAggregate>.Dictionary;
 		}
 
 		public ValueAggregate Min(string key) => this.TryGet<ValueAggregate>(key);
@@ -111,67 +118,49 @@ namespace Nest
 				};
 		}
 
-		public TermsAggregate Terms(string key)
+		public TermsAggregate<TKey> Terms<TKey>(string key)
 		{
 			var bucket = this.TryGet<BucketAggregate>(key);
 			return bucket == null
 				? null
-				: new TermsAggregate
+				: new TermsAggregate<TKey>
 				{
 					DocCountErrorUpperBound = bucket.DocCountErrorUpperBound,
 					SumOtherDocCount = bucket.SumOtherDocCount,
-					Buckets = bucket.Items.OfType<KeyedBucket>().ToList(),
+					Buckets = GetKeyedBuckets<TKey>(bucket.Items).ToList(),
 					Meta = bucket.Meta
 				};
 		}
 
-		public MultiBucketAggregate<HistogramBucket> Histogram(string key)
-		{
-			var bucket = this.TryGet<BucketAggregate>(key);
-			return bucket == null
-				? null
-				: new MultiBucketAggregate<HistogramBucket>
-				{
-					Buckets = bucket.Items.OfType<HistogramBucket>()
-						.Concat(bucket.Items.OfType<KeyedBucket>()
-							.Select(x =>
-								new HistogramBucket
-								{
-									Key = double.Parse(x.Key, CultureInfo.InvariantCulture),
-									KeyAsString = x.Key,
-									DocCount = x.DocCount.GetValueOrDefault(0),
-									Aggregations = x.Aggregations
-								}
-							)
-						)
-						.ToList(),
-					Meta = bucket.Meta
-				};
-		}
+		public TermsAggregate<string> Terms(string key) => Terms<string>(key);
 
-		public MultiBucketAggregate<KeyedBucket> GeoHash(string key) => GetBucket<KeyedBucket>(key);
+		public MultiBucketAggregate<KeyedBucket<double>> Histogram(string key) => GetMultiKeyedBucketAggregate<double>(key);
 
-		public MultiBucketAggregate<RangeBucket> Range(string key) => GetBucket<RangeBucket>(key);
+		public MultiBucketAggregate<KeyedBucket<string>> GeoHash(string key) => GetMultiKeyedBucketAggregate<string>(key);
 
-		public MultiBucketAggregate<RangeBucket> DateRange(string key) => GetBucket<RangeBucket>(key);
+		public MultiBucketAggregate<KeyedBucket<string>> AdjacencyMatrix(string key) => GetMultiKeyedBucketAggregate<string>(key);
 
-		public MultiBucketAggregate<RangeBucket> IpRange(string key) => GetBucket<RangeBucket>(key);
+		public MultiBucketAggregate<RangeBucket> Range(string key) => GetMultiBucketAggregate<RangeBucket>(key);
 
-		public MultiBucketAggregate<RangeBucket> GeoDistance(string key) => GetBucket<RangeBucket>(key);
+		public MultiBucketAggregate<RangeBucket> DateRange(string key) => GetMultiBucketAggregate<RangeBucket>(key);
 
-		public MultiBucketAggregate<DateHistogramBucket> DateHistogram(string key) => GetBucket<DateHistogramBucket>(key);
+		public MultiBucketAggregate<RangeBucket> IpRange(string key) => GetMultiBucketAggregate<RangeBucket>(key);
+
+		public MultiBucketAggregate<RangeBucket> GeoDistance(string key) => GetMultiBucketAggregate<RangeBucket>(key);
+
+		public MultiBucketAggregate<DateHistogramBucket> DateHistogram(string key) => GetMultiBucketAggregate<DateHistogramBucket>(key);
 
 		public MatrixStatsAggregate MatrixStats(string key) => this.TryGet<MatrixStatsAggregate>(key);
 
 
-		private TAggregation TryGet<TAggregation>(string key)
-			where TAggregation : class, IAggregate
+		private TAggregate TryGet<TAggregate>(string key)
+			where TAggregate : class, IAggregate
 		{
 			IAggregate agg;
-			return this.Aggregations.TryGetValue(key, out agg) ? agg as TAggregation : null;
+			return this.Aggregations.TryGetValue(key, out agg) ? agg as TAggregate : null;
 		}
 
-		private MultiBucketAggregate<TBucket> GetBucket<TBucket>(string key)
+		private MultiBucketAggregate<TBucket> GetMultiBucketAggregate<TBucket>(string key)
 			where TBucket : IBucket
 		{
 			var bucket = this.TryGet<BucketAggregate>(key);
@@ -179,8 +168,36 @@ namespace Nest
 			return new MultiBucketAggregate<TBucket>
 			{
 				Buckets = bucket.Items.OfType<TBucket>().ToList(),
-				Meta = bucket.Meta
+				Meta = bucket.Meta,
 			};
+		}
+		private MultiBucketAggregate<KeyedBucket<TKey>> GetMultiKeyedBucketAggregate<TKey>(string key)
+		{
+			var bucket = this.TryGet<BucketAggregate>(key);
+			if (bucket == null) return null;
+			return new MultiBucketAggregate<KeyedBucket<TKey>>
+			{
+				Buckets = GetKeyedBuckets<TKey>(bucket.Items).ToList(),
+				Meta = bucket.Meta,
+			};
+		}
+
+
+		private IEnumerable<KeyedBucket<TKey>> GetKeyedBuckets<TKey>(IEnumerable<IBucket> items)
+		{
+			var buckets = items.Cast<KeyedBucket<object>>();
+
+			foreach (var bucket in buckets)
+			{
+				yield return new KeyedBucket<TKey>
+				{
+					Key = (TKey)Convert.ChangeType(bucket.Key, typeof(TKey)),
+					KeyAsString = bucket.KeyAsString,
+					Aggregations = bucket.Aggregations,
+					DocCount = bucket.DocCount,
+					DocCountErrorUpperBound = bucket.DocCountErrorUpperBound
+				};
+			}
 		}
 	}
 }

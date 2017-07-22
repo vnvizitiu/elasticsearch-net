@@ -40,6 +40,7 @@ namespace Nest
 				VisitQuery(d as IGeoShapeLineStringQuery, visitor, (vv, dd) => v.Visit(dd));
 				VisitQuery(d as IGeoShapeEnvelopeQuery, visitor, (vv, dd) => v.Visit(dd));
 				VisitQuery(d as IGeoShapeCircleQuery, visitor, (vv, dd) => v.Visit(dd));
+				VisitQuery(d as IGeoShapeGeometryCollectionQuery, visitor, (vv, dd) => v.Visit(dd));
 			});
 			VisitQuery(qd.Ids, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Prefix, visitor, (v, d) => v.Visit(d));
@@ -51,11 +52,12 @@ namespace Nest
 			VisitQuery(qd.Terms, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Wildcard, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Match, visitor, (v, d) => v.Visit(d));
+			VisitQuery(qd.MatchPhrase, visitor, (v, d) => v.Visit(d));
+			VisitQuery(qd.MatchPhrasePrefix, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Type, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Script, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Exists, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.GeoPolygon, visitor, (v, d) => v.Visit(d));
-			VisitQuery(qd.GeoDistanceRange, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.GeoDistance, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.GeoBoundingBox, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.GeoHashCell, visitor, (v, d) => v.Visit(d));

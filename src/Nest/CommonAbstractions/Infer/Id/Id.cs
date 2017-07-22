@@ -1,11 +1,14 @@
 ﻿using System;
+using System.CodeDom;
+using System.Diagnostics;
 using Elasticsearch.Net;
 using Newtonsoft.Json;
 
 namespace Nest
 {
 	[JsonConverter(typeof(IdJsonConverter))]
-	public class Id : IUrlParameter
+	[DebuggerDisplay("{DebugDisplay,nq}")]
+	public class Id : IEquatable<Id>, IUrlParameter
 	{
 		internal object Value { get; set; }
 		internal object Document { get; set; }
@@ -19,6 +22,8 @@ namespace Nest
 		public static implicit operator Id(Guid id) => new Id(id.ToString("D"));
 
 		public static Id From<T>(T document) where T : class => new Id(document);
+
+		private string DebugDisplay => Value?.ToString() ?? "Id from instance typeof: " + Document?.GetType().Name;
 
 		public string GetString(IConnectionConfigurationValues settings)
 		{
@@ -35,6 +40,38 @@ namespace Nest
 
 			var s = Value as string;
 			return s ?? this.Value?.ToString();
+		}
+
+		public bool Equals(Id other)
+		{
+			if (ReferenceEquals(null, other)) return false;
+			if (ReferenceEquals(this, other)) return true;
+			return Equals(Value, other.Value) && Equals(Document, other.Document);
+		}
+
+		public override bool Equals(object obj)
+		{
+			if (ReferenceEquals(null, obj)) return false;
+			if (ReferenceEquals(this, obj)) return true;
+			return obj.GetType() == this.GetType() && Equals((Id)obj);
+		}
+
+		public override int GetHashCode()
+		{
+			unchecked
+			{
+				return ((Value?.GetHashCode() ?? 0) * 397) ^ (Document?.GetHashCode() ?? 0);
+			}
+		}
+
+		public static bool operator ==(Id left, Id right)
+		{
+			return Equals(left, right);
+		}
+
+		public static bool operator !=(Id left, Id right)
+		{
+			return !Equals(left, right);
 		}
 	}
 }

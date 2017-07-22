@@ -18,30 +18,31 @@ namespace Nest
 
 	public partial class CountRequest
 	{
-		private CountRequestParameters QueryString => ((IRequest<CountRequestParameters>)this).RequestParameters;
 		protected override HttpMethod HttpMethod =>
-			this.QueryString.ContainsKey("_source") || this.QueryString.ContainsKey("q") ? HttpMethod.GET : HttpMethod.POST;
+			Self.RequestParameters.ContainsKey("_source") || Self.RequestParameters.ContainsKey("q") || Self.Query == null || Self.Query.IsConditionless()
+				? HttpMethod.GET : HttpMethod.POST;
 
-		public QueryContainer Query { get; set; } = new MatchAllQuery();
+		public QueryContainer Query { get; set; }
+
 	}
 
 	public partial class CountRequest<T>
 	{
-		private CountRequestParameters QueryString => ((IRequest<CountRequestParameters>)this).RequestParameters;
 		protected override HttpMethod HttpMethod =>
-			this.QueryString.ContainsKey("_source") || this.QueryString.ContainsKey("q") ? HttpMethod.GET : HttpMethod.POST;
+			Self.RequestParameters.ContainsKey("_source") || Self.RequestParameters.ContainsKey("q") || Self.Query == null || Self.Query.IsConditionless()
+				? HttpMethod.GET : HttpMethod.POST;
 
-		public QueryContainer Query { get; set; } = new MatchAllQuery();
+		public QueryContainer Query { get; set; }
 	}
 
 	[DescriptorFor("Count")]
 	public partial class CountDescriptor<T> where T : class
 	{
-		private CountRequestParameters QueryString => ((IRequest<CountRequestParameters>)this).RequestParameters;
 		protected override HttpMethod HttpMethod =>
-			this.QueryString.ContainsKey("_source") || this.QueryString.ContainsKey("q") ? HttpMethod.GET : HttpMethod.POST;
+			Self.RequestParameters.ContainsKey("_source") || Self.RequestParameters.ContainsKey("q") || Self.Query == null || Self.Query.IsConditionless()
+				? HttpMethod.GET : HttpMethod.POST;
 
-		QueryContainer ICountRequest.Query { get; set; } = new MatchAllQuery();
+		QueryContainer ICountRequest.Query { get; set; }
 
 		public CountDescriptor<T> Query(Func<QueryContainerDescriptor<T>, QueryContainer> querySelector) =>
 			Assign(a => a.Query = querySelector?.Invoke(new QueryContainerDescriptor<T>()));

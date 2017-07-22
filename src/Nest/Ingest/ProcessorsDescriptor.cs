@@ -73,10 +73,8 @@ namespace Nest
 		public ProcessorsDescriptor Lowercase<T>(Func<LowercaseProcessorDescriptor<T>, ILowercaseProcessor> selector) where T : class  =>
 			Assign(a => a.AddIfNotNull(selector?.Invoke(new LowercaseProcessorDescriptor<T>())));
 
-
 		public ProcessorsDescriptor Remove<T>(Func<RemoveProcessorDescriptor<T>, IRemoveProcessor> selector) where T : class  =>
 			Assign(a => a.AddIfNotNull(selector?.Invoke(new RemoveProcessorDescriptor<T>())));
-
 
 		public ProcessorsDescriptor Rename<T>(Func<RenameProcessorDescriptor<T>, IRenameProcessor> selector) where T : class  =>
 			Assign(a => a.AddIfNotNull(selector?.Invoke(new RenameProcessorDescriptor<T>())));
@@ -84,8 +82,8 @@ namespace Nest
 		/// <summary>
 		/// Allows inline, stored, and file scripts to be executed within ingest pipelines.
 		/// </summary>
-		public ProcessorsDescriptor Script(Func<ScriptProcessor, IScriptProcessor> selector) =>
-			Assign(a => a.AddIfNotNull(selector?.Invoke(new ScriptProcessor())));
+		public ProcessorsDescriptor Script(Func<ScriptProcessorDescriptor, IScriptProcessor> selector) =>
+			Assign(a => a.AddIfNotNull(selector?.Invoke(new ScriptProcessorDescriptor())));
 
 		public ProcessorsDescriptor Set<T>(Func<SetProcessorDescriptor<T>, ISetProcessor> selector) where T : class  =>
 			Assign(a => a.AddIfNotNull(selector?.Invoke(new SetProcessorDescriptor<T>())));
@@ -105,8 +103,29 @@ namespace Nest
 		public ProcessorsDescriptor Trim<T>(Func<TrimProcessorDescriptor<T>, ITrimProcessor> selector) where T : class  =>
 			Assign(a => a.AddIfNotNull(selector?.Invoke(new TrimProcessorDescriptor<T>())));
 
-
 		public ProcessorsDescriptor Uppercase<T>(Func<UppercaseProcessDescriptor<T>, IUppercaseProcessor> selector) where T : class  =>
 			Assign(a => a.AddIfNotNull(selector?.Invoke(new UppercaseProcessDescriptor<T>())));
+
+		/// <summary>
+		/// Converts a JSON string into a structured JSON object.
+		/// </summary>
+		public ProcessorsDescriptor Json<T>(Func<JsonProcessorDescriptor<T>, IJsonProcessor> selector) where T : class  =>
+			Assign(a => a.AddIfNotNull(selector?.Invoke(new JsonProcessorDescriptor<T>())));
+
+        /// <summary>
+        /// The user_agent processor extracts details from the user agent string a browser sends with its web requests.
+        /// This processor adds this information by default under the user_agent field.
+        /// The ingest-user-agent plugin ships by default with the regexes.yaml made available by
+        /// uap-java with an Apache 2.0 license.
+        /// </summary>
+        /// <remarks>
+        /// Requires the UserAgent Processor Plugin to be installed on the cluster.
+        /// </remarks>
+		public ProcessorsDescriptor UserAgent<T>(Func<UserAgentProcessorDescriptor<T>, IUserAgentProcessor> selector) where T : class  =>
+			Assign(a => a.AddIfNotNull(selector?.Invoke(new UserAgentProcessorDescriptor<T>())));
+
+		public ProcessorsDescriptor KeyValue<T>(Func<UserAgentProcessorDescriptor<T>, IUserAgentProcessor> selector) where T : class  =>
+			Assign(a => a.AddIfNotNull(selector?.Invoke(new UserAgentProcessorDescriptor<T>())));
+
 	}
 }

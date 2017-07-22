@@ -2,6 +2,7 @@
 *.local.xml
 *.sln.docstates
 *.obj
+*.swp
 *.exe
 *.pdb
 *.user
@@ -51,6 +52,7 @@ build/tools/*
 !build/*.ps1
 !build/*.nuspec
 !build/*.png
+!build/*.targets
 !build/scripts
 
 
@@ -63,6 +65,7 @@ doc/Help
 *.ncrunchproject
 Cache
 YamlCache
+tests.yaml
 
 *.DS_Store
 *.sln.ide

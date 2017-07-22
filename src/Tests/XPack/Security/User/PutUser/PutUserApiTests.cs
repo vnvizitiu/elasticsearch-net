@@ -5,6 +5,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Xunit;
 
 namespace Tests.XPack.Security.User.PutUser
@@ -75,7 +76,6 @@ namespace Tests.XPack.Security.User.PutUser
 		}
 	}
 
-	//TODO disabled for now pending bug report
 	public class PutUserRunAsApiTests : PutUserApiTests
 	{
 		public PutUserRunAsApiTests(XPackCluster cluster, EndpointUsage usage) : base(cluster, usage)

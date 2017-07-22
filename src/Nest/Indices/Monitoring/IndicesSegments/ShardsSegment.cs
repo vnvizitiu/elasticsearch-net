@@ -19,8 +19,9 @@ namespace Nest
 		public ShardSegmentRouting Routing { get; internal set; }
 
 		[JsonProperty]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
-		public Dictionary<string, Segment> Segments { get; internal set; }
+		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, Segment>))]
+		public IReadOnlyDictionary<string, Segment> Segments { get; internal set; } =
+			EmptyReadOnly<string, Segment>.Dictionary;
 
 		internal class Json : JsonConverterBase<ShardsSegment>
 		{

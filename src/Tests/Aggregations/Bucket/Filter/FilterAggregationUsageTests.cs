@@ -5,6 +5,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 
@@ -22,7 +23,7 @@ namespace Tests.Aggregations.Bucket.Filter
 		{
 		}
 
-		public static string FirstNameToFind = Project.Projects.First().LeadDeveloper.FirstName.ToLowerInvariant();
+		public static string FirstNameToFind = Project.First.LeadDeveloper.FirstName.ToLowerInvariant();
 
 		protected override object ExpectJson => new
 		{
@@ -88,7 +89,7 @@ namespace Tests.Aggregations.Bucket.Filter
 	* When the collection of filters is empty or all are conditionless, NEST will serialize them
 	* to an empty object.
 	*/
-	[SkipVersion("5.0.0-alpha1", "https://github.com/elastic/elasticsearch/issues/17518")]
+	[SkipVersion("6.0.0-alpha1", "https://github.com/elastic/elasticsearch/issues/17518 && 6.0 https://github.com/elastic/elasticsearch/pull/17542#issuecomment-300796197")]
 	public class EmptyFilterAggregationUsageTests : AggregationUsageTestBase
 	{
 		public EmptyFilterAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage)
@@ -139,7 +140,7 @@ namespace Tests.Aggregations.Bucket.Filter
 	//reproduce of https://github.com/elastic/elasticsearch-net/issues/1931
 	public class InlineScriptFilterAggregationUsageTests : AggregationUsageTestBase
 	{
-		private string _ctxNumberofCommits = "_source.numberOfCommits > 0";
+		private string _ctxNumberofCommits = "doc['numberOfCommits'].value > 0";
 		private string _aggName = "script_filter";
 
 		public InlineScriptFilterAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
@@ -152,7 +153,6 @@ namespace Tests.Aggregations.Bucket.Filter
 						script = new {
 							script = new {
 								inline = _ctxNumberofCommits,
-								lang = "groovy"
 							}
 						}
 					}
@@ -166,7 +166,6 @@ namespace Tests.Aggregations.Bucket.Filter
 					.Filter(f => f
 						.Script(b => b
 							.Inline(_ctxNumberofCommits)
-							.Lang("groovy")
 						)
 					)
 				)
@@ -180,7 +179,6 @@ namespace Tests.Aggregations.Bucket.Filter
 					Filter = new ScriptQuery
 					{
 						Inline = _ctxNumberofCommits,
-						Lang = "groovy"
 				}
 				}
 			};

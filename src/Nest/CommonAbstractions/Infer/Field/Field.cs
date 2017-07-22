@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
@@ -8,6 +9,7 @@ using Elasticsearch.Net;
 namespace Nest
 {
 	[ContractJsonConverter(typeof(FieldJsonConverter))]
+	[DebuggerDisplay("{DebugDisplay,nq}")]
 	public class Field : IEquatable<Field>, IUrlParameter
 	{
 		private readonly object _comparisonValue;
@@ -23,14 +25,23 @@ namespace Nest
 
 		public bool CachableExpression { get; }
 
-		public Fields And<T>(Expression<Func<T, object>> field) where T : class =>
-			new Fields(new [] { this, field });
+		internal string DebugDisplay =>
+			$"{Expression?.ToString() ?? PropertyDebug ?? Name}{(Boost.HasValue ? "^" + Boost.Value: "")}{(_type == null ? "" : " typeof: " + _type.Name)}";
 
-		public Fields And(string field) => new Fields(new [] { this, field });
+		private string PropertyDebug => Property == null ? null : $"PropertyInfo: {Property.Name}";
+
+		public Fields And(Field field) => new Fields(new [] { this, field });
+
+		public Fields And<T>(Expression<Func<T, object>> field, double? boost = null) where T : class =>
+			new Fields(new [] { this, new Field(field, boost) });
+
+		public Fields And(string field, double? boost = null) => new Fields(new [] { this, new Field(field, boost) });
+
+		public Fields And(PropertyInfo property, double? boost = null) => new Fields(new [] { this, new Field(property, boost) });
 
 		public Field(string name, double? boost = null)
 		{
-			if (name.IsNullOrEmpty()) return;
+			name.ThrowIfNullOrEmpty(nameof(name));
 			double? b;
 			Name = ParseFieldName(name, out b);
 			Boost = b ?? boost;
@@ -39,7 +50,7 @@ namespace Nest
 
 		public Field(Expression expression, double? boost = null)
 		{
-			if (expression == null) return;
+			if (expression == null) throw new ArgumentNullException(nameof(expression));
 			Expression = expression;
 			Boost = boost;
 			Type type;
@@ -50,7 +61,7 @@ namespace Nest
 
 		public Field(PropertyInfo property, double? boost = null)
 		{
-			if (property == null) return;
+			if (property == null) throw new ArgumentNullException(nameof(property));
 			Property = property;
 			Boost = boost;
 			_comparisonValue = property;
@@ -63,12 +74,10 @@ namespace Nest
 			if (name == null) return null;
 
 			var parts = name.Split(new [] { '^' }, StringSplitOptions.RemoveEmptyEntries);
-			if (parts.Length > 1)
-			{
-				name = parts[0];
-				boost = double.Parse(parts[1], CultureInfo.InvariantCulture);
-			}
-			return name;
+			if (parts.Length <= 1) return name.Trim();
+			name = parts[0];
+			boost = double.Parse(parts[1], CultureInfo.InvariantCulture);
+			return name.Trim();
 		}
 
 		public static implicit operator Field(string name)
@@ -125,9 +134,10 @@ namespace Nest
 		{
 			var nestSettings = settings as IConnectionSettingsValues;
 			if (nestSettings == null)
-				throw new Exception("Tried to pass field name on querysting but it could not be resolved because no nest settings are available");
+				throw new Exception("Tried to pass field name on querystring but it could not be resolved because no nest settings are available");
 
 			return nestSettings.Inferrer.Field(this);
 		}
+
 	}
 }

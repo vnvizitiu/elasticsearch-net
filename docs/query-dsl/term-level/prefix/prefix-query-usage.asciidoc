@@ -13,9 +13,9 @@ please modify the original csharp file found at the link and submit the PR with 
 ////
 
 [[prefix-query-usage]]
-== Prefix Query Usage
+=== Prefix Query Usage
 
-=== Fluent DSL Example
+==== Fluent DSL example
 
 [source,csharp]
 ----
@@ -25,11 +25,11 @@ q
     .Boost(1.1)
     .Field(p => p.Description)
     .Value("proj")
-    .Rewrite(RewriteMultiTerm.TopTermsBoostN)
+    .Rewrite(MultiTermQueryRewrite.TopTerms(10))
 )
 ----
 
-=== Object Initializer Syntax Example
+==== Object Initializer syntax example
 
 [source,csharp]
 ----
@@ -39,7 +39,7 @@ new PrefixQuery
     Boost = 1.1,
     Field = "description",
     Value = "proj",
-    Rewrite = RewriteMultiTerm.TopTermsBoostN
+    Rewrite = MultiTermQueryRewrite.TopTerms(10)
 }
 ----
 
@@ -51,7 +51,7 @@ new PrefixQuery
     "description": {
       "_name": "named_query",
       "boost": 1.1,
-      "rewrite": "top_terms_boost_N",
+      "rewrite": "top_terms_10",
       "value": "proj"
     }
   }

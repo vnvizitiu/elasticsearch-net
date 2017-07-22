@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Elasticsearch.Net;
+using System.Diagnostics;
 using Newtonsoft.Json;
 
 namespace Nest
@@ -20,11 +22,17 @@ namespace Nest
 		IProperties Properties { get; set; }
 	}
 
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class ObjectProperty : CorePropertyBase, IObjectProperty
 	{
-		public ObjectProperty() : base("object") { }
+		public ObjectProperty() : base(FieldType.Object) { }
 
+		[Obsolete("Please use overload taking FieldType")]
 		protected ObjectProperty(string type) : base(type) { }
+
+#pragma warning disable 618
+		protected ObjectProperty(FieldType type) : this(type.GetStringValue()) { }
+#pragma warning restore 618
 
 		public Union<bool, DynamicMapping> Dynamic { get; set; }
 		public bool? Enabled { get; set; }
@@ -32,6 +40,7 @@ namespace Nest
 		public IProperties Properties { get; set; }
 	}
 
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class ObjectTypeDescriptor<TParent, TChild>
 		: ObjectPropertyDescriptorBase<ObjectTypeDescriptor<TParent, TChild>, IObjectProperty, TParent, TChild>, IObjectProperty
 		where TParent : class
@@ -39,6 +48,7 @@ namespace Nest
 	{
 	}
 
+	[DebuggerDisplay("{DebugDisplay}")]
 	public abstract class ObjectPropertyDescriptorBase<TDescriptor, TInterface, TParent, TChild>
 		: CorePropertyDescriptorBase<TDescriptor, TInterface, TParent>, IObjectProperty
 		where TDescriptor : ObjectPropertyDescriptorBase<TDescriptor, TInterface, TParent, TChild>, TInterface
@@ -53,12 +63,17 @@ namespace Nest
 		bool? IObjectProperty.IncludeInAll { get; set; }
 		IProperties IObjectProperty.Properties { get; set; }
 
-		protected ObjectPropertyDescriptorBase() : this("object") { }
+		protected ObjectPropertyDescriptorBase() : this(FieldType.Object) { }
 
+		[Obsolete("Please use overload taking FieldType")]
 		protected ObjectPropertyDescriptorBase(string type) : base(type)
 		{
 			_TypeName = TypeName.Create<TChild>();
 		}
+
+#pragma warning disable 618
+		protected ObjectPropertyDescriptorBase(FieldType type) : this(type.GetStringValue()) { }
+#pragma warning restore 618
 
 		public TDescriptor Dynamic(Union<bool, DynamicMapping> dynamic) =>
 			Assign(a => a.Dynamic = dynamic);

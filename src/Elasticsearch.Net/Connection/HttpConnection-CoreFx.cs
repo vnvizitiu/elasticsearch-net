@@ -1,6 +1,7 @@
 ﻿#if DOTNETCORE
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -31,94 +32,174 @@ namespace Elasticsearch.Net
 	public class HttpConnection : IConnection
 	{
 		private readonly object _lock = new object();
-		private readonly ConcurrentDictionary<int, HttpClient> _clients = new ConcurrentDictionary<int, HttpClient>();
+
+		protected readonly ConcurrentDictionary<int, HttpClient> Clients = new ConcurrentDictionary<int, HttpClient>();
+
+		private static readonly string CanNotUseStreamResponsesWithCurlHandler =
+				"Using Stream as TReturn does not work as expected on .NET core linux, because we can no longer guarantee this works it will be removed from the client in our 6.0 release"
+			;
 
 		private HttpClient GetClient(RequestData requestData)
 		{
-			var hashCode = requestData.GetHashCode();
+			var key = GetClientKey(requestData);
 			HttpClient client;
-			if (this._clients.TryGetValue(hashCode, out client)) return client;
+			if (this.Clients.TryGetValue(key, out client)) return client;
 			lock (_lock)
 			{
-				if (this._clients.TryGetValue(hashCode, out client)) return client;
-
-				var handler = CreateHttpClientHandler(requestData);
-
-				client = new HttpClient(handler, false)
+				client = this.Clients.GetOrAdd(key, h =>
 				{
-					Timeout = requestData.RequestTimeout
-				};
+					var handler = CreateHttpClientHandler(requestData);
+					var httpClient = new HttpClient(handler, false)
+					{
+						Timeout = requestData.RequestTimeout
+					};
 
-				client.DefaultRequestHeaders.ExpectContinue = false;
-
-				this._clients.TryAdd(hashCode, client);
-				return client;
+					httpClient.DefaultRequestHeaders.ExpectContinue = false;
+					return httpClient;
+				});
 			}
 
+			return client;
 		}
 
 		public virtual ElasticsearchResponse<TReturn> Request<TReturn>(RequestData requestData) where TReturn : class
 		{
+			//TODO remove Stream response support in 6.0, closing the stream is sufficient on desktop/mono
+			//but not on .NET core on linux HttpClient which proxies to curl.
+			if (typeof(TReturn) == typeof(Stream) && ConnectionConfiguration.IsCurlHandler)
+				throw new Exception(CanNotUseStreamResponsesWithCurlHandler);
+
 			var client = this.GetClient(requestData);
 			var builder = new ResponseBuilder<TReturn>(requestData);
+			HttpResponseMessage responseMessage = null;
 			try
 			{
 				var requestMessage = CreateHttpRequestMessage(requestData);
-				var response = client.SendAsync(requestMessage).GetAwaiter().GetResult();
+				responseMessage = client.SendAsync(requestMessage).GetAwaiter().GetResult();
 				requestData.MadeItToResponse = true;
-				builder.StatusCode = (int)response.StatusCode;
+				builder.StatusCode = (int) responseMessage.StatusCode;
+				IEnumerable<string> warnings;
+				if (responseMessage.Headers.TryGetValues("Warning", out warnings))
+					builder.DeprecationWarnings = warnings;
 
-				if (response.Content != null)
-					builder.Stream = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
+				if (responseMessage.Content != null)
+					builder.Stream = responseMessage.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
+				// https://github.com/elastic/elasticsearch-net/issues/2311
+				// if stream is null call dispose on response instead.
+				if (builder.Stream == null || builder.Stream == Stream.Null) responseMessage.Dispose();
+			}
+			catch (TaskCanceledException e)
+			{
+				builder.Exception = e;
 			}
 			catch (HttpRequestException e)
 			{
 				builder.Exception = e;
 			}
-
-			return builder.ToResponse();
+			var response = builder.ToResponse();
+			//explicit dispose of response not needed (as documented on MSDN) on desktop CLR
+			//but we can not guarantee this is true for all HttpMessageHandler implementations
+			if (typeof(TReturn) != typeof(Stream)) responseMessage?.Dispose();
+			return response;
 		}
 
-		public virtual async Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData, CancellationToken cancellationToken) where TReturn : class
+
+		public virtual async Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData,
+			CancellationToken cancellationToken) where TReturn : class
 		{
+			//TODO remove Stream response support in 6.0, closing the stream is sufficient on desktop/mono
+			//but not on .NET core on linux HttpClient which proxies to curl.
+			if (typeof(TReturn) == typeof(Stream) && ConnectionConfiguration.IsCurlHandler)
+				throw new Exception(CanNotUseStreamResponsesWithCurlHandler);
+
 			var client = this.GetClient(requestData);
 			var builder = new ResponseBuilder<TReturn>(requestData, cancellationToken);
+			HttpResponseMessage responseMessage = null;
 			try
 			{
 				var requestMessage = CreateHttpRequestMessage(requestData);
-				var response = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
+				responseMessage = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
 				requestData.MadeItToResponse = true;
-				builder.StatusCode = (int)response.StatusCode;
+				builder.StatusCode = (int) responseMessage.StatusCode;
+				IEnumerable<string> warnings;
+				if (responseMessage.Headers.TryGetValues("Warning", out warnings))
+					builder.DeprecationWarnings = warnings;
 
-				if (response.Content != null)
-					builder.Stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+				if (responseMessage.Content != null)
+					builder.Stream = await responseMessage.Content.ReadAsStreamAsync().ConfigureAwait(false);
+				// https://github.com/elastic/elasticsearch-net/issues/2311
+				// if stream is null call dispose on response instead.
+				if (builder.Stream == null || builder.Stream == Stream.Null) responseMessage.Dispose();
+			}
+			catch (TaskCanceledException e)
+			{
+				builder.Exception = e;
 			}
 			catch (HttpRequestException e)
 			{
 				builder.Exception = e;
 			}
-
-			return await builder.ToResponseAsync().ConfigureAwait(false);
+			var response = await builder.ToResponseAsync().ConfigureAwait(false);
+			//explicit dispose of response not needed (as documented on MSDN) on desktop CLR
+			//but we can not guarantee this is true for all HttpMessageHandler implementations
+			if (typeof(TReturn) != typeof(Stream)) responseMessage?.Dispose();
+			return response;
 		}
+
+		private static readonly string MissingConnectionLimitMethodError =
+			$"Your target platform does not support {nameof(ConnectionConfiguration.ConnectionLimit)}"
+			+ $" please set {nameof(ConnectionConfiguration.ConnectionLimit)} to -1 on your connection configuration/settings."
+			+ $" this will cause the {nameof(HttpClientHandler.MaxConnectionsPerServer)} not to be set on {nameof(HttpClientHandler)}";
 
 		protected virtual HttpClientHandler CreateHttpClientHandler(RequestData requestData)
 		{
 			var handler = new HttpClientHandler
 			{
-				AutomaticDecompression = requestData.HttpCompression ? GZip | Deflate : None
+				AutomaticDecompression = requestData.HttpCompression ? GZip | Deflate : None,
 			};
+
+			// same limit as desktop clr
+			if (requestData.ConnectionSettings.ConnectionLimit > 0)
+			{
+				try
+				{
+					handler.MaxConnectionsPerServer = requestData.ConnectionSettings.ConnectionLimit;
+				}
+				catch (MissingMethodException e)
+				{
+					throw new Exception(MissingConnectionLimitMethodError, e);
+				}
+				catch (PlatformNotSupportedException e)
+				{
+					throw new Exception(MissingConnectionLimitMethodError, e);
+				}
+			}
 
 			if (!requestData.ProxyAddress.IsNullOrEmpty())
 			{
 				var uri = new Uri(requestData.ProxyAddress);
 				var proxy = new WebProxy(uri);
-				var credentials = new NetworkCredential(requestData.ProxyUsername, requestData.ProxyPassword);
-				proxy.Credentials = credentials;
+				if (!string.IsNullOrEmpty(requestData.ProxyUsername))
+				{
+					var credentials = new NetworkCredential(requestData.ProxyUsername, requestData.ProxyPassword);
+					proxy.Credentials = credentials;
+				}
 				handler.Proxy = proxy;
 			}
 
 			if (requestData.DisableAutomaticProxyDetection)
 				handler.Proxy = null;
+
+			var callback = requestData?.ConnectionSettings?.ServerCertificateValidationCallback;
+			if (callback != null && handler.ServerCertificateCustomValidationCallback == null)
+				handler.ServerCertificateCustomValidationCallback = callback;
+
+
+			if (requestData.ClientCertificates != null)
+			{
+				handler.ClientCertificateOptions = ClientCertificateOption.Automatic;
+				handler.ClientCertificates.AddRange(requestData.ClientCertificates);
+			}
 
 			return handler;
 		}
@@ -139,11 +220,15 @@ namespace Elasticsearch.Net
 			{
 				requestMessage.Headers.TryAddWithoutValidation(key, requestData.Headers.GetValues(key));
 			}
+			requestMessage.Headers.Connection.Clear();
+			requestMessage.Headers.ConnectionClose = false;
+			requestMessage.Headers.Connection.Add("Keep-Alive");
+			//requestMessage.Headers.Connection;
 
 			requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(requestData.Accept));
 
 			if (!requestData.RunAs.IsNullOrEmpty())
-				requestMessage.Headers.Add("es-shield-runas-user", requestData.RunAs);
+				requestMessage.Headers.Add(RequestData.RunAsSecurityHeader, requestData.RunAs);
 
 			var data = requestData.PostData;
 
@@ -189,7 +274,6 @@ namespace Elasticsearch.Net
 			}
 		}
 
-
 		private static System.Net.Http.HttpMethod ConvertHttpMethod(HttpMethod httpMethod)
 		{
 			switch (httpMethod)
@@ -204,11 +288,25 @@ namespace Elasticsearch.Net
 			}
 		}
 
+		private static int GetClientKey(RequestData requestData)
+		{
+			unchecked
+			{
+				var hashCode = requestData.RequestTimeout.GetHashCode();
+				hashCode = (hashCode * 397) ^ requestData.HttpCompression.GetHashCode();
+				hashCode = (hashCode * 397) ^ (requestData.ProxyAddress?.GetHashCode() ?? 0);
+				hashCode = (hashCode * 397) ^ (requestData.ProxyUsername?.GetHashCode() ?? 0);
+				hashCode = (hashCode * 397) ^ (requestData.ProxyPassword?.GetHashCode() ?? 0);
+				hashCode = (hashCode * 397) ^ requestData.DisableAutomaticProxyDetection.GetHashCode();
+				return hashCode;
+			}
+		}
+
 		void IDisposable.Dispose() => this.DisposeManagedResources();
 
 		protected virtual void DisposeManagedResources()
 		{
-			foreach (var c in _clients)
+			foreach (var c in Clients)
 				c.Value.Dispose();
 		}
 	}

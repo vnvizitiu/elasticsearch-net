@@ -6,61 +6,145 @@ using Newtonsoft.Json.Converters;
 
 namespace Nest
 {
+	[JsonObject]
 	public interface IClusterAllocationExplainResponse : IResponse
 	{
+		[JsonProperty("index")]
+		string Index { get; }
+
 		[JsonProperty("shard")]
-		ShardAllocationExplanation Shard { get; set; }
+		int Shard { get; }
 
-		[JsonProperty("assigned")]
-		bool Assigned { get; set; }
+		[JsonProperty("primary")]
+		bool Primary { get; }
 
-		[JsonProperty("assigned_node_id")]
-		string AssignedNodeId { get; set; }
-
-		[JsonProperty("shard_state_fetch_pending")]
-		bool ShardStateFetchPending { get; set; }
+		[JsonProperty("current_state")]
+		string CurrentState { get; }
 
 		[JsonProperty("unassigned_info")]
-		UnassignedInformation UnassignedInformation { get; set; }
+		UnassignedInformation UnassignedInformation { get; }
+
+		[JsonProperty("can_allocate")]
+		Decision? CanAllocate { get; }
+
+		[JsonProperty("allocate_explanation")]
+		string AllocateExplanation { get; }
+
+		[JsonProperty("configured_delay")]
+		string ConfiguredDelay { get; }
+
+		[JsonProperty("configured_delay_in_mills")]
+		long ConfiguredDelayInMilliseconds { get; }
+
+		[JsonProperty("current_node")]
+		CurrentNode CurrentNode { get; }
+
+		[JsonProperty("can_remain_on_current_node")]
+		Decision? CanRemainOnCurrentNode { get; }
+
+		[JsonProperty("can_remain_decisions")]
+		IReadOnlyCollection<AllocationDecision> CanRemainDecisions { get; }
+
+		[JsonProperty("can_rebalance_cluster")]
+		Decision? CanRebalanceCluster { get; }
+
+		[JsonProperty("can_rebalance_to_other_node")]
+		Decision? CanRebalanceToOtherNode { get; }
+
+		[JsonProperty("can_rebalance_cluster_decisions")]
+		IReadOnlyCollection<AllocationDecision> CanRebalanceClusterDecisions { get; }
+
+		[JsonProperty("rebalance_explanation")]
+		string RebalanceExplanation { get; }
+
+		[JsonProperty("node_allocation_decisions")]
+		IReadOnlyCollection<NodeAllocationExplanation> NodeAllocationDecisions { get; }
+
+		[JsonProperty("can_move_to_other_node")]
+		Decision? CanMoveToOtherNode { get; }
+
+		[JsonProperty("move_explanation")]
+		string MoveExplanation { get; }
 
 		[JsonProperty("allocation_delay")]
-		string AllocationDelay { get; set; }
+		string AllocationDelay { get; }
 
-		[JsonProperty("allocation_delay_ms")]
-		long AllocationDelayInMilliseconds { get; set; }
+		[JsonProperty("allocation_delay_in_millis")]
+		long AllocationDelayInMilliseconds { get; }
 
 		[JsonProperty("remaining_delay")]
-		string RemainingDelay { get; set; }
+		string RemainingDelay { get; }
 
-		[JsonProperty("remaining_delay_ms")]
-		long RemainingDelayInMilliseconds { get; set; }
-
-		[JsonProperty("nodes")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
-		Dictionary<string, NodeAllocationExplanation> Nodes { get; set; }
+		[JsonProperty("remaining_delay_in_millis")]
+		long RemainingDelayInMilliseconds { get; }
 	}
 
 	public class ClusterAllocationExplainResponse : ResponseBase, IClusterAllocationExplainResponse
 	{
-		public ShardAllocationExplanation Shard { get; set; }
+		public string Index { get; internal set; }
 
-		public bool Assigned { get; set; }
+		public int Shard { get; internal set; }
 
-		public string AssignedNodeId { get; set; }
+		public bool Primary { get; internal set; }
 
-		public bool ShardStateFetchPending { get; set; }
+		public string CurrentState { get; internal set; }
 
-		public UnassignedInformation UnassignedInformation { get; set; }
+		public UnassignedInformation UnassignedInformation { get; internal set; }
 
-		public string AllocationDelay { get; set; }
+		public Decision? CanAllocate { get; internal set; }
 
-		public long AllocationDelayInMilliseconds { get; set; }
+		public string AllocateExplanation { get; internal set; }
 
-		public string RemainingDelay { get; set; }
+		public string ConfiguredDelay { get; internal set; }
 
-		public long RemainingDelayInMilliseconds { get; set; }
+		public long ConfiguredDelayInMilliseconds { get; internal set; }
 
-		public Dictionary<string, NodeAllocationExplanation> Nodes { get; set; }
+		public CurrentNode CurrentNode { get; internal set; }
+
+		public Decision? CanRemainOnCurrentNode { get; internal set; }
+
+		public IReadOnlyCollection<AllocationDecision> CanRemainDecisions { get; internal set; }
+
+		public Decision? CanRebalanceCluster { get; internal set; }
+
+		public Decision? CanRebalanceToOtherNode { get; internal set; }
+
+		public IReadOnlyCollection<AllocationDecision> CanRebalanceClusterDecisions { get; internal set; } = EmptyReadOnly<AllocationDecision>.Collection;
+
+		public string RebalanceExplanation { get; internal set; }
+
+		public IReadOnlyCollection<NodeAllocationExplanation> NodeAllocationDecisions { get; internal set; }
+
+		public Decision? CanMoveToOtherNode { get; internal set; }
+
+		public string MoveExplanation { get; internal set; }
+
+		public string AllocationDelay { get; internal set; }
+
+		public long AllocationDelayInMilliseconds { get; internal set; }
+
+		public string RemainingDelay { get; internal set; }
+
+		public long RemainingDelayInMilliseconds { get; internal set; }
+	}
+
+	[JsonObject]
+	public class CurrentNode
+	{
+		[JsonProperty("id")]
+		public string Id { get; internal set; }
+
+		[JsonProperty("name")]
+		public string Name { get; internal set; }
+
+		[JsonProperty("transport_address")]
+		public string TransportAddress { get; internal set; }
+
+		[JsonProperty("weight_ranking")]
+		public string WeightRanking { get; internal set; }
+
+		[JsonProperty("attributes")]
+		public IReadOnlyDictionary<string, string> NodeAttributes { get; set; } = EmptyReadOnly<string, string>.Dictionary;
 	}
 
 	[JsonConverter(typeof(StringEnumConverter))]
@@ -82,34 +166,97 @@ namespace Nest
 	[JsonObject]
 	public class NodeAllocationExplanation
 	{
+		[JsonProperty("node_id")]
+		public string NodeId { get; set; }
+
 		[JsonProperty("node_name")]
 		public string NodeName { get; set; }
 
+		[JsonProperty("transport_address")]
+		public string TransportAddress { get; set; }
+
+		[JsonProperty("node_decision")]
+		public Decision? NodeDecision { get; set; }
+
 		[JsonProperty("node_attributes")]
-		public Dictionary<string,string> NodeAttributes { get; set; }
+		public IReadOnlyDictionary<string, string> NodeAttributes { get; set; } = EmptyReadOnly<string, string>.Dictionary;
 
 		[JsonProperty("store")]
 		public AllocationStore Store { get; set; }
 
-		// TODO: Are there enum values for this?
-		[JsonProperty("final_decision")]
-		public string FinalDecision { get; set; }
+		[JsonProperty("weight_ranking")]
+		public int? WeightRanking { get; set; }
 
-		[JsonProperty("final_explanation")]
-		public string FinalExplanation { get; set; }
+		[JsonProperty("deciders")]
+		public IReadOnlyCollection<AllocationDecision> Deciders { get; set; } = EmptyReadOnly<AllocationDecision>.Collection;
+	}
 
-		[JsonProperty("weight")]
-		public float Weight { get; set; }
+	[JsonConverter(typeof(StringEnumConverter))]
+	public enum Decision
+	{
+		[EnumMember(Value = "yes")]
+		Yes,
 
-		[JsonProperty("decisions")]
-		public IEnumerable<AllocationDecision> Decisions { get; set; }
+		[EnumMember(Value = "no")]
+		No
+	}
+
+	[JsonConverter(typeof(StringEnumConverter))]
+	[Obsolete("Removed in Elasticsearch 5.2")]
+	public enum FinalDecision
+	{
+		[EnumMember(Value = "YES")]
+		Yes,
+
+		[EnumMember(Value = "NO")]
+		No,
+
+		[EnumMember(Value = "ALREADY_ASSIGNED")]
+		AlreadyAssigned
+	}
+
+	[JsonConverter(typeof(StringEnumConverter))]
+	public enum StoreCopy
+	{
+		[EnumMember(Value = "NONE")]
+		None,
+
+		[EnumMember(Value = "AVAILABLE")]
+		Available,
+
+		[EnumMember(Value = "CORRUPT")]
+		Corrupt,
+
+		[EnumMember(Value = "IO_ERROR")]
+		IOError,
+
+		[EnumMember(Value = "STALE")]
+		Stale,
+
+		[EnumMember(Value = "UNKNOWN")]
+		Unknown
 	}
 
 	[JsonObject]
 	public class AllocationStore
 	{
-		[JsonProperty("shard_copy")]
-		public string ShardCopy { get; set; }
+		[JsonProperty("found")]
+		public bool? Found { get; set; }
+
+		[JsonProperty("in_sync")]
+		public bool? InSync { get; set; }
+
+		[JsonProperty("allocation_id")]
+		public string AllocationId { get; set; }
+
+		[JsonProperty("matching_sync_id")]
+		public bool? MatchingSyncId { get; set; }
+
+		[JsonProperty("matching_size_in_bytes")]
+		public long? MatchingSizeInBytes { get; set; }
+
+		[JsonProperty("store_exception")]
+		public string StoreException { get; set; }
 	}
 
 	[JsonObject]
@@ -125,7 +272,6 @@ namespace Nest
 		public string Explanation { get; set; }
 	}
 
-
 	public class UnassignedInformation
 	{
 		[JsonProperty("reason")]
@@ -133,6 +279,9 @@ namespace Nest
 
 		[JsonProperty("at")]
 		public DateTime At { get; set; }
+
+		[JsonProperty("last_allocation_status")]
+		public string LastAllocationStatus { get; set; }
 	}
 
 	public class ShardAllocationExplanation
@@ -160,68 +309,68 @@ namespace Nest
 		IndexCreated,
 
 		///<summary>
-        /// Unassigned as a result of a full cluster recovery.
-        ///</summary>
+		/// Unassigned as a result of a full cluster recovery.
+		///</summary>
 		[EnumMember(Value = "CLUSTER_RECOVERED")]
 		ClusterRecovered,
 
 		///<summary>
-        /// Unassigned as a result of opening a closed index.
-        ///</summary>
+		/// Unassigned as a result of opening a closed index.
+		///</summary>
 		[EnumMember(Value = "INDEX_REOPENED")]
 		IndexReopened,
 
 		///<summary>
-        /// Unassigned as a result of importing a dangling index.
-        ///</summary>
+		/// Unassigned as a result of importing a dangling index.
+		///</summary>
 		[EnumMember(Value = "DANGLING_INDEX_IMPORTED")]
 		DanglingIndexImported,
 
 		///<summary>
-        /// Unassigned as a result of restoring into a new index.
-        ///</summary>
+		/// Unassigned as a result of restoring into a new index.
+		///</summary>
 		[EnumMember(Value = "NEW_INDEX_RESTORED")]
 		NewIndexRestored,
 
 		///<summary>
-        /// Unassigned as a result of restoring into a closed index.
-        ///</summary>
+		/// Unassigned as a result of restoring into a closed index.
+		///</summary>
 		[EnumMember(Value = "EXISTING_INDEX_RESTORED")]
 		ExistingIndexRestored,
 
 		///<summary>
-        /// Unassigned as a result of explicit addition of a replica.
-        ///</summary>
+		/// Unassigned as a result of explicit addition of a replica.
+		///</summary>
 		[EnumMember(Value = "REPLICA_ADDED")]
 		ReplicaAdded,
 
 		///<summary>
-        /// Unassigned as a result of a failed allocation of the shard.
-        ///</summary>
+		/// Unassigned as a result of a failed allocation of the shard.
+		///</summary>
 		[EnumMember(Value = "ALLOCATION_FAILED")]
 		AllocationFailed,
 
 		///<summary>
-        /// Unassigned as a result of the node hosting it leaving the cluster.
-        ///</summary>
+		/// Unassigned as a result of the node hosting it leaving the cluster.
+		///</summary>
 		[EnumMember(Value = "NODE_LEFT")]
 		NodeLeft,
 
 		///<summary>
-        /// Unassigned as a result of explicit cancel reroute command.
-        ///</summary>
+		/// Unassigned as a result of explicit cancel reroute command.
+		///</summary>
 		[EnumMember(Value = "REROUTE_CANCELLED")]
 		RerouteCancelled,
 
 		///<summary>
-        /// When a shard moves from started back to initializing, for example, during shadow replica
-        ///</summary>
+		/// When a shard moves from started back to initializing, for example, during shadow replica
+		///</summary>
 		[EnumMember(Value = "REINITIALIZED")]
 		Reinitialized,
 
 		///<summary>
-        /// A better replica location is identified and causes the existing replica allocation to be cancelled.
-        ///</summary>
+		/// A better replica location is identified and causes the existing replica allocation to be cancelled.
+		///</summary>
 		[EnumMember(Value = "REALLOCATED_REPLICA")]
 		ReallocatedReplica
 	}

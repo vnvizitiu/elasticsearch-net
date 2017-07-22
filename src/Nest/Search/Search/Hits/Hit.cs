@@ -5,27 +5,52 @@ using Newtonsoft.Json;
 
 namespace Nest
 {
-	[ContractJsonConverter(typeof(DefaultHitJsonConverter))]
-	public interface IHit<out T> where T : class
+	public interface IHitMetadata<out T> where T : class
 	{
-		FieldValues Fields { get; }
-		T Source { get; }
 		string Index { get; }
 		string Type { get; }
 		long? Version { get; }
-		double? Score { get; }
+		string Routing { get; }
 		string Id { get; }
 		string Parent { get; }
-		string Routing { get; }
+		T Source { get; }
+	}
+
+	internal static class HitMetadataConversionExtensions
+	{
+		public static IHitMetadata<TTarget> Copy<TSource, TTarget>(this IHitMetadata<TSource> source, Func<TSource, TTarget> mapper)
+			where TSource : class
+			where TTarget : class
+		{
+			return new Hit<TTarget>()
+			{
+				Type = source.Type,
+				Index = source.Index,
+				Id = source.Id,
+				Routing = source.Routing,
+				Parent = source.Parent,
+				Source = mapper(source.Source)
+			};
+		}
+	}
+
+	[ContractJsonConverter(typeof(DefaultHitJsonConverter))]
+	public interface IHit<out T> : IHitMetadata<T> where T : class
+	{
+		//technically metadata but we have no intention on preserving these
 		[Obsolete("This feature is no longer supported on indices created in Elasticsearch 5.x and up")]
 		long? Timestamp { get; }
 		[Obsolete("This feature is no longer supported on indices created in Elasticsearch 5.x and up")]
 		long? Ttl { get; }
-		IEnumerable<object> Sorts { get; }
+
+		//search/get related features on hits
+		double? Score { get; }
+		FieldValues Fields { get; }
+		IReadOnlyCollection<object> Sorts { get; }
 		HighlightFieldDictionary Highlights { get; }
 		Explanation Explanation { get; }
-		IEnumerable<string> MatchedQueries { get; }
-		IDictionary<string, InnerHitsResult> InnerHits { get; }
+		IReadOnlyCollection<string> MatchedQueries { get; }
+		IReadOnlyDictionary<string, InnerHitsResult> InnerHits { get; }
 	}
 
 	[JsonObject]
@@ -41,8 +66,9 @@ namespace Nest
 		public string Index { get; internal set; }
 
 		[JsonProperty("inner_hits")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
-		public IDictionary<string, InnerHitsResult> InnerHits { get; internal set; }
+		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, InnerHitsResult>))]
+		public IReadOnlyDictionary<string, InnerHitsResult> InnerHits { get; internal set; } =
+			EmptyReadOnly<string, InnerHitsResult>.Dictionary;
 
 		[JsonProperty("_score")]
 		public double? Score { get; set; }
@@ -74,10 +100,10 @@ namespace Nest
 		public long? Ttl { get; internal set; }
 
 		[JsonProperty("sort")]
-		public IEnumerable<object> Sorts { get; internal set; }
+		public IReadOnlyCollection<object> Sorts { get; internal set; } = EmptyReadOnly<object>.Collection;
 
 		[JsonProperty("highlight")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
+		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, List<string>>))]
 		internal Dictionary<string, List<string>> _Highlight { get; set; }
 
 		public HighlightFieldDictionary Highlights
@@ -102,6 +128,6 @@ namespace Nest
 		public Explanation Explanation { get; internal set; }
 
 		[JsonProperty("matched_queries")]
-		public IEnumerable<string> MatchedQueries { get; internal set; }
+		public IReadOnlyCollection<string> MatchedQueries { get; internal set; } = EmptyReadOnly<string>.Collection;
 	}
 }

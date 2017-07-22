@@ -48,16 +48,18 @@ namespace Elasticsearch.Net
 			? 0
 			: Math.Min(this.RequestConfiguration?.MaxRetries ?? this._settings.MaxRetries.GetValueOrDefault(int.MaxValue), this._connectionPool.MaxRetries);
 
+		private bool RequestDisabledSniff => this.RequestConfiguration != null && (this.RequestConfiguration.DisableSniff ?? false);
+
 		public bool FirstPoolUsageNeedsSniffing =>
-			(!this.RequestConfiguration?.DisableSniff).GetValueOrDefault(true)
+			!this.RequestDisabledSniff
 				&& this._connectionPool.SupportsReseeding && this._settings.SniffsOnStartup && !this._connectionPool.SniffedOnStartup;
 
 		public bool SniffsOnConnectionFailure =>
-			(!this.RequestConfiguration?.DisableSniff).GetValueOrDefault(true)
+			!this.RequestDisabledSniff
 				&& this._connectionPool.SupportsReseeding && this._settings.SniffsOnConnectionFault;
 
 		public bool SniffsOnStaleCluster =>
-			(!this.RequestConfiguration?.DisableSniff).GetValueOrDefault(true)
+			!this.RequestDisabledSniff
 				&& this._connectionPool.SupportsReseeding && this._settings.SniffInformationLifeSpan.HasValue;
 
 		public bool StaleClusterState
@@ -108,6 +110,20 @@ namespace Elasticsearch.Net
 		public bool DepleededRetries => this.Retried >= this.MaxRetries + 1 || this.IsTakingTooLong;
 
 		private Auditable Audit(AuditEvent type) => new Auditable(type, this.AuditTrail, this._dateTimeProvider);
+
+		private static string NoNodesAttemptedMessage = "No nodes were attempted, this can happen when a node predicate does not match any nodes";
+		public void ThrowNoNodesAttempted(RequestData requestData, List<PipelineException> seenExceptions)
+		{
+			var clientException = new ElasticsearchClientException(PipelineFailure.NoNodesAttempted, NoNodesAttemptedMessage, (Exception) null);
+			using(this.Audit(NoNodesAttempted))
+				throw new UnexpectedElasticsearchClientException(clientException, seenExceptions)
+				{
+					Request  = requestData,
+					AuditTrail = this.AuditTrail
+				};
+		}
+
+		public void AuditCancellationRequested() => Audit(CancellationRequested).Dispose();
 
 		public void MarkDead(Node node)
 		{
@@ -214,9 +230,10 @@ namespace Elasticsearch.Net
 			{
 				if (this.DepleededRetries) yield break;
 				foreach (var node in this._connectionPool
-					.CreateView((e, n)=> { using (new Auditable(e, this.AuditTrail, this._dateTimeProvider) { Node = n }) {} })
+					.CreateView(LazyAuditable)
 					.TakeWhile(node => !this.DepleededRetries))
 				{
+					if (!this._settings.NodePredicate(node)) continue;
 					yield return node;
 					if (!this.Refresh) continue;
 					this.Refresh = false;
@@ -304,9 +321,14 @@ namespace Elasticsearch.Net
 		public string SniffPath => "_nodes/http,settings?flat_settings&timeout=" + this.PingTimeout.ToTimeUnit();
 
 		public IEnumerable<Node> SniffNodes => this._connectionPool
-			.CreateView((e, n)=> { using (new Auditable(e, this.AuditTrail, this._dateTimeProvider) { Node = n }) {} })
+			.CreateView(LazyAuditable)
 			.ToList()
 			.OrderBy(n => n.MasterEligible ? n.Uri.Port : int.MaxValue);
+
+		private void LazyAuditable(AuditEvent e, Node n)
+		{
+			using (new Auditable(e, this.AuditTrail, this._dateTimeProvider) { Node = n }) {};
+		}
 
 		public void SniffOnConnectionFailure()
 		{

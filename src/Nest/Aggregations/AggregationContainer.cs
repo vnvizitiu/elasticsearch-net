@@ -5,13 +5,13 @@ using Newtonsoft.Json;
 
 namespace Nest
 {
-	[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
+	[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, IAggregationContainer>))]
 	public class AggregationDictionary : IsADictionaryBase<string, IAggregationContainer>
 	{
-		public AggregationDictionary() : base() { }
+		public AggregationDictionary() {}
 		public AggregationDictionary(IDictionary<string, IAggregationContainer> container) : base(container) { }
 		public AggregationDictionary(Dictionary<string, AggregationContainer> container)
-			: base(container.Select(kv => kv).ToDictionary(kv => kv.Key, kv => (IAggregationContainer)kv.Value))
+			: base(container.ToDictionary(kv => kv.Key, kv => (IAggregationContainer)kv.Value))
 		{ }
 
 		public static implicit operator AggregationDictionary(Dictionary<string, IAggregationContainer> container) =>
@@ -26,7 +26,7 @@ namespace Nest
 			var combinator = aggregator as AggregationCombinator;
 			if (combinator != null)
 			{
-				var dict = new Dictionary<string, AggregationContainer>();
+				var dict = new AggregationDictionary();
 				foreach (var agg in combinator.Aggregations)
 				{
 					b = agg;
@@ -40,7 +40,17 @@ namespace Nest
 			b = aggregator;
 			if (b.Name.IsNullOrEmpty())
 				throw new ArgumentException($"{aggregator.GetType().Name} .Name is not set!");
-			return new Dictionary<string, AggregationContainer> { { b.Name, aggregator } };
+			return new AggregationDictionary { { b.Name, aggregator } };
+		}
+
+		public void Add(string key, AggregationContainer value) => this.BackingDictionary.Add(ValidateKey(key), value);
+
+		public override string ValidateKey(string key)
+		{
+			if (AggregateJsonConverter.AllReservedAggregationNames.Contains(key))
+				throw new ArgumentException(
+					string.Format(AggregateJsonConverter.UsingReservedAggNameFormat, key), nameof(key));
+			return key;
 		}
 	}
 
@@ -50,7 +60,7 @@ namespace Nest
 	public interface IAggregationContainer
 	{
 		[JsonProperty("meta")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
+		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, object>))]
 		IDictionary<string, object> Meta { get; set; }
 
 		[JsonProperty("avg")]
@@ -185,9 +195,11 @@ namespace Nest
 		[JsonProperty("geo_centroid")]
 		IGeoCentroidAggregation GeoCentroid { get; set; }
 
-
 		[JsonProperty("matrix_stats")]
 		IMatrixStatsAggregation MatrixStats { get; set; }
+
+		[JsonProperty("adjacency_matrix")]
+		IAdjacencyMatrixAggregation AdjacencyMatrix { get; set; }
 
 		[JsonProperty("aggs")]
 		AggregationDictionary Aggregations { get; set; }
@@ -280,6 +292,8 @@ namespace Nest
 		public IGeoCentroidAggregation GeoCentroid { get; set; }
 
 		public IMatrixStatsAggregation MatrixStats { get; set; }
+
+		public IAdjacencyMatrixAggregation AdjacencyMatrix { get; set; }
 
 		public AggregationDictionary Aggregations { get; set; }
 
@@ -398,6 +412,8 @@ namespace Nest
 
 		IMatrixStatsAggregation IAggregationContainer.MatrixStats { get; set; }
 
+		IAdjacencyMatrixAggregation IAggregationContainer.AdjacencyMatrix { get; set; }
+
 		public AggregationContainerDescriptor<T> Average(string name,
 			Func<AverageAggregationDescriptor<T>, IAverageAggregation> selector) =>
 			_SetInnerAggregation(name, selector, (a, d) => a.Average = d);
@@ -491,7 +507,11 @@ namespace Nest
 			_SetInnerAggregation(name, selector, (a, d) => a.Sum = d);
 
 		public AggregationContainerDescriptor<T> Terms(string name,
-			Func<TermsAggregationDescriptor<T>, ITermsAggregation> selector) =>
+			Func<TermsAggregationDescriptor<T, string>, ITermsAggregation<string>> selector) =>
+			_SetInnerAggregation(name, selector, (a, d) => a.Terms = d);
+
+		public AggregationContainerDescriptor<T> Terms<TFieldType>(string name,
+			Func<TermsAggregationDescriptor<T, TFieldType>, ITermsAggregation<TFieldType>> selector) =>
 			_SetInnerAggregation(name, selector, (a, d) => a.Terms = d);
 
 		public AggregationContainerDescriptor<T> SignificantTerms(string name,
@@ -577,6 +597,10 @@ namespace Nest
 		public AggregationContainerDescriptor<T> MatrixStats(string name,
 			Func<MatrixStatsAggregationDescriptor<T>, IMatrixStatsAggregation> selector) =>
 			_SetInnerAggregation(name, selector, (a, d) => a.MatrixStats = d);
+
+		public AggregationContainerDescriptor<T> AdjacencyMatrix(string name,
+			Func<AdjacencyMatrixAggregationDescriptor<T>, IAdjacencyMatrixAggregation> selector) =>
+			_SetInnerAggregation(name, selector, (a, d) => a.AdjacencyMatrix = d);
 
 		/// <summary>
 		/// Fluent methods do not assign to properties on `this` directly but on IAggregationContainers inside `this.Aggregations[string, IContainer]

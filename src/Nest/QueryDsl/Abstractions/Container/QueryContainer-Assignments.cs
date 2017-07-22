@@ -18,6 +18,8 @@ namespace Nest
 		private IDisMaxQuery _disMax;
 		private IMultiMatchQuery _multiMatch;
 		private IMatchQuery _match;
+		private IMatchPhraseQuery _matchPhrase;
+		private IMatchPhrasePrefixQuery _matchPhrasePrefix;
 		private IFuzzyQuery _fuzzy;
 		private IGeoShapeQuery _geoShape;
 		private ICommonTermsQuery _commonTerms;
@@ -48,7 +50,6 @@ namespace Nest
 		private IGeoBoundingBoxQuery _geoBoundingBox;
 		private IGeoDistanceQuery _geoDistance;
 		private IGeoPolygonQuery _geoPolygon;
-		private IGeoDistanceRangeQuery _geoDistanceRange;
 		private IGeoHashCellQuery _geoHashCell;
 		private IScriptQuery _script;
 		private IExistsQuery _exists;
@@ -82,6 +83,8 @@ namespace Nest
 		IDisMaxQuery IQueryContainer.DisMax { get { return _disMax; } set { _disMax = Set(value); } }
 		IMultiMatchQuery IQueryContainer.MultiMatch { get { return _multiMatch; } set { _multiMatch = Set(value); } }
 		IMatchQuery IQueryContainer.Match { get { return _match; } set { _match = Set(value); } }
+		IMatchPhraseQuery IQueryContainer.MatchPhrase { get { return _matchPhrase; } set { _matchPhrase = Set(value); } }
+		IMatchPhrasePrefixQuery IQueryContainer.MatchPhrasePrefix { get { return _matchPhrasePrefix; } set { _matchPhrasePrefix = Set(value); } }
 		IFuzzyQuery IQueryContainer.Fuzzy { get { return _fuzzy; } set { _fuzzy = Set(value); } }
 		IGeoShapeQuery IQueryContainer.GeoShape { get { return _geoShape; } set { _geoShape = Set(value); } }
 		ICommonTermsQuery IQueryContainer.CommonTerms { get { return _commonTerms; } set { _commonTerms = Set(value); } }
@@ -111,7 +114,6 @@ namespace Nest
 		IGeoBoundingBoxQuery IQueryContainer.GeoBoundingBox { get { return _geoBoundingBox; } set { _geoBoundingBox = Set(value); } }
 		IGeoDistanceQuery IQueryContainer.GeoDistance { get { return _geoDistance; } set { _geoDistance = Set(value); } }
 		IGeoPolygonQuery IQueryContainer.GeoPolygon { get { return _geoPolygon; } set { _geoPolygon = Set(value); } }
-		IGeoDistanceRangeQuery IQueryContainer.GeoDistanceRange { get { return _geoDistanceRange; } set { _geoDistanceRange = Set(value); } }
 		IGeoHashCellQuery IQueryContainer.GeoHashCell { get { return _geoHashCell; } set { _geoHashCell = Set(value); } }
 		IScriptQuery IQueryContainer.Script { get { return _script; } set { _script = Set(value); } }
 		IExistsQuery IQueryContainer.Exists { get { return _exists; } set { _exists = Set(value); } }

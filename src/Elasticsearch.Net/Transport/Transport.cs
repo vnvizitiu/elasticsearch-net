@@ -8,11 +8,11 @@ namespace Elasticsearch.Net
 	public class Transport<TConnectionSettings> : ITransport<TConnectionSettings>
 		where TConnectionSettings : IConnectionConfigurationValues
 	{
-		//TODO should all of these be public?
 		public TConnectionSettings Settings { get; }
-		public IDateTimeProvider DateTimeProvider { get; }
-		public IMemoryStreamFactory MemoryStreamFactory { get; }
-		public IRequestPipelineFactory PipelineProvider { get; }
+
+		private IDateTimeProvider DateTimeProvider { get; }
+		private IMemoryStreamFactory MemoryStreamFactory { get; }
+		private IRequestPipelineFactory PipelineProvider { get; }
 
 		/// <summary>
 		/// Transport coordinates the client requests over the connection pool nodes and is in charge of falling over on different nodes
@@ -43,7 +43,7 @@ namespace Elasticsearch.Net
 
 			this.Settings = configurationValues;
 			this.PipelineProvider = pipelineProvider ?? new RequestPipelineFactory();
-			this.DateTimeProvider = dateTimeProvider ?? Net.DateTimeProvider.Default;
+			this.DateTimeProvider = dateTimeProvider ?? Elasticsearch.Net.DateTimeProvider.Default;
 			this.MemoryStreamFactory = memoryStreamFactory ?? new MemoryStreamFactory();
 		}
 
@@ -84,10 +84,6 @@ namespace Elasticsearch.Net
 						pipeline.MarkDead(node);
 						seenExceptions.Add(pipelineException);
 					}
-					catch (ResolveException)
-					{
-						throw;
-					}
 					catch (Exception killerException)
 					{
 						throw new UnexpectedElasticsearchClientException(killerException, seenExceptions)
@@ -97,12 +93,13 @@ namespace Elasticsearch.Net
 							AuditTrail = pipeline?.AuditTrail
 						};
 					}
-					if (response != null && response.SuccessOrKnownError)
-					{
-						pipeline.MarkAlive(node);
-						break;
-					}
+					if (response == null || !response.SuccessOrKnownError) continue;
+					pipeline.MarkAlive(node);
+					break;
 				}
+				if (requestData.Node == null) //foreach never ran
+					pipeline.ThrowNoNodesAttempted(requestData, seenExceptions);
+
 				if (response == null || !response.Success)
 					pipeline.BadResponse(ref response, requestData, seenExceptions);
 
@@ -149,10 +146,6 @@ namespace Elasticsearch.Net
 						pipeline.MarkDead(node);
 						seenExceptions.Add(pipelineException);
 					}
-					catch (ResolveException)
-					{
-						throw;
-					}
 					catch (Exception killerException)
 					{
 						throw new UnexpectedElasticsearchClientException(killerException, seenExceptions)
@@ -162,12 +155,18 @@ namespace Elasticsearch.Net
 							AuditTrail = pipeline.AuditTrail
 						};
 					}
-					if (response != null && response.SuccessOrKnownError)
+					if (cancellationToken.IsCancellationRequested)
 					{
-						pipeline.MarkAlive(node);
+						pipeline.AuditCancellationRequested();
 						break;
 					}
+					if (response == null || !response.SuccessOrKnownError) continue;
+					pipeline.MarkAlive(node);
+					break;
 				}
+				if (requestData.Node == null) //foreach never ran
+					pipeline.ThrowNoNodesAttempted(requestData, seenExceptions);
+
 				if (response == null || !response.Success)
 					pipeline.BadResponse(ref response, requestData, seenExceptions);
 

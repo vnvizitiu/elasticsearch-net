@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Reflection.Emit;
 using System.Text.RegularExpressions;
-using DocGenerator;
+using System.Threading.Tasks;
 
 namespace DocGenerator.Documentation.Files
 {
@@ -18,15 +16,15 @@ namespace DocGenerator.Documentation.Files
 			this.FileLocation = fileLocation;
 		}
 
-		public abstract void SaveToDocumentationFolder();
+		public abstract Task SaveToDocumentationFolderAsync();
 
 		public static DocumentationFile Load(FileInfo fileLocation)
 		{
-			var extension = fileLocation?.Extension;
+            if (fileLocation == null) throw new ArgumentNullException(nameof(fileLocation));
+
+			var extension = fileLocation.Extension;
 			switch (extension)
 			{
-				case ".cs":
-					return new CSharpDocumentationFile(fileLocation);
 				case ".gif":
 				case ".jpg":
 				case ".jpeg":
@@ -34,16 +32,17 @@ namespace DocGenerator.Documentation.Files
 					return new ImageDocumentationFile(fileLocation);
 				case ".asciidoc":
 					return new RawDocumentationFile(fileLocation);
-			}
-			throw new ArgumentOutOfRangeException(nameof(fileLocation),
-				$"The extension you specified is currently not supported: {extension}");
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(fileLocation), 
+                        $"The extension you specified is currently not supported: {extension}");
+            }
 		}
 
 		protected virtual FileInfo CreateDocumentationLocation()
 		{
 			var testFullPath = this.FileLocation.FullName;
 
-			var testInDocumentationFolder = 
+			var testInDocumentationFolder =
 				Regex.Replace(testFullPath, @"(^.+\\Tests\\|\" + this.Extension + "$)", "")
 				.TrimEnd(".doc")
 				.TrimEnd("Tests")
@@ -51,10 +50,18 @@ namespace DocGenerator.Documentation.Files
 
 			var documentationTargetPath = Path.GetFullPath(Path.Combine(Program.OutputDirPath, testInDocumentationFolder));
 			var fileInfo = new FileInfo(documentationTargetPath);
-			if (fileInfo.Directory != null)
+
+            if (fileInfo.Directory != null)
 				Directory.CreateDirectory(fileInfo.Directory.FullName);
 
 			return fileInfo;
-		}		
+		}
+
+	    protected async Task CopyFileAsync(string sourceFile, string destinationFile)
+	    {
+	        using (var sourceStream = new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
+	        using (var destinationStream = new FileStream(destinationFile, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan))
+	            await sourceStream.CopyToAsync(destinationStream);
+	    }
 	}
 }

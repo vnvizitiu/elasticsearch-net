@@ -21,6 +21,8 @@ namespace Nest
 		/// <inheritdoc/>
 		public bool? DateDetection { get; set; }
 		/// <inheritdoc/>
+		public bool? IncludeInAll { get; set; }
+		/// <inheritdoc/>
 		public IEnumerable<string> DynamicDateFormats { get; set; }
 		/// <inheritdoc/>
 		public IDynamicTemplateContainer DynamicTemplates { get; set; }
@@ -35,7 +37,7 @@ namespace Nest
 		/// <inheritdoc/>
 		public IIndexField IndexField { get; set; }
 		/// <inheritdoc/>
-		public FluentDictionary<string, object> Meta { get; set; }
+		public IDictionary<string, object> Meta { get; set; }
 		/// <inheritdoc/>
 		public bool? NumericDetection { get; set; }
 		/// <inheritdoc/>
@@ -59,6 +61,8 @@ namespace Nest
 		/// <inheritdoc/>
 		public bool? DateDetection { get; set; }
 		/// <inheritdoc/>
+		public bool? IncludeInAll { get; set; }
+		/// <inheritdoc/>
 		public IEnumerable<string> DynamicDateFormats { get; set; }
 		/// <inheritdoc/>
 		public IDynamicTemplateContainer DynamicTemplates { get; set; }
@@ -73,7 +77,7 @@ namespace Nest
 		/// <inheritdoc/>
 		public IIndexField IndexField { get; set; }
 		/// <inheritdoc/>
-		public FluentDictionary<string, object> Meta { get; set; }
+		public IDictionary<string, object> Meta { get; set; }
 		/// <inheritdoc/>
 		public bool? NumericDetection { get; set; }
 		/// <inheritdoc/>
@@ -98,6 +102,7 @@ namespace Nest
 
 		IAllField ITypeMapping.AllField { get; set; }
 		bool? ITypeMapping.DateDetection { get; set; }
+		bool? ITypeMapping.IncludeInAll { get; set; }
 		IEnumerable<string> ITypeMapping.DynamicDateFormats { get; set; }
 		string ITypeMapping.Analyzer { get; set; }
 		string ITypeMapping.SearchAnalyzer { get; set; }
@@ -105,7 +110,7 @@ namespace Nest
 		Union<bool, DynamicMapping> ITypeMapping.Dynamic { get; set; }
 		IFieldNamesField ITypeMapping.FieldNamesField { get; set; }
 		IIndexField ITypeMapping.IndexField { get; set; }
-		FluentDictionary<string, object> ITypeMapping.Meta { get; set; }
+		IDictionary<string, object> ITypeMapping.Meta { get; set; }
 		bool? ITypeMapping.NumericDetection { get; set; }
 		IParentField ITypeMapping.ParentField { get; set; }
 		IProperties ITypeMapping.Properties { get; set; }
@@ -132,16 +137,21 @@ namespace Nest
 		public PutMappingDescriptor<T> Dynamic(bool dynamic = true) => Assign(a => a.Dynamic = dynamic);
 
 		/// <inheritdoc/>
+		public PutMappingDescriptor<T> IncludeInAll(bool include = true) => Assign(a => a.IncludeInAll = include);
+
+		/// <inheritdoc/>
 		public PutMappingDescriptor<T> Parent(TypeName parentType) => Assign(a => a.ParentField = new ParentField { Type = parentType });
 
 		/// <inheritdoc/>
-		public PutMappingDescriptor<T> Parent<K>() where K : class => Assign(a => a.ParentField = new ParentField { Type = typeof(K) });
+		public PutMappingDescriptor<T> Parent<TParent>() where TParent : class => Assign(a => a.ParentField = new ParentField { Type = typeof(TParent) });
 
+#pragma warning disable 618
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> Analyzer(string analyzer) => Assign(a => a.Analyzer = analyzer);
 
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> SearchAnalyzer(string searchAnalyzer) => Assign(a => a.SearchAnalyzer = searchAnalyzer);
+#pragma warning restore 618
 
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> AllField(Func<AllFieldDescriptor, IAllField> allFieldSelector) => Assign(a => a.AllField = allFieldSelector?.Invoke(new AllFieldDescriptor()));
@@ -173,13 +183,17 @@ namespace Nest
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> RoutingField(Func<RoutingFieldDescriptor<T>, IRoutingField> routingFieldSelector) => Assign(a => a.RoutingField = routingFieldSelector?.Invoke(new RoutingFieldDescriptor<T>()));
 
-
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> FieldNamesField(Func<FieldNamesFieldDescriptor<T>, IFieldNamesField> fieldNamesFieldSelector) => Assign(a => a.FieldNamesField = fieldNamesFieldSelector.Invoke(new FieldNamesFieldDescriptor<T>()));
 
 		/// <inheritdoc/>
-		public PutMappingDescriptor<T> Meta(Func<FluentDictionary<string, object>, FluentDictionary<string, object>> metaSelector) => Assign(a => a.Meta = metaSelector(new FluentDictionary<string, object>()));
+		public PutMappingDescriptor<T> Meta(Func<FluentDictionary<string, object>, FluentDictionary<string, object>> metaSelector) =>
+			Assign(a => a.Meta = metaSelector(new FluentDictionary<string, object>()));
 
+		/// <inheritdoc/>
+		public PutMappingDescriptor<T> Meta(Dictionary<string, object> metaDictionary) => Assign(a => a.Meta = metaDictionary);
+
+		/// <inheritdoc/>
 		public PutMappingDescriptor<T> Properties(Func<PropertiesDescriptor<T>, IPromise<IProperties>> propertiesSelector) =>
 			Assign(a => a.Properties = propertiesSelector?.Invoke(new PropertiesDescriptor<T>(a.Properties))?.Value);
 

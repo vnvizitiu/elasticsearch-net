@@ -3,6 +3,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Xunit;
 
 namespace Tests.XPack.Security.User
@@ -13,6 +14,10 @@ namespace Tests.XPack.Security.User
 	{
 		private string[] _roles = { "user" };
 		public UserCrudTests(XPackCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+
+		//Since we basically take the first 8 characters of a guid we have no way
+		//to guarantee it starts with a-zA-Z which is mandatory since 5.1
+		protected override string Sanitize(string callDistinctValue) => "u" + callDistinctValue;
 
 		protected override LazyResponses Create() => Calls<PutUserDescriptor, PutUserRequest, IPutUserRequest, IPutUserResponse>(
 			CreateInitializer,

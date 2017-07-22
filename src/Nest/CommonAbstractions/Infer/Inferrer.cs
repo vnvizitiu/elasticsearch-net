@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Elasticsearch.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -10,27 +11,30 @@ namespace Nest
 {
 	public class Inferrer
 	{
+		private readonly IConnectionSettingsValues _connectionSettings;
 		private IdResolver IdResolver { get; }
 		private IndexNameResolver IndexNameResolver { get; }
 		private TypeNameResolver TypeNameResolver { get; }
 		private FieldResolver FieldResolver { get; }
 
-		// TODO: Find some better place for this
-		internal ConcurrentDictionary<Type, JsonContract> Contracts { get; set; }
-		internal ConcurrentDictionary<Type, Action<MultiGetHitJsonConverter.MultiHitTuple, JsonSerializer, ICollection<IMultiGetHit<object>>>> CreateMultiHitDelegates { get; set; }
-		internal ConcurrentDictionary<Type, Action<MultiSearchResponseJsonConverter.SearchHitTuple, JsonSerializer, IDictionary<string, object>>> CreateSearchResponseDelegates { get; set; }
+		internal ConcurrentDictionary<Type, JsonContract> Contracts { get; }
+		internal ConcurrentDictionary<Type, Action<MultiGetHitJsonConverter.MultiHitTuple, JsonSerializer, ICollection<IMultiGetHit<object>>>> CreateMultiHitDelegates { get; }
+		internal ConcurrentDictionary<Type, Action<MultiSearchResponseJsonConverter.SearchHitTuple, JsonSerializer, IDictionary<string, object>>> CreateSearchResponseDelegates { get; }
 
 		public Inferrer(IConnectionSettingsValues connectionSettings)
 		{
 			connectionSettings.ThrowIfNull(nameof(connectionSettings));
+			this._connectionSettings = connectionSettings;
 			this.IdResolver = new IdResolver(connectionSettings);
 			this.IndexNameResolver = new IndexNameResolver(connectionSettings);
 			this.TypeNameResolver = new TypeNameResolver(connectionSettings);
 			this.FieldResolver = new FieldResolver(connectionSettings);
+
 			this.Contracts = new ConcurrentDictionary<Type, JsonContract>();
 			this.CreateMultiHitDelegates = new ConcurrentDictionary<Type, Action<MultiGetHitJsonConverter.MultiHitTuple, JsonSerializer, ICollection<IMultiGetHit<object>>>>();
 			this.CreateSearchResponseDelegates = new ConcurrentDictionary<Type, Action<MultiSearchResponseJsonConverter.SearchHitTuple, JsonSerializer, IDictionary<string, object>>>();
 		}
+		public string Resolve(IUrlParameter urlParameter) => urlParameter.GetString(this._connectionSettings);
 
 		public string Field(Field field) => this.FieldResolver.Resolve(field);
 

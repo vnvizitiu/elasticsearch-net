@@ -9,8 +9,7 @@ namespace Tests
 {
 	public static class UriExtensions
 	{
-
-		public static void PathEquals(this Uri u, string pathAndQueryString)
+		public static void PathEquals(this Uri u, string pathAndQueryString, string because)
 		{
 			var paths = (pathAndQueryString ?? "").Split(new[] { '?' }, 2);
 
@@ -20,14 +19,14 @@ namespace Tests
 
 			var expectedUri = new UriBuilder("http", "localhost", u.Port, path, "?" + query).Uri;
 
-			u.AbsolutePath.Should().Be(expectedUri.AbsolutePath);
+			u.AbsolutePath.Should().Be(expectedUri.AbsolutePath, because);
 			u = new UriBuilder(u.Scheme, u.Host, u.Port, u.AbsolutePath, u.Query.Replace("pretty=true&", "").Replace("pretty=true", "")).Uri;
 
 			var queries = new[] { u.Query, expectedUri.Query };
 			if (queries.All(string.IsNullOrWhiteSpace)) return;
 			if (queries.Any(string.IsNullOrWhiteSpace))
 			{
-				queries.Last().Should().Be(queries.First());
+				queries.Last().Should().Be(queries.First(), because);
 				return;
 			}
 
@@ -40,9 +39,9 @@ namespace Tests
 				.Where(k => !string.IsNullOrWhiteSpace(k[0]))
 				.ToDictionary(k => k[0], v => v.Last());
 
-			clientKeyValues.Count().Should().Be(expectedKeyValues.Count());
-			clientKeyValues.Should().ContainKeys(expectedKeyValues.Keys.ToArray());
-			clientKeyValues.Should().Equal(expectedKeyValues);
+			clientKeyValues.Count.Should().Be(expectedKeyValues.Count, because);
+			clientKeyValues.Should().ContainKeys(expectedKeyValues.Keys.ToArray(), because);
+			clientKeyValues.Should().Equal(expectedKeyValues, because);
 		}
 	}
 }

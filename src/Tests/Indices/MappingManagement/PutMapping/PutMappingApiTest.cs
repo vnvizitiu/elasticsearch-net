@@ -3,12 +3,14 @@ using Elasticsearch.Net;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 using static Nest.Infer;
 
 namespace Tests.Indices.MappingManagement.PutMapping
 {
+	[SkipVersion("<5.2.0", "This uses the range types introduced in 5.2.0")]
 	public class PutMappingApiTests
 		: ApiIntegrationAgainstNewIndexTestBase
 			<WritableCluster, IPutMappingResponse, IPutMappingRequest, PutMappingDescriptor<Project>, PutMappingRequest<Project>>
@@ -29,6 +31,7 @@ namespace Tests.Indices.MappingManagement.PutMapping
 
 		protected override object ExpectJson { get; } = new
 		{
+			include_in_all = true,
 			properties = new
 			{
 				branches = new
@@ -157,6 +160,26 @@ namespace Tests.Indices.MappingManagement.PutMapping
 				{
 					type = "completion"
 				},
+				ranges = new {
+					properties = new {
+						dates = new {
+							type = "date_range"
+						},
+						doubles = new {
+							type = "double_range"
+						},
+						floats = new {
+							type = "float_range"
+						},
+						integers = new {
+							type = "integer_range"
+						},
+						longs = new {
+							type = "long_range"
+						}
+					},
+					type = "object"
+				},
 				tags = new
 				{
 					properties = new
@@ -178,6 +201,7 @@ namespace Tests.Indices.MappingManagement.PutMapping
 
 		protected override Func<PutMappingDescriptor<Project>, IPutMappingRequest> Fluent => d => d
 			.Index(CallIsolatedValue)
+			.IncludeInAll()
 			.AutoMap()
 			.Properties(prop => prop
 				.Object<Tag>(o => o
@@ -223,6 +247,7 @@ namespace Tests.Indices.MappingManagement.PutMapping
 
 		protected override PutMappingRequest<Project> Initializer => new PutMappingRequest<Project>(CallIsolatedValue, Type<Project>())
 		{
+			IncludeInAll = true,
 			Properties = new Properties<Project>
 			{
 				{ p => p.Branches, new TextProperty
@@ -281,6 +306,18 @@ namespace Tests.Indices.MappingManagement.PutMapping
 				{ p => p.StartedOn, new DateProperty() },
 				{ p => p.State, new NumberProperty(NumberType.Integer) },
 				{ p => p.Suggest, new CompletionProperty() },
+				{ p => p.Ranges, new ObjectProperty
+						{
+							Properties = new Properties<Ranges>
+							{
+								{ p => p.Dates, new DateRangeProperty() },
+								{ p => p.Doubles, new DoubleRangeProperty() },
+								{ p => p.Floats, new FloatRangeProperty() },
+								{ p => p.Integers, new IntegerRangeProperty() },
+								{ p => p.Longs, new LongRangeProperty() },
+							}
+						}
+				},
 				{ p => p.Tags, new ObjectProperty
 						{
 							Properties = new Properties<Tag>

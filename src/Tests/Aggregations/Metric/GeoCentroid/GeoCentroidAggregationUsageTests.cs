@@ -3,6 +3,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 
@@ -50,6 +51,7 @@ namespace Tests.Aggregations.Metric.GeoCentroid
 			response.ShouldBeValid();
 			var centroid = response.Aggs.GeoCentroid("centroid");
 			centroid.Should().NotBeNull();
+			centroid.Count.Should().BeGreaterThan(0);
 			centroid.Location.Should().NotBeNull();
 
 			centroid.Location.Latitude.Should().NotBe(0);
@@ -60,7 +62,7 @@ namespace Tests.Aggregations.Metric.GeoCentroid
 	/**
 	 *[float]
 	 *[[geo-centroid-sub-aggregation]]
-	 *== Geo Centroid Sub Aggregation
+	 *=== Geo Centroid Sub Aggregation
 	 *
 	 * The `geo_centroid` aggregation is more interesting when combined as a sub-aggregation to other bucket aggregations
 	 */
@@ -116,7 +118,7 @@ namespace Tests.Aggregations.Metric.GeoCentroid
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 
 			var projects = response.Aggs.Terms("projects");
 
@@ -124,6 +126,7 @@ namespace Tests.Aggregations.Metric.GeoCentroid
 			{
 				var centroid = bucket.GeoCentroid("centroid");
 				centroid.Should().NotBeNull();
+				centroid.Count.Should().BeGreaterThan(0);
 				centroid.Location.Should().NotBeNull();
 
 				centroid.Location.Latitude.Should().NotBe(0);

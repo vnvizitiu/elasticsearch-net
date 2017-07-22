@@ -8,6 +8,8 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
+using Tests.Framework.ManagedElasticsearch.NodeSeeders;
 using Tests.Framework.MockData;
 using Xunit;
 
@@ -49,12 +51,15 @@ namespace Tests.QueryDsl.Specialized.Percolate
 			foreach (var index in values.Values)
 			{
 				this.Client.CreateIndex(index, c => c
+                    .Settings(settings=>settings
+                        .Analysis(DefaultSeeder.ProjectAnalysisSettings)
+                    )
 					.Mappings(m => m
 						.Map<Project>(mm => mm.AutoMap()
-							.Properties(Seeder.ProjectProperties)
+							.Properties(DefaultSeeder.ProjectProperties)
 						)
 						.Map<PercolatedQuery>(mm => mm.AutoMap()
-							.Properties(Seeder.PercolatedQueryProperties)
+							.Properties(DefaultSeeder.PercolatedQueryProperties)
 						)
 					)
 				);
@@ -83,9 +88,11 @@ namespace Tests.QueryDsl.Specialized.Percolate
 			}
 		};
 
+        //hide
 		protected override Func<SearchDescriptor<PercolatedQuery>, ISearchRequest> Fluent => f =>
 			f.Query(QueryFluent).Index(CallIsolatedValue).AllTypes();
 
+        //hide
 		protected override SearchRequest<PercolatedQuery> Initializer =>
 			new SearchRequest<PercolatedQuery>(CallIsolatedValue, Types.All)
 			{
@@ -166,12 +173,15 @@ namespace Tests.QueryDsl.Specialized.Percolate
 			foreach (var index in values.Values)
 			{
 				this.Client.CreateIndex(index, c => c
+                    .Settings(settings=>settings
+                        .Analysis(DefaultSeeder.ProjectAnalysisSettings)
+                    )
 					.Mappings(m => m
 						.Map<Project>(mm => mm.AutoMap()
-							.Properties(Seeder.ProjectProperties)
+							.Properties(DefaultSeeder.ProjectProperties)
 						)
 						.Map<PercolatedQuery>(mm => mm.AutoMap()
-							.Properties(Seeder.PercolatedQueryProperties)
+							.Properties(DefaultSeeder.PercolatedQueryProperties)
 						)
 					)
 				);

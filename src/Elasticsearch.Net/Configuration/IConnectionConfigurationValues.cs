@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Specialized;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
 namespace Elasticsearch.Net
@@ -53,6 +55,13 @@ namespace Elasticsearch.Net
 		int? MaxRetries { get; }
 
 		/// <summary>
+		/// Limits the number of concurrent connections that can be opened to an endpoint. Defaults to 80 (see <see cref="ConnectionConfiguration.DefaultConnectionLimit"/>).
+		/// <para>For Desktop CLR, this setting applies to the DefaultConnectionLimit property on the  ServicePointManager object when creating ServicePoint objects, affecting the default <see cref="IConnection"/> implementation.</para>
+		/// <para>For Core CLR, this setting applies to the MaxConnectionsPerServer property on the HttpClientHandler instances used by the HttpClient inside the default <see cref="IConnection"/> implementation</para>
+		/// </summary>
+		int ConnectionLimit { get; }
+
+		/// <summary>
 		/// This signals that we do not want to send initial pings to unknown/previously dead nodes
 		/// and just send the call straightaway
 		/// </summary>
@@ -68,7 +77,15 @@ namespace Elasticsearch.Net
 		/// When set will force all connections through this proxy
 		/// </summary>
 		string ProxyAddress { get; }
+
+		/// <summary>
+		/// The username for the proxy, when configured
+		/// </summary>
 		string ProxyUsername { get; }
+
+		/// <summary>
+		/// The password for the proxy, when configured
+		/// </summary>
 		string ProxyPassword { get; }
 
 		/// <summary>
@@ -138,6 +155,10 @@ namespace Elasticsearch.Net
 		/// </summary>
 		BasicAuthenticationCredentials BasicAuthenticationCredentials { get; }
 
+		/// <summary>
+		/// An action to run when the <see cref="RequestData"/> for a request has been
+		/// created.
+		/// </summary>
 		Action<RequestData> OnRequestDataCreated { get; }
 
 		/// <summary>
@@ -152,5 +173,23 @@ namespace Elasticsearch.Net
 		/// received.
 		/// </summary>
 		TimeSpan? KeepAliveInterval { get; }
+
+		/// <summary>
+		/// Register a ServerCertificateValidationCallback per request
+		/// </summary>
+		Func<object, X509Certificate,X509Chain,SslPolicyErrors, bool>  ServerCertificateValidationCallback { get; }
+
+		/// <summary>
+		/// Register a predicate to select which nodes that you want to execute API calls on. Note that sniffing requests omit this predicate and always execute on all nodes.
+		/// When using an <see cref="IConnectionPool"/> implementation that supports reseeding of nodes, this will default to omitting master only node from regular API calls.
+		/// When using static or single node connection pooling it is assumed the list of node you instantiate the client with should be taken verbatim.
+		/// </summary>
+		Func<Node, bool> NodePredicate { get; }
+
+		/// <summary>
+		/// Use the following certificates to authenticate all HTTP requests. You can also set them on individual
+		/// request using <see cref="RequestConfiguration.ClientCertificates"/>
+		/// </summary>
+		X509CertificateCollection ClientCertificates { get; }
 	}
 }

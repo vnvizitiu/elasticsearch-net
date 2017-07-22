@@ -7,6 +7,7 @@ using Tests.Framework.Integration;
 using Tests.Framework.MockData;
 using Xunit;
 using FluentAssertions;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Document.Single.Delete
 {
@@ -39,7 +40,7 @@ namespace Tests.Document.Single.Delete
 
 		protected override void ExpectResponse(IDeleteResponse response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 			response.Found.Should().BeTrue();
 			response.Result.Should().Be(Result.Deleted);
 		}

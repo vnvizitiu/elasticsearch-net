@@ -17,9 +17,9 @@ namespace Nest
 		public string Resolve(IndexName i)
 		{
 			if (string.IsNullOrEmpty(i?.Name))
-				return this.Resolve(i?.Type);
+				return PrefixClusterName(i,this.Resolve(i?.Type));
 			ValidateIndexName(i.Name);
-			return i.Name;
+			return PrefixClusterName(i, i.Name);
 		}
 
 		public string Resolve(Type type)
@@ -35,18 +35,16 @@ namespace Nest
 			ValidateIndexName(indexName);
 			return indexName;
 		}
+		private static string PrefixClusterName(IndexName i, string name) => i.Cluster.IsNullOrEmpty() ? name : $"{i.Cluster}:{name}";
 
 		private static void ValidateIndexName(string indexName)
 		{
 			if (string.IsNullOrWhiteSpace(indexName))
-				throw new ResolveException(
+				throw new ArgumentException(
 					"Index name is null for the given type and no default index is set. "
-					+ "Map an index name using ConnectionSettings.MapDefaultTypeIndices() "
+					+ "Map an index name using ConnectionSettings.MapDefaultTypeIndices(), ConnectionSettings.InferMappingFor<TDocument>() "
 					+ "or set a default index using ConnectionSettings.DefaultIndex()."
 				);
-
-			if (indexName.HasAny(char.IsUpper))
-				throw new ResolveException($"Index names cannot contain uppercase characters: {indexName}.");
 		}
 	}
 }

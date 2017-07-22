@@ -7,6 +7,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Tests.Framework.Versions;
 using Xunit;
@@ -45,7 +46,7 @@ namespace Tests.Search.MultiSearch
 			new { index = "queries", type = TestClient.PercolatorType },
 			new { query = new { percolate = new { document_type = "project", document = Project.InstanceAnonymous, field = "query" } } },
 			new { index = "queries", type = TestClient.PercolatorType },
-			new { query = new { percolate = new { index = "project", type = "project", id = Project.Projects.First().Name, version = 1, document_type = "project", field = "query" } } },
+			new { query = new { percolate = new { index = "project", type = "project", id = Project.First.Name, version = 1, document_type = "project", field = "query" } } },
 		};
 
 		protected override Func<MultiSearchDescriptor, IMultiSearchRequest> Fluent => ms => ms
@@ -71,7 +72,7 @@ namespace Tests.Search.MultiSearch
 					.Percolate(p => p
 						.Index<Project>()
 						.Type<Project>()
-						.Id(Project.Projects.First().Name)
+						.Id(Project.First.Name)
 						.Version(1)
 						.DocumentType<Project>()
 						.Field(f => f.Query)
@@ -103,7 +104,7 @@ namespace Tests.Search.MultiSearch
 						{
 							Index = typeof(Project),
 							Type = typeof(Project),
-							Id = Project.Projects.First().Name,
+							Id = Project.First.Name,
 							Version = 1,
 							DocumentType = typeof(Project),
 							Field = Infer.Field<PercolatedQuery>(f => f.Query)
@@ -128,8 +129,7 @@ namespace Tests.Search.MultiSearch
 			projects.Documents.Should().HaveCount(10);
 
 			var projectsCount = r.GetResponse<Project>("count_project");
-			projectsCount.ShouldBeValid();
-			projectsCount.Documents.Should().HaveCount(0);
+			projectsCount.Should().BeNull();
 
 			var developers = r.GetResponse<Developer>("5developers");
 			developers.ShouldBeValid();
@@ -140,11 +140,11 @@ namespace Tests.Search.MultiSearch
 			inferredTypeName.Documents.Should().HaveCount(5);
 
 			var percolateDocument = r.GetResponse<PercolatedQuery>("percolate_document");
-			percolateDocument.IsValid.Should().BeTrue();
+			percolateDocument.ShouldBeValid();
 			percolateDocument.Documents.Should().HaveCount(1);
 
 			var percolateExistingDocument = r.GetResponse<PercolatedQuery>("percolate_existing_document");
-			percolateExistingDocument.IsValid.Should().BeTrue();
+			percolateExistingDocument.ShouldBeValid();
 			percolateExistingDocument.Documents.Should().HaveCount(1);
 		});
 	}

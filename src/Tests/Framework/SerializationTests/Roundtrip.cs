@@ -1,17 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Text;
 using Elasticsearch.Net;
 using FluentAssertions;
 using Nest;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Tests.Framework
 {
 	public class RoundTripper : SerializationTestBase
 	{
-
 		protected override object ExpectJson { get; }
 
 		internal RoundTripper(
@@ -27,6 +29,24 @@ namespace Tests.Framework
 			this._expectedJsonJObject = JToken.Parse(this._expectedJsonString);
 			this._serializerFactory = _serializerFactory;
 		}
+
+		public virtual void DeserializesTo<T>(Action<string, T> assert)
+		{
+			var json = (this.ExpectJson is string) ? (string) ExpectJson : JsonConvert.SerializeObject(this.ExpectJson);
+
+			T sut;
+			using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
+				sut = this.Client.Serializer.Deserialize<T>(stream);
+			sut.Should().NotBeNull();
+			assert("first deserialization", sut);
+
+			var serialized = this.Client.Serializer.SerializeToString(sut);
+			using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(serialized)))
+				sut = this.Client.Serializer.Deserialize<T>(stream);
+			sut.Should().NotBeNull();
+			assert("second deserialization", sut);
+		}
+
 
 		public virtual RoundTripper<T> WhenSerializing<T>(T actual)
 		{
@@ -55,6 +75,11 @@ namespace Tests.Framework
 			return this;
 		}
 
+	    public RoundTripper NoRoundTrip()
+	    {
+	        this.SupportsDeserialization = false;
+	        return this;
+	    }
 
 		public static IntermediateChangedSettings WithConnectionSettings(Func<ConnectionSettings, ConnectionSettings> settings) =>  new IntermediateChangedSettings(settings);
 
@@ -77,7 +102,6 @@ namespace Tests.Framework
 			this._serializerFactory = serializerFactory;
 			return this;
 		}
-
 
 		public RoundTripper Expect(object expected) =>  new RoundTripper(expected, _connectionSettingsModifier, this._serializerFactory);
 	}

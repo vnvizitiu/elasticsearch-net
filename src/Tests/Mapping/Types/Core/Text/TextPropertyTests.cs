@@ -4,6 +4,7 @@ using Nest;
 using Tests.Framework;
 using Tests.Framework.MockData;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Mapping.Types.Core.Text
 {
@@ -20,9 +21,23 @@ namespace Tests.Mapping.Types.Core.Text
 					type = "text",
 					analyzer = "standard",
 					boost = 1.2,
+					copy_to = new [] { "other_field" },
 					eager_global_ordinals = true,
 					fielddata = true,
-					include_in_all = false,
+					fielddata_frequency_filter = new
+					{
+						min = 1.0,
+						max = 100.00,
+						min_segment_size = 2
+					},
+					fields = new
+					{
+						raw = new
+						{
+							type = "keyword",
+							ignore_above = 100
+						}
+					},
 					index = true,
 					index_options = "offsets",
 					position_increment_gap = 5,
@@ -30,7 +45,8 @@ namespace Tests.Mapping.Types.Core.Text
 					search_quote_analyzer = "standard",
 					similarity = "classic",
 					store = true,
-					norms = false
+					norms = false,
+					term_vector = "with_positions_offsets"
 				}
 			}
 		};
@@ -41,9 +57,22 @@ namespace Tests.Mapping.Types.Core.Text
 					.Name(p => p.Name)
 					.Analyzer("standard")
 					.Boost(1.2)
+					.CopyTo(c => c
+						.Field("other_field")
+					)
 					.EagerGlobalOrdinals()
 					.Fielddata()
-					.IncludeInAll(false)
+					.FielddataFrequencyFilter(ff => ff
+						.Min(1)
+						.Max(100)
+						.MinSegmentSize(2)
+					)
+					.Fields(fd => fd
+						.Keyword(k => k
+							.Name("raw")
+							.IgnoreAbove(100)
+						)
+					)
 					.Index(true)
 					.IndexOptions(IndexOptions.Offsets)
 					.PositionIncrementGap(5)
@@ -52,6 +81,7 @@ namespace Tests.Mapping.Types.Core.Text
 					.Similarity(SimilarityOption.Classic)
 					.Store()
 					.Norms(false)
+					.TermVector(TermVectorOption.WithPositionsOffsets)
 				);
 
 
@@ -61,9 +91,23 @@ namespace Tests.Mapping.Types.Core.Text
 				{
 					Analyzer = "standard",
 					Boost = 1.2,
+					CopyTo = "other_field",
 					EagerGlobalOrdinals = true,
 					Fielddata = true,
-					IncludeInAll = false,
+					FielddataFrequencyFilter = new FielddataFrequencyFilter
+					{
+						Min = 1,
+						Max = 100,
+						MinSegmentSize = 2
+					},
+					Fields = new Properties
+					{
+						{ "raw", new KeywordProperty
+							{
+								IgnoreAbove = 100
+							}
+						}
+					},
 					Index = true,
 					IndexOptions = IndexOptions.Offsets,
 					PositionIncrementGap = 5,
@@ -71,7 +115,8 @@ namespace Tests.Mapping.Types.Core.Text
 					SearchQuoteAnalyzer = "standard",
 					Similarity = SimilarityOption.Classic,
 					Store = true,
-					Norms = false
+					Norms = false,
+					TermVector = TermVectorOption.WithPositionsOffsets
 				}
 			}
 		};

@@ -5,6 +5,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.Search.Request
@@ -72,13 +73,13 @@ namespace Tests.Search.Request
 
 			firstQuery.Description.Should().NotBeNullOrWhiteSpace();
 			firstQuery.Type.Should().NotBeNullOrWhiteSpace();
-			firstQuery.Time.Should().BeGreaterOrEqualTo(TimeSpan.FromMilliseconds(0.000001));
+			firstQuery.TimeInNanoseconds.Should().BeGreaterThan(0);
 			firstQuery.Children.Should().NotBeNullOrEmpty();
 
 			var firstCollector = firstSearch.Collector.First();
 			firstCollector.Name.Should().NotBeNullOrEmpty();
 			firstCollector.Reason.Should().NotBeNullOrEmpty();
-			firstCollector.Time.Should().BeGreaterOrEqualTo(TimeSpan.FromMilliseconds(0.000001));
+			firstCollector.TimeInNanoseconds.Should().BeGreaterThan(0);
 		});
 	}
 }

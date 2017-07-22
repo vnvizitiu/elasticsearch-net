@@ -5,7 +5,6 @@ using Newtonsoft.Json;
 
 namespace Nest
 {
-	//TODO dict of string QUeryContainer?
 	[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<NamedFiltersContainer, string, IQueryContainer>))]
 	public interface INamedFiltersContainer : IIsADictionary<string, IQueryContainer>
 	{
@@ -13,7 +12,7 @@ namespace Nest
 
 	public class NamedFiltersContainer: IsADictionaryBase<string, IQueryContainer>, INamedFiltersContainer
 	{
-		public NamedFiltersContainer() : base() { }
+		public NamedFiltersContainer() {}
 		public NamedFiltersContainer(IDictionary<string, IQueryContainer> container) : base(container) { }
 		public NamedFiltersContainer(Dictionary<string, QueryContainer> container)
 			: base(container.Select(kv => kv).ToDictionary(kv => kv.Key, kv => (IQueryContainer)kv.Value))

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch;
+using Tests.Framework.ManagedElasticsearch.Plugins;
 
 namespace Tests.Framework
 {
@@ -13,7 +15,8 @@ namespace Tests.Framework
 		{
 			if (plugins == null)
 				throw new ArgumentNullException(nameof(plugins));
-			this.Plugins = plugins?.ToList();
+
+			this.Plugins = plugins.ToList();
 		}
 	}
 }

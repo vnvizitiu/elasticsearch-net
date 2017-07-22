@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Indices.IndexManagement.RolloverIndex
 {
@@ -26,7 +27,7 @@ namespace Tests.Indices.IndexManagement.RolloverIndex
 					.Alias(CallIsolatedValue + "-alias")
 				)
 			);
-			create.IsValid.Should().BeTrue();
+			create.ShouldBeValid();
 		}
 
 		protected override LazyResponses ClientUsage() => Calls(
@@ -73,7 +74,7 @@ namespace Tests.Indices.IndexManagement.RolloverIndex
 
 		protected override void ExpectResponse(IRolloverIndexResponse response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 			response.OldIndex.Should().NotBeNullOrEmpty();
 			response.NewIndex.Should().NotBeNullOrEmpty();
 			response.RolledOver.Should().BeFalse();

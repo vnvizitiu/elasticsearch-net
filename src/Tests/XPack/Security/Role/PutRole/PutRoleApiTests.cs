@@ -5,6 +5,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 using static Nest.Infer;
@@ -45,6 +46,10 @@ namespace Tests.XPack.Security.Role.PutRole
 					field_security = new { grant = new [] { "name", "description" } },
 					query = new { match_all = new {} }
 				}
+			},
+			metadata = new
+			{
+				@internal = true
 			}
 		};
 
@@ -64,6 +69,10 @@ namespace Tests.XPack.Security.Role.PutRole
 					Privileges = new [] { "all" },
 					Query = new MatchAllQuery()
 				}
+			},
+			Metadata = new Dictionary<string, object>()
+			{
+				{ "internal", true }
 			}
 		};
 
@@ -84,7 +93,8 @@ namespace Tests.XPack.Security.Role.PutRole
 					.Privileges("all")
 					.Query(q => q.MatchAll())
 				)
-			);
+			)
+			.Metadata( m => m.Add("internal", true));
 
 		protected override void ExpectResponse(IPutRoleResponse response)
 		{
@@ -93,7 +103,6 @@ namespace Tests.XPack.Security.Role.PutRole
 		}
 	}
 
-	//TODO this might be a bug in xpack but more likely a misunderstanding on our part ignore for now
 	public class PutRoleRunAsApiTests : PutRoleApiTests
 	{
 		public PutRoleRunAsApiTests(XPackCluster cluster, EndpointUsage usage) : base(cluster, usage) { }

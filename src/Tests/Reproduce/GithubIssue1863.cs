@@ -8,6 +8,7 @@ using Tests.Document.Multiple.Reindex;
 using Tests.Framework;
 using Xunit;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.Reproduce
@@ -16,11 +17,7 @@ namespace Tests.Reproduce
 	public class GithubIssue1863 : IClusterFixture<ReadOnlyCluster>
 	{
 		private readonly ReadOnlyCluster _cluster;
-
-		public GithubIssue1863(ReadOnlyCluster cluster)
-		{
-			_cluster = cluster;
-		}
+		public GithubIssue1863(ReadOnlyCluster cluster) { _cluster = cluster; }
 
 		[I]
 		public void ConcreteTypeConverterReturnsNullScores()

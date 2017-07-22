@@ -33,29 +33,27 @@ namespace Tests.Document.Multiple.ReindexRethrottle
 				.WaitForCompletion(false)
 			);
 
-			reindex.IsValid.Should().BeTrue();
+			reindex.ShouldBeValid();
 			this.ExtendedValue(TaskIdKey, reindex.Task);
 		}
 	}
 
 	public class ReindexRethrottleUpdateByQueryTests : ReindexRethrottleApiTests
 	{
-		public ReindexRethrottleUpdateByQueryTests(ReindexCluster cluster, EndpointUsage usage) : base(cluster, usage)
-		{
-		}
+		public ReindexRethrottleUpdateByQueryTests(ReindexCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override void OnBeforeCall(IElasticClient client)
 		{
 			var reindex = client.UpdateByQuery<Project>(u => u
 				.Conflicts(Conflicts.Proceed)
 				.Query(q => q.MatchAll())
-				.Script(s => s.Inline("ctx._source.numberOfCommits+10").Lang("groovy"))
+				.Script(s => s.Inline("ctx._source.numberOfCommits+10"))
 				.Refresh()
 				.RequestsPerSecond(1)
 				.WaitForCompletion(false)
 			);
 
-			reindex.IsValid.Should().BeTrue();
+			reindex.ShouldBeValid();
 			this.ExtendedValue(TaskIdKey, reindex.Task);
 		}
 	}
@@ -101,7 +99,7 @@ namespace Tests.Document.Multiple.ReindexRethrottle
 
 		protected override void ExpectResponse(IReindexRethrottleResponse response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 
 			response.Nodes.Should().NotBeEmpty().And.HaveCount(1);
 			var node = response.Nodes.First().Value;

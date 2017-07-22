@@ -10,10 +10,10 @@ namespace Nest
 
 	public class Analyzers : IsADictionaryBase<string, IAnalyzer>, IAnalyzers
 	{
-		public Analyzers() : base() { }
+		public Analyzers() {}
 		public Analyzers(IDictionary<string, IAnalyzer> container) : base(container) { }
 		public Analyzers(Dictionary<string, IAnalyzer> container)
-			: base(container.Select(kv => kv).ToDictionary(kv => kv.Key, kv => kv.Value))
+			: base(container.ToDictionary(kv => kv.Key, kv => kv.Value))
 		{ }
 
 		public void Add(string name, IAnalyzer analyzer) => BackingDictionary.Add(name, analyzer);
@@ -91,5 +91,11 @@ namespace Nest
 		public AnalyzersDescriptor Fingerprint(string name, Func<FingerprintAnalyzerDescriptor, IFingerprintAnalyzer> selector = null) =>
 			Assign(name, selector.InvokeOrDefault(new FingerprintAnalyzerDescriptor()));
 
+		/// <summary>
+		/// An analyzer tailored for japanese that is bootstrapped with defaults.
+		/// Part of the `analysis-kuromoji` plugin: https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-kuromoji.html
+		/// </summary>
+		public AnalyzersDescriptor Kuromoji(string name, Func<KuromojiAnalyzerDescriptor, IKuromojiAnalyzer> selector = null) =>
+			Assign(name, selector.InvokeOrDefault(new KuromojiAnalyzerDescriptor()));
 	}
 }

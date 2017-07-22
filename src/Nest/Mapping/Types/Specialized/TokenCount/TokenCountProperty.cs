@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Newtonsoft.Json;
 
 namespace Nest
@@ -17,14 +18,12 @@ namespace Nest
 
 		[JsonProperty("null_value")]
 		double? NullValue { get; set; }
-
-		[JsonProperty("include_in_all")]
-		bool? IncludeInAll { get; set; }
 	}
 
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class TokenCountProperty : DocValuesPropertyBase, ITokenCountProperty
 	{
-		public TokenCountProperty() : base("token_count") { }
+		public TokenCountProperty() : base(FieldType.TokenCount) { }
 
 		public string Analyzer { get; set; }
 
@@ -34,24 +33,22 @@ namespace Nest
 
 		public double? NullValue { get; set; }
 
-		public bool? IncludeInAll { get; set; }
 	}
 
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class TokenCountPropertyDescriptor<T>
 		: DocValuesPropertyDescriptorBase<TokenCountPropertyDescriptor<T>, ITokenCountProperty, T>, ITokenCountProperty
 		where T : class
 	{
-		public TokenCountPropertyDescriptor() : base("token_count") { }
+		public TokenCountPropertyDescriptor() : base(FieldType.TokenCount) { }
 
 		string ITokenCountProperty.Analyzer { get; set; }
 		double? ITokenCountProperty.Boost { get; set; }
-		bool? ITokenCountProperty.IncludeInAll { get; set; }
 		bool? ITokenCountProperty.Index { get; set; }
 		double? ITokenCountProperty.NullValue { get; set; }
 
 		public TokenCountPropertyDescriptor<T> Analyzer(string analyzer) => Assign(a => a.Analyzer = analyzer);
 		public TokenCountPropertyDescriptor<T> Boost(double boost) => Assign(a => a.Boost = boost);
-		public TokenCountPropertyDescriptor<T> IncludeInAll(bool includeInAll = true) => Assign(a => a.IncludeInAll = includeInAll);
 		public TokenCountPropertyDescriptor<T> Index(bool index = true) => Assign(a => a.Index = index);
 		public TokenCountPropertyDescriptor<T> NullValue(double nullValue) => Assign(a => a.NullValue = nullValue);
 	}

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.Search.Request
@@ -14,15 +15,15 @@ namespace Tests.Search.Request
 		{
 			indices_boost = new
 			{
-				index1 = 1.4,
-				index2 = 1.3
+				project = 1.4,
+				devs = 1.3
 			}
 		};
 
 		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
 			.IndicesBoost(b => b
-				.Add("index1", 1.4)
-				.Add("index2", 1.3)
+				.Add("project", 1.4)
+				.Add("devs", 1.3)
 			);
 
 		protected override SearchRequest<Project> Initializer =>
@@ -30,8 +31,8 @@ namespace Tests.Search.Request
 			{
 				IndicesBoost = new Dictionary<IndexName, double>
 				{
-						{ "index1", 1.4 },
-						{ "index2", 1.3 }
+					{ "project", 1.4 },
+					{ "devs", 1.3 }
 				}
 			};
 	}

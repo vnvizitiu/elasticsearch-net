@@ -20,7 +20,8 @@ The implementation uses either the lucene `highlighter`, `fast-vector-highlighte
 
 See the Elasticsearch documentation on {ref_current}/search-request-highlighting.html[highlighting] for more detail.
 
-=== Fluent DSL Example
+[float]
+=== Fluent DSL example
 
 [source,csharp]
 ----
@@ -47,10 +48,22 @@ s => s
             .Type(HighlighterType.Fvh)
             .PreTags("<name>")
             .PostTags("</name>")
+            .BoundaryMaxScan(50)
             .HighlightQuery(q => q
                 .Match(m => m
                     .Field(p => p.LeadDeveloper.FirstName)
                     .Query("Kurt Edgardo Naomi Dariana Justice Felton")
+                )
+            ),
+        fs => fs
+            .Field(p => p.LeadDeveloper.LastName)
+            .Type(HighlighterType.Unified)
+            .PreTags("<name>")
+            .PostTags("</name>")
+            .HighlightQuery(q => q
+                .Match(m => m
+                    .Field(p => p.LeadDeveloper.LastName)
+                    .Query(LastNameSearch)
                 )
             ),
         fs => fs
@@ -71,7 +84,8 @@ s => s
 )
 ----
 
-=== Object Initializer Syntax Example
+[float]
+=== Object Initializer syntax example
 
 [source,csharp]
 ----
@@ -100,12 +114,25 @@ new SearchRequest<Project>
             { "leadDeveloper.firstName", new HighlightField
                 {
                     Type = "fvh",
+                    BoundaryMaxScan = 50,
                     PreTags = new[] { "<name>"},
                     PostTags = new[] { "</name>"},
                     HighlightQuery = new MatchQuery
                     {
                         Field = "leadDeveloper.firstName",
                         Query = "Kurt Edgardo Naomi Dariana Justice Felton"
+                    }
+                }
+            },
+            { "leadDeveloper.lastName", new HighlightField
+                {
+                    Type = HighlighterType.Unified,
+                    PreTags = new[] { "<name>"},
+                    PostTags = new[] { "</name>"},
+                    HighlightQuery = new MatchQuery
+                    {
+                        Field = "leadDeveloper.lastName",
+                        Query = LastNameSearch
                     }
                 }
             },
@@ -154,6 +181,7 @@ new SearchRequest<Project>
       },
       "leadDeveloper.firstName": {
         "type": "fvh",
+        "boundary_max_scan": 50,
         "pre_tags": [
           "<name>"
         ],
@@ -164,6 +192,22 @@ new SearchRequest<Project>
           "match": {
             "leadDeveloper.firstName": {
               "query": "Kurt Edgardo Naomi Dariana Justice Felton"
+            }
+          }
+        }
+      },
+      "leadDeveloper.lastName": {
+        "type": "unified",
+        "pre_tags": [
+          "<name>"
+        ],
+        "post_tags": [
+          "</name>"
+        ],
+        "highlight_query": {
+          "match": {
+            "leadDeveloper.lastName": {
+              "query": "Stokes"
             }
           }
         }
@@ -190,6 +234,7 @@ new SearchRequest<Project>
 }
 ----
 
+[float]
 === Handling Responses
 
 [source,csharp]
@@ -209,6 +254,14 @@ foreach (var highlightsInEachHit in response.Hits.Select(d=>d.Highlights))
             }
         }
         else if (highlightField.Key == "leadDeveloper.firstName")
+        {
+            foreach (var highlight in highlightField.Value.Highlights)
+            {
+                highlight.Should().Contain("<name>");
+                highlight.Should().Contain("</name>");
+            }
+        }
+        else if (highlightField.Key == "leadDeveloper.lastName")
         {
             foreach (var highlight in highlightField.Value.Highlights)
             {

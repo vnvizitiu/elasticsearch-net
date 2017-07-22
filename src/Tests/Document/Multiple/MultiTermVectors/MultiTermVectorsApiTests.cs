@@ -5,6 +5,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 using static Nest.Infer;
@@ -28,8 +29,6 @@ namespace Tests.Document.Multiple.MultiTermVectors
 
 		protected override bool SupportsDeserialization => false;
 
-		//TODO unlike mget the mtermvectors is not smart enough to omit index or type if its already specified on the path
-		//not important for 2.0 release
 		protected override object ExpectJson { get; } = new
 		{
 			docs = Developer.Developers.Select(p => new

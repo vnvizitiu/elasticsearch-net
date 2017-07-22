@@ -10,7 +10,6 @@ namespace Tests.Mapping.Types.Core.Text
 			Boost = 1.2,
 			EagerGlobalOrdinals = true,
 			Fielddata = true,
-			IncludeInAll = false,
 			Index = true,
 			IndexOptions = IndexOptions.Offsets,
 			PositionIncrementGap = 5,
@@ -18,7 +17,8 @@ namespace Tests.Mapping.Types.Core.Text
 			SearchQuoteAnalyzer = "mysearchquoteanalyzer",
 			Similarity = "classic",
 			Store = true,
-			Norms = false)]
+			Norms = false,
+			TermVector = TermVectorOption.WithPositionsOffsets)]
 		public string Full { get; set; }
 
 		[Text]
@@ -40,7 +40,6 @@ namespace Tests.Mapping.Types.Core.Text
 					boost = 1.2,
 					eager_global_ordinals = true,
 					fielddata = true,
-					include_in_all = false,
 					index = true,
 					index_options = "offsets",
 					position_increment_gap = 5,
@@ -48,7 +47,8 @@ namespace Tests.Mapping.Types.Core.Text
 					search_quote_analyzer = "mysearchquoteanalyzer",
 					similarity = "classic",
 					store = true,
-					norms = false
+					norms = false,
+					term_vector = "with_positions_offsets"
 				},
 				minimal = new
 				{

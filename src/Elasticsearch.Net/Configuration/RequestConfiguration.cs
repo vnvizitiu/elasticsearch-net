@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
 namespace Elasticsearch.Net
@@ -49,6 +51,11 @@ namespace Elasticsearch.Net
 		bool? DisablePing { get; set; }
 
 		/// <summary>
+		/// Whether to buffer the request and response bytes for the call
+		/// </summary>
+		bool? DisableDirectStreaming { get; set; }
+
+		/// <summary>
 		/// Treat the following statuses (on top of the 200 range) NOT as error.
 		/// </summary>
 		IEnumerable<int> AllowedStatusCodes { get; set; }
@@ -69,6 +76,11 @@ namespace Elasticsearch.Net
 		/// <pre/>https://www.elastic.co/guide/en/shield/current/submitting-requests-for-other-users.html
 		/// </summary>
 		string RunAs { get; set; }
+
+		/// <summary>
+		/// Use the following client certificates to authenticate this single request
+		/// </summary>
+		X509CertificateCollection ClientCertificates { get; set; }
 	}
 
 	public class RequestConfiguration : IRequestConfiguration
@@ -81,6 +93,7 @@ namespace Elasticsearch.Net
 		public Uri ForceNode { get; set; }
 		public bool? DisableSniff { get; set; }
 		public bool? DisablePing { get; set; }
+		public bool? DisableDirectStreaming { get; set; }
 		public IEnumerable<int> AllowedStatusCodes { get; set; }
 		public BasicAuthenticationCredentials BasicAuthenticationCredentials { get; set; }
 		public bool EnableHttpPipelining { get; set; } = true;
@@ -90,11 +103,12 @@ namespace Elasticsearch.Net
 		/// https://www.elastic.co/guide/en/shield/current/submitting-requests-for-other-users.html
 		/// </summary>
 		public string RunAs { get; set; }
+
+		public X509CertificateCollection ClientCertificates { get; set; }
 	}
 
 	public class RequestConfigurationDescriptor : IRequestConfiguration
 	{
-
 		private IRequestConfiguration Self => this;
 		TimeSpan? IRequestConfiguration.RequestTimeout { get; set; }
 		TimeSpan? IRequestConfiguration.PingTimeout { get; set; }
@@ -105,10 +119,12 @@ namespace Elasticsearch.Net
 		Uri IRequestConfiguration.ForceNode { get; set; }
 		bool? IRequestConfiguration.DisableSniff { get; set; }
 		bool? IRequestConfiguration.DisablePing { get; set; }
+		bool? IRequestConfiguration.DisableDirectStreaming { get; set; }
 		IEnumerable<int> IRequestConfiguration.AllowedStatusCodes { get; set; }
 		BasicAuthenticationCredentials IRequestConfiguration.BasicAuthenticationCredentials { get; set; }
 		bool IRequestConfiguration.EnableHttpPipelining { get; set; } = true;
 		string IRequestConfiguration.RunAs { get; set; }
+		X509CertificateCollection IRequestConfiguration.ClientCertificates { get; set; }
 
 		public RequestConfigurationDescriptor(IRequestConfiguration config)
 		{
@@ -120,10 +136,12 @@ namespace Elasticsearch.Net
 			Self.ForceNode = config?.ForceNode;
 			Self.DisableSniff = config?.DisableSniff;
 			Self.DisablePing = config?.DisablePing;
+			Self.DisableDirectStreaming = config?.DisableDirectStreaming;
 			Self.AllowedStatusCodes = config?.AllowedStatusCodes;
 			Self.BasicAuthenticationCredentials = config?.BasicAuthenticationCredentials;
 			Self.EnableHttpPipelining = config?.EnableHttpPipelining ?? true;
 			Self.RunAs = config?.RunAs;
+			Self.ClientCertificates = config?.ClientCertificates;
 		}
 
 		/// <summary>
@@ -184,11 +202,18 @@ namespace Elasticsearch.Net
 			return this;
 		}
 
+		public RequestConfigurationDescriptor DisableDirectStreaming(bool? disable = true)
+		{
+			Self.DisableDirectStreaming = disable;
+			return this;
+		}
+
 		public RequestConfigurationDescriptor ForceNode(Uri uri)
 		{
 			Self.ForceNode = uri;
 			return this;
 		}
+
 		public RequestConfigurationDescriptor MaxRetries(int retry)
 		{
 			Self.MaxRetries = retry;
@@ -209,5 +234,20 @@ namespace Elasticsearch.Net
 			Self.EnableHttpPipelining = enable;
 			return this;
 		}
+
+		/// <summary> Use the following client certificates to authenticate this request to Elasticsearch </summary>
+		public RequestConfigurationDescriptor ClientCertificates(X509CertificateCollection certificates)
+		{
+			Self.ClientCertificates = certificates;
+			return this;
+		}
+
+		/// <summary> Use the following client certificate to authenticate this request to Elasticsearch </summary>
+		public RequestConfigurationDescriptor ClientCertificate(X509Certificate certificate) =>
+			this.ClientCertificates(new X509Certificate2Collection { certificate });
+
+		/// <summary> Use the following client certificate to authenticate this request to Elasticsearch </summary>
+		public RequestConfigurationDescriptor ClientCertificate(string certificatePath) =>
+			this.ClientCertificates(new X509Certificate2Collection {new X509Certificate(certificatePath)});
 	}
 }

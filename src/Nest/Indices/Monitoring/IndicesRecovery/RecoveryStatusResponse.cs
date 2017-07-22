@@ -5,14 +5,14 @@ namespace Nest
 {
 	public interface IRecoveryStatusResponse : IResponse
 	{
-		Dictionary<string, RecoveryStatus> Indices { get; set; }
+		IReadOnlyDictionary<string, RecoveryStatus> Indices { get; }
 	}
 
 	[JsonObject]
 	public class RecoveryStatusResponse : ResponseBase, IRecoveryStatusResponse
 	{
 
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
-		public Dictionary<string, RecoveryStatus> Indices { get; set; } 
+		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, RecoveryStatus>))]
+		public IReadOnlyDictionary<string, RecoveryStatus> Indices { get; internal set; } = EmptyReadOnly<string, RecoveryStatus>.Dictionary;
 	}
 }

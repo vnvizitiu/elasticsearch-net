@@ -5,6 +5,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 
@@ -52,11 +53,11 @@ namespace Tests.Aggregations.Bucket.Range
 				Aggregations = new RangeAggregation("commit_ranges")
 				{
 					Field = Field<Project>(p => p.NumberOfCommits),
-					Ranges = new List<Nest.Range>
+					Ranges = new List<AggregationRange>
 					{
-						{ new Nest.Range { To = 100 } },
-						{ new Nest.Range { From = 100, To = 500 } },
-						{ new Nest.Range { From = 500 } }
+						{ new AggregationRange { To = 100 } },
+						{ new AggregationRange { From = 100, To = 500 } },
+						{ new AggregationRange { From = 500 } }
 					}
 				}
 			};
@@ -67,9 +68,9 @@ namespace Tests.Aggregations.Bucket.Range
 			var commitRanges = response.Aggs.Range("commit_ranges");
 			commitRanges.Should().NotBeNull();
 			commitRanges.Buckets.Count.Should().Be(3);
-			commitRanges.Buckets.Where(r => r.Key == "*-100.0").FirstOrDefault().Should().NotBeNull();
-			commitRanges.Buckets.Where(r => r.Key == "100.0-500.0").FirstOrDefault().Should().NotBeNull();
-			commitRanges.Buckets.Where(r => r.Key == "500.0-*").FirstOrDefault().Should().NotBeNull();
+			commitRanges.Buckets.FirstOrDefault(r => r.Key == "*-100.0").Should().NotBeNull();
+			commitRanges.Buckets.FirstOrDefault(r => r.Key == "100.0-500.0").Should().NotBeNull();
+			commitRanges.Buckets.FirstOrDefault(r => r.Key == "500.0-*").Should().NotBeNull();
 		}
 	}
 }

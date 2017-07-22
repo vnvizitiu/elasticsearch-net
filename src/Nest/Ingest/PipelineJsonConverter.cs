@@ -57,6 +57,15 @@ namespace Nest
 					case "foreach":
 						processors.Add(jsonProcessor.ToObject<ForeachProcessor>(serializer));
 						break;
+					case "json":
+						processors.Add(jsonProcessor.ToObject<JsonProcessor>(serializer));
+						break;
+					case "user_agent":
+						processors.Add(jsonProcessor.ToObject<UserAgentProcessor>(serializer));
+						break;
+					case "kv":
+						processors.Add(jsonProcessor.ToObject<KeyValueProcessor>(serializer));
+						break;
 					case "geoip":
 						processors.Add(jsonProcessor.ToObject<GeoIpProcessor>(serializer));
 						break;

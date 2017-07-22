@@ -1,52 +1,66 @@
+#load @"Commandline.fsx"
+#load @"Projects.fsx"
 #load @"Paths.fsx"
+#load @"Tooling.fsx"
 #load @"Versioning.fsx"
 #load @"Testing.fsx"
 #load @"Signing.fsx"
 #load @"Building.fsx"
 #load @"Documentation.fsx"
 #load @"Releasing.fsx"
+#load @"Benchmarking.fsx"
 #load @"Profiling.fsx"
+#load @"XmlDocPatcher.fsx"
+#nowarn "0044" //TODO sort out FAKE 5
 
 open System
+open Fake
 
-open Fake 
-
+open Paths
 open Building
 open Testing
-open Signing
 open Versioning
+open Documentation
 open Releasing
 open Profiling
+open Benchmarking
+open XmlDocPatcher
+open Documentation
+open Signing
+open Commandline
 
-// Default target
+Commandline.parse()
+
 Target "Build" <| fun _ -> traceHeader "STARTING BUILD"
 
-Target "Clean" <| fun _ -> Build.Clean()
+Target "Clean" Build.Clean
 
-Target "BuildApp" <| fun _ -> Build.Compile()
+Target "Restore" Build.Restore
 
-Target "Test"  <| fun _ -> Tests.RunUnitTests()
-
-Target "TestForever"  <| fun _ -> Tests.RunUnitTestsForever()
+Target "FullBuild" <| fun _ -> Build.Compile false
     
-Target "QuickTest"  <| fun _ -> Tests.RunUnitTests()
+Target "Test" Tests.RunUnitTests
 
-Target "Integrate"  <| fun _ -> Tests.RunIntegrationTests() (getBuildParamOrDefault "esversions" "")
+Target "Profile" <| fun _ -> 
+    Profiler.Run()
+    let url = getBuildParam "elasticsearch"
+    Profiler.IndexResults url
 
-Target "Profile" <| fun _ -> Profiler.Run()
+Target "Integrate" <| Tests.RunIntegrationTests
 
-Target "Benchmark" <| fun _ -> Benchmarker.Run()
+Target "Benchmark" Benchmarker.Run
 
-Target "QuickCompile"  <| fun _ -> Build.QuickCompile()
+Target "InheritDoc"  InheritDoc.PatchInheritDocs
+
+Target "Documentation" Documentation.Generate
 
 Target "Version" <| fun _ -> 
-    Versioning.PatchAssemblyInfos()
-    Versioning.PatchProjectJsons()
+    tracefn "Current Version: %s" (Versioning.CurrentVersion.ToString())
 
 Target "Release" <| fun _ -> 
     Release.NugetPack()   
-    Sign.ValidateNugetDllAreSignedCorrectly()
     Versioning.ValidateArtifacts()
+    StrongName.ValidateDllsInNugetPackage()
 
 Target "Canary" <| fun _ -> 
     trace "Running canary build" 
@@ -57,34 +71,32 @@ Target "Canary" <| fun _ ->
 // Dependencies
 "Clean" 
   =?> ("Version", hasBuildParam "version")
-  ==> "BuildApp"
-  =?> ("Test", (not ((getBuildParam "skiptests") = "1")))
+  ==> "Restore"
+  =?> ("FullBuild", Commandline.needsFullBuild)
+  =?> ("Test", (not Commandline.skipTests))
+  ==> "InheritDoc"
+  ==> "Documentation"
   ==> "Build"
 
-"Clean" 
-  ==> "BuildApp"
-  ==> "TestForever"
-
-"Clean" 
-  ==> "BuildApp"
+"Clean"
+  =?> ("FullBuild", Commandline.needsFullBuild)
   ==> "Profile"
 
 "Clean" 
-  ==> "BuildApp"
+  =?> ("FullBuild", Commandline.needsFullBuild)
   ==> "Benchmark"
 
 "Version"
   ==> "Release"
   ==> "Canary"
 
-"QuickCompile"
-  ==> "QuickTest"
-
-"BuildApp"
+"Clean"
+  ==> "Restore"
+  =?> ("FullBuild", Commandline.needsFullBuild)
   ==> "Integrate"
 
 "Build"
   ==> "Release"
 
-// start build
-RunTargetOrDefault "Build"
+RunTargetOrListTargets()
+

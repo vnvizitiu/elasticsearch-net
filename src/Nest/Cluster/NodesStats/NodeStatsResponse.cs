@@ -9,14 +9,15 @@ namespace Nest
 		string ClusterName { get; }
 
 		[JsonProperty(PropertyName = "nodes")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
-		Dictionary<string, NodeStats> Nodes { get; }
+		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, NodeStats>))]
+		IReadOnlyDictionary<string, NodeStats> Nodes { get; }
 	}
 
 	public class NodesStatsResponse : ResponseBase, INodesStatsResponse
 	{
 		public string ClusterName { get; internal set; }
 
-		public Dictionary<string, NodeStats> Nodes { get; set; }
+		public IReadOnlyDictionary<string, NodeStats> Nodes { get; internal set; } = EmptyReadOnly<string, NodeStats>.Dictionary;
+
 	}
 }

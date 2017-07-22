@@ -7,6 +7,7 @@ using Tests.Framework.MockData;
 using static Nest.Infer;
 using FluentAssertions;
 using System.Linq;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Search.Request
 {
@@ -28,7 +29,7 @@ namespace Tests.Search.Request
 						analyzer = "simple",
 						contexts = new {
 						  color = new object[] {
-							  new { context = Project.Projects.First().Suggest.Contexts.Values.SelectMany(v => v).First() }
+							  new { context = Project.First.Suggest.Contexts.Values.SelectMany(v => v).First() }
 						  }
 						},
 						field = "suggest",
@@ -102,7 +103,7 @@ namespace Tests.Search.Request
 				.Completion("my-completion-suggest", c => c
 					.Contexts(ctxs => ctxs
 						.Context("color",
-							ctx => ctx.Context(Project.Projects.First().Suggest.Contexts.Values.SelectMany(v => v).First())
+							ctx => ctx.Context(Project.First.Suggest.Contexts.Values.SelectMany(v => v).First())
 						)
 					)
 					.Fuzzy(f => f
@@ -166,7 +167,7 @@ namespace Tests.Search.Request
 						{
 							Contexts = new Dictionary<string, IList<ISuggestContextQuery>>
 							{
-								{ "color", new List<ISuggestContextQuery> { new SuggestContextQuery { Context = Project.Projects.First().Suggest.Contexts.Values.SelectMany(v => v).First() } } }
+								{ "color", new List<ISuggestContextQuery> { new SuggestContextQuery { Context = Project.First.Suggest.Contexts.Values.SelectMany(v => v).First() } } }
 							},
 							Fuzzy = new FuzzySuggester
 							{
@@ -231,7 +232,7 @@ namespace Tests.Search.Request
 			option.Contexts.Should().ContainKey("color");
 			var colorContexts = option.Contexts["color"];
 			colorContexts.Should().NotBeNull().And.HaveCount(1);
-			colorContexts.First().Category.Should().Be((Project.Projects.First().Suggest.Contexts.Values.SelectMany(v => v).First()));
+			colorContexts.First().Category.Should().Be((Project.First.Suggest.Contexts.Values.SelectMany(v => v).First()));
 		}
 	}
 }

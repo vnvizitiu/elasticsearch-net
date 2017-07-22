@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Newtonsoft.Json;
 
 namespace Nest
@@ -32,9 +33,10 @@ namespace Nest
 		bool? PointsOnly { get; set; }
 	}
 
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class GeoShapeProperty : DocValuesPropertyBase, IGeoShapeProperty
 	{
-		public GeoShapeProperty() : base("geo_shape") { }
+		public GeoShapeProperty() : base(FieldType.GeoShape) { }
 
 		public GeoTree? Tree { get; set; }
 
@@ -51,6 +53,7 @@ namespace Nest
 		public bool? PointsOnly { get; set; }
 	}
 
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class GeoShapePropertyDescriptor<T>
 		: DocValuesPropertyDescriptorBase<GeoShapePropertyDescriptor<T>, IGeoShapeProperty, T>, IGeoShapeProperty
 		where T : class
@@ -63,7 +66,7 @@ namespace Nest
 		double? IGeoShapeProperty.DistanceErrorPercentage { get; set; }
 		bool? IGeoShapeProperty.PointsOnly { get; set; }
 
-		public GeoShapePropertyDescriptor() : base("geo_shape") { }
+		public GeoShapePropertyDescriptor() : base(FieldType.GeoShape) { }
 
 		public GeoShapePropertyDescriptor<T> Tree(GeoTree tree) => Assign(a => a.Tree = tree);
 

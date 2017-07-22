@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using Elasticsearch.Net;
 using Newtonsoft.Json;
 
 namespace Nest
@@ -15,9 +17,6 @@ namespace Nest
 		[JsonProperty("null_value")]
 		double? NullValue { get; set; }
 
-		[JsonProperty("include_in_all")]
-		bool? IncludeInAll { get; set; }
-
 		[JsonProperty("ignore_malformed")]
 		bool? IgnoreMalformed { get; set; }
 
@@ -31,36 +30,36 @@ namespace Nest
 		double? ScalingFactor { get; set; }
 	}
 
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class NumberProperty : DocValuesPropertyBase, INumberProperty
 	{
-		public NumberProperty() : base(NumberType.Float.GetStringValue()) { }
-		public NumberProperty(NumberType type) : base(type.GetStringValue()) { }
-		protected NumberProperty(string type) : base(type) { }
+		public NumberProperty() : base(FieldType.Float) { }
+		public NumberProperty(NumberType type) : base(type.ToFieldType()) { }
 
 		public bool? Index { get; set; }
 		public double? Boost { get; set; }
 		public double? NullValue { get; set; }
-		public bool? IncludeInAll { get; set; }
 		public bool? IgnoreMalformed { get; set; }
 		public bool? Coerce { get; set; }
 		public INumericFielddata Fielddata { get; set; }
 		public double? ScalingFactor { get; set; }
 	}
 
+	[DebuggerDisplay("{DebugDisplay}")]
 	public abstract class NumberPropertyDescriptorBase<TDescriptor, TInterface, T>
 		: DocValuesPropertyDescriptorBase<TDescriptor, TInterface, T>, INumberProperty
 		where TDescriptor : NumberPropertyDescriptorBase<TDescriptor, TInterface, T>, TInterface
 		where TInterface : class, INumberProperty
 		where T : class
 	{
-		protected NumberPropertyDescriptorBase() : base("float") { }
+		protected NumberPropertyDescriptorBase() : base(FieldType.Float) { }
 
+		[Obsolete("Please use overload taking FieldType")]
 		protected NumberPropertyDescriptorBase(string type) : base(type) { }
 
 		bool? INumberProperty.Index { get; set; }
 		double? INumberProperty.Boost { get; set; }
 		double? INumberProperty.NullValue { get; set; }
-		bool? INumberProperty.IncludeInAll { get; set; }
 		bool? INumberProperty.IgnoreMalformed { get; set; }
 		bool? INumberProperty.Coerce { get; set; }
 		INumericFielddata INumberProperty.Fielddata { get; set; }
@@ -73,8 +72,6 @@ namespace Nest
 		public TDescriptor Boost(double boost) => Assign(a => a.Boost = boost);
 
 		public TDescriptor NullValue(double nullValue) => Assign(a => a.NullValue = nullValue);
-
-		public TDescriptor IncludeInAll(bool includeInAll = true) => Assign(a => a.IncludeInAll = includeInAll);
 
 		public TDescriptor IgnoreMalformed(bool ignoreMalformed = true) => Assign(a => a.IgnoreMalformed = ignoreMalformed);
 

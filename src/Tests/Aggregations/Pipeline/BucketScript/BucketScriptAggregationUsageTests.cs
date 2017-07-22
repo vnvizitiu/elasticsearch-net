@@ -3,6 +3,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.Aggregations.Pipeline.BucketScript
@@ -66,8 +67,7 @@ namespace Tests.Aggregations.Pipeline.BucketScript
 								},
 								script = new
 								{
-									inline = "stableCommits / totalCommits * 100",
-									lang  = "groovy"
+									inline = "params.stableCommits / params.totalCommits * 100",
 								}
 							}
 						}
@@ -101,7 +101,7 @@ namespace Tests.Aggregations.Pipeline.BucketScript
 								.Add("totalCommits", "commits")
 								.Add("stableCommits", "stable_state>commits")
 							)
-							.Script(ss =>ss.Inline("stableCommits / totalCommits * 100").Lang("groovy"))
+							.Script(ss =>ss.Inline("params.stableCommits / params.totalCommits * 100"))
 						)
 					)
 				)
@@ -131,7 +131,7 @@ namespace Tests.Aggregations.Pipeline.BucketScript
 							{ "stableCommits", "stable_state>commits" }
 						})
 					{
-						Script = new InlineScript("stableCommits / totalCommits * 100") { Lang = "groovy" }
+						Script = new InlineScript("params.stableCommits / params.totalCommits * 100")
 					}
 			}
 		};

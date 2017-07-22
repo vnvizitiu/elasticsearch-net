@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Newtonsoft.Json;
 
 namespace Nest
@@ -31,9 +32,6 @@ namespace Nest
 		[JsonProperty("search_analyzer")]
 		string SearchAnalyzer { get; set; }
 
-		[JsonProperty("include_in_all")]
-		bool? IncludeInAll { get; set; }
-
 		[JsonProperty("ignore_above")]
 		int? IgnoreAbove { get; set; }
 
@@ -45,6 +43,7 @@ namespace Nest
 	}
 
 	[Obsolete("Only valid for indices created before Elasticsearch 5.0 and will be removed in the next major version.  For newly created indices, use `text` or `keyword` instead.")]
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class StringProperty : DocValuesPropertyBase, IStringProperty
 	{
 		public StringProperty() : base("string") { }
@@ -57,13 +56,13 @@ namespace Nest
 		public IndexOptions? IndexOptions { get; set; }
 		public string Analyzer { get; set; }
 		public string SearchAnalyzer { get; set; }
-		public bool? IncludeInAll { get; set; }
 		public int? IgnoreAbove { get; set; }
 		public int? PositionIncrementGap { get; set; }
 		public IStringFielddata Fielddata { get; set; }
 	}
 
 	[Obsolete("Only valid for indices created before Elasticsearch 5.0 and will be removed in the next major version.  For newly created indices, use `text` or `keyword` instead.")]
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class StringPropertyDescriptor<T>
 		: DocValuesPropertyDescriptorBase<StringPropertyDescriptor<T>, IStringProperty, T>, IStringProperty
 		where T : class
@@ -76,7 +75,6 @@ namespace Nest
 		IndexOptions? IStringProperty.IndexOptions { get; set; }
 		string IStringProperty.Analyzer { get; set; }
 		string IStringProperty.SearchAnalyzer { get; set; }
-		bool? IStringProperty.IncludeInAll { get; set; }
 		int? IStringProperty.IgnoreAbove { get; set; }
 		int? IStringProperty.PositionIncrementGap { get; set; }
 		IStringFielddata IStringProperty.Fielddata { get; set; }
@@ -105,8 +103,6 @@ namespace Nest
 		public StringPropertyDescriptor<T> Norms(bool enabled = true) => Assign(a => a.Norms = enabled);
 
 		public StringPropertyDescriptor<T> IgnoreAbove(int ignoreAbove) => Assign(a => a.IgnoreAbove = ignoreAbove);
-
-		public StringPropertyDescriptor<T> IncludeInAll(bool includeInAll = true) => Assign(a => a.IncludeInAll = includeInAll);
 
 		public StringPropertyDescriptor<T> PositionIncrementGap(int positionIncrementGap) => Assign(a => a.PositionIncrementGap = positionIncrementGap);
 

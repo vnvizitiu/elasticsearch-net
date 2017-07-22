@@ -1,7 +1,9 @@
 ﻿using System;
 using FluentAssertions;
 using Nest;
+using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 
@@ -40,7 +42,7 @@ namespace Tests.Aggregations.Metric.Sum
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 			var commitsSum = response.Aggs.Sum("commits_sum");
 			commitsSum.Should().NotBeNull();
 			commitsSum.Value.Should().BeGreaterThan(0);

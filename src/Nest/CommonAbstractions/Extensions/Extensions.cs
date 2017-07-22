@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -10,9 +11,20 @@ using Elasticsearch.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace Nest
 {
+	internal static class EmptyReadOnly<TElement>
+	{
+		public static readonly IReadOnlyCollection<TElement> Collection = new ReadOnlyCollection<TElement>(new List<TElement>());
+	}
+	internal static class EmptyReadOnly<TKey, TValue>
+	{
+		public static readonly IReadOnlyDictionary<TKey, TValue> Dictionary = new ReadOnlyDictionary<TKey, TValue>(new Dictionary<TKey, TValue>());
+	}
+
 	internal static class Extensions
 	{
 		internal static bool NotWritable(this QueryContainer q) => q == null || !q.IsWritable;
@@ -26,18 +38,6 @@ namespace Nest
 		internal static TReturn InvokeOrDefault<T1, T2, TReturn>(this Func<T1, T2, TReturn> func, T1 @default, T2 param2)
 			where T1 : class, TReturn where TReturn : class =>
 			func?.Invoke(@default, param2) ?? @default;
-
-		internal static string GetStringValue(this Enum enumValue)
-		{
-			var knownEnum = KnownEnums.Resolve(enumValue);
-			if (knownEnum != KnownEnums.UnknownEnum) return knownEnum;
-
-			var type = enumValue.GetType();
-			var info = type.GetField(enumValue.ToString());
-			var da = info.GetCustomAttribute<EnumMemberAttribute>();
-
-			return da != null ? da.Value : Enum.GetName(enumValue.GetType(), enumValue);
-		}
 
 		internal static readonly JsonConverter dateConverter = new IsoDateTimeConverter { Culture = CultureInfo.InvariantCulture };
 		internal static readonly JsonSerializer serializer = new JsonSerializer();
@@ -56,6 +56,23 @@ namespace Nest
 		}
 
 		internal static ConcurrentDictionary<string, object> _enumCache = new ConcurrentDictionary<string, object>();
+
+		internal static string ToEnumValue<T>(this T enumValue) where T : struct
+		{
+			var enumType = typeof(T);
+			var name = Enum.GetName(enumType, enumValue);
+			var enumMemberAttribute = enumType.GetField(name).GetCustomAttribute<EnumMemberAttribute>();
+
+			if (enumMemberAttribute != null)
+				return enumMemberAttribute.Value;
+
+			var alternativeEnumMemberAttribute = enumType.GetField(name).GetCustomAttribute<AlternativeEnumMemberAttribute>();
+
+			return alternativeEnumMemberAttribute != null
+				? alternativeEnumMemberAttribute.Value
+				: enumValue.ToString();
+		}
+
 		internal static T? ToEnum<T>(this string str, StringComparison comparison = StringComparison.OrdinalIgnoreCase) where T : struct
 		{
 			if (str == null) return null;
@@ -77,7 +94,7 @@ namespace Nest
 
 				var enumFieldInfo = enumType.GetField(name);
 				var enumMemberAttribute = enumFieldInfo.GetCustomAttribute<EnumMemberAttribute>();
-				if (enumMemberAttribute?.Value == str)
+				if (enumMemberAttribute?.Value.Equals(str, comparison) ?? false)
 				{
 					var v = (T) Enum.Parse(enumType, name);
 					_enumCache.TryAdd(key, v);
@@ -85,7 +102,7 @@ namespace Nest
 				}
 
 				var alternativeEnumMemberAttribute = enumFieldInfo.GetCustomAttribute<AlternativeEnumMemberAttribute>();
-				if (alternativeEnumMemberAttribute?.Value == str)
+				if (alternativeEnumMemberAttribute?.Value.Equals(str, comparison) ?? false)
 				{
 					var v = (T) Enum.Parse(enumType, name);
 					_enumCache.TryAdd(key, v);
@@ -169,13 +186,6 @@ namespace Nest
 			else if (value == null) throw new ArgumentNullException(name, "Argument can not be null when " + message);
 		}
 
-		internal static string F(this string format, params object[] args)
-		{
-			var c = CultureInfo.InvariantCulture;
-			format.ThrowIfNull(nameof(format));
-			return string.Format(c, format, args);
-		}
-
 		internal static bool IsNullOrEmpty(this string value)
 		{
 			return string.IsNullOrWhiteSpace(value);
@@ -205,5 +215,62 @@ namespace Nest
 		}
 
 		internal static IEnumerable<T> EmptyIfNull<T>(this IEnumerable<T> xs) => xs ?? new T[0];
+
+		internal static async Task ForEachAsync<TSource, TResult>(
+			this IEnumerable<TSource> lazyList,
+			Func<TSource, long, Task<TResult>> taskSelector,
+			Action<TSource, TResult> resultProcessor,
+			Action<Exception> done,
+			int maxDegreeOfParallelism,
+			SemaphoreSlim additionalRateLimitter = null
+		)
+		{
+			var semaphore = new SemaphoreSlim(initialCount: maxDegreeOfParallelism, maxCount: maxDegreeOfParallelism);
+			long page = 0;
+
+			try
+			{
+				var tasks = new List<Task>();
+				foreach (var item in lazyList)
+				{
+					tasks.Add(ProcessAsync(item, taskSelector, resultProcessor, semaphore, additionalRateLimitter, page++));
+					if (tasks.Count <= maxDegreeOfParallelism)
+						continue;
+
+					var task = await Task.WhenAny(tasks);
+					tasks.Remove(task);
+				}
+
+				await Task.WhenAll(tasks);
+				done(null);
+			}
+			catch (Exception e)
+			{
+				done(e);
+				throw;
+			}
+		}
+
+		private static async Task ProcessAsync<TSource, TResult>(
+			TSource item,
+			Func<TSource, long, Task<TResult>> taskSelector,
+			Action<TSource, TResult> resultProcessor,
+			SemaphoreSlim localRateLimiter,
+			SemaphoreSlim additionalRateLimiter,
+			long page)
+		{
+			if (localRateLimiter != null) await localRateLimiter.WaitAsync().ConfigureAwait(false);
+			if (additionalRateLimiter != null) await additionalRateLimiter.WaitAsync().ConfigureAwait(false);
+			try
+			{
+				var result = await taskSelector(item, page).ConfigureAwait(false);
+				resultProcessor(item, result);
+			}
+			finally
+			{
+				localRateLimiter?.Release();
+				additionalRateLimiter?.Release();
+			}
+		}
 	}
 }

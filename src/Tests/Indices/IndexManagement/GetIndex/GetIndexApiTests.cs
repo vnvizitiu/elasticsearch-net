@@ -1,7 +1,9 @@
 ﻿using Elasticsearch.Net;
+using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 using static Nest.Infer;
@@ -25,6 +27,14 @@ namespace Tests.Indices.IndexManagement.GetIndex
 		protected override string UrlPath => $"/project";
 
 		protected override GetIndexRequest Initializer => new GetIndexRequest(Index<Project>());
+
+	    protected override void ExpectResponse(IGetIndexResponse response)
+	    {
+	        response.Indices.Should().NotBeNull();
+	        response.Indices.Count.Should().BeGreaterThan(0);
+	        var projectIndex = response.Indices["project"];
+	        projectIndex.Should().NotBeNull();
+	    }
 	}
 
 

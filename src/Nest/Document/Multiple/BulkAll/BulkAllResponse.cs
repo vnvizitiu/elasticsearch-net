@@ -1,9 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using System;
+using Newtonsoft.Json;
 
 namespace Nest
 {
 	/// <summary>
-	///
+	/// Notification for each bulk response, indicates the page its currently processing and how many retries it took to index this buffer
 	/// </summary>
 	public interface IBulkAllResponse
 	{
@@ -14,9 +15,7 @@ namespace Nest
 		int Retries { get; }
 	}
 
-	/// <summary>
-	/// POCO representing the reindex response for a each step
-	/// </summary>
+	/// <inheritdoc />
 	[JsonObject]
 	public class BulkAllResponse : IBulkAllResponse
 	{

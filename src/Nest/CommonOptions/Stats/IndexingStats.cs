@@ -43,7 +43,7 @@ namespace Nest
 		public long ThrottleTimeInMilliseconds { get; set; }
 
 		[JsonProperty("types")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
-		public Dictionary<string, IndexingStats> Types { get; set; }
+		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, IndexingStats>))]
+		public IReadOnlyDictionary<string, IndexingStats> Types { get; set; }
 	}
 }

@@ -13,27 +13,27 @@ please modify the original csharp file found at the link and submit the PR with 
 ////
 
 [[min-aggregation-usage]]
-== Min Aggregation Usage
+=== Min Aggregation Usage
 
-=== Fluent DSL Example
+==== Fluent DSL example
 
 [source,csharp]
 ----
 s => s
 .Aggregations(a => a
-    .Min("min_commits", m => m
-        .Field(p => p.NumberOfCommits)
+    .Min("min_last_activity", m => m
+        .Field(p => p.LastActivity)
     )
 )
 ----
 
-=== Object Initializer Syntax Example
+==== Object Initializer syntax example
 
 [source,csharp]
 ----
 new SearchRequest<Project>
 {
-    Aggregations = new MinAggregation("min_commits", Field<Project>(p => p.NumberOfCommits))
+    Aggregations = new MinAggregation("min_last_activity", Field<Project>(p => p.LastActivity))
 }
 ----
 
@@ -42,22 +42,23 @@ new SearchRequest<Project>
 ----
 {
   "aggs": {
-    "min_commits": {
+    "min_last_activity": {
       "min": {
-        "field": "numberOfCommits"
+        "field": "lastActivity"
       }
     }
   }
 }
 ----
 
-=== Handling Responses
+==== Handling Responses
 
 [source,csharp]
 ----
 response.ShouldBeValid();
-var min = response.Aggs.Max("min_commits");
+var min = response.Aggs.Min("min_last_activity");
 min.Should().NotBeNull();
 min.Value.Should().BeGreaterThan(0);
+min.ValueAsString.Should().NotBeNullOrEmpty();
 ----
 

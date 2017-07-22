@@ -2,14 +2,15 @@
 using System.Linq;
 using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 
 namespace Tests.QueryDsl.Specialized.MoreLikeThis
 {
-	public class MoreLikeThisUsageTests : QueryDslUsageTestsBase
+	public class MoreLikeThisQueryUsageTests : QueryDslUsageTestsBase
 	{
-		public MoreLikeThisUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
+		public MoreLikeThisQueryUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
 		protected override object QueryJson => new
 		{

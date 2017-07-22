@@ -4,6 +4,7 @@ using Elasticsearch.Net;
 using Tests.Framework;
 using static Tests.Framework.RoundTripper;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.Mapping.Types
@@ -11,7 +12,6 @@ namespace Tests.Mapping.Types
 	public abstract class PropertyTestsBase
 		: ApiIntegrationAgainstNewIndexTestBase<WritableCluster, IPutMappingResponse, IPutMappingRequest, PutMappingDescriptor<Project>, PutMappingRequest<Project>>
 	{
-
 		protected PropertyTestsBase(WritableCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override LazyResponses ClientUsage() => Calls(
@@ -33,6 +33,7 @@ namespace Tests.Mapping.Types
 		protected override Func<PutMappingDescriptor<Project>, IPutMappingRequest> Fluent => f => f
 			.Index(CallIsolatedValue)
 			.Properties(this.FluentProperties);
+
 
 		protected override PutMappingRequest<Project> Initializer => new PutMappingRequest<Project>(CallIsolatedValue, typeof(Project))
 		{

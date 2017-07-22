@@ -7,6 +7,7 @@ using Nest;
 using Newtonsoft.Json.Linq;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 
@@ -43,7 +44,7 @@ namespace Tests.Document.Single.Index
 		protected override string UrlPath
 			=> $"/project/project/{CallIsolatedValue}?wait_for_active_shards=1&op_type=index&refresh=true&routing=route";
 
-		protected override bool SupportsDeserialization => false;
+		protected override bool SupportsDeserialization => true;
 
 		protected override object ExpectJson =>
 			new
@@ -175,10 +176,10 @@ namespace Tests.Document.Single.Index
 				)
 			);
 
-			foreach (var response in bulkResponse.Items)
+			foreach (var item in bulkResponse.Items)
 			{
-				response.IsValid.Should().BeTrue();
-				response.Status.Should().Be(201);
+				item.IsValid.Should().BeTrue();
+				item.Status.Should().Be(201);
 			}
 		}
 	}

@@ -7,6 +7,7 @@ using Nest;
 using Newtonsoft.Json.Linq;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 
@@ -114,11 +115,11 @@ namespace Tests.Document.Single.Index
 
 		protected override void ExpectResponse(IIndexResponse response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 
 			var getResponse = this.Client.Get<Project>(response.Id);
 
-			getResponse.IsValid.Should().BeTrue();
+			getResponse.ShouldBeValid();
 			getResponse.Source.Should().NotBeNull();
 			getResponse.Source.LeadDeveloper.Should().NotBeNull();
 

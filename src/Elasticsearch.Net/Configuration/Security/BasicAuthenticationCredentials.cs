@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Elasticsearch.Net
+﻿namespace Elasticsearch.Net
 {
 	public class BasicAuthenticationCredentials
 	{
@@ -8,9 +6,6 @@ namespace Elasticsearch.Net
 
 		public string Password { get; set; }
 
-		public override string ToString()
-		{
-			return this.Username + ":" + this.Password;
-		}
+		public override string ToString() => $"{this.Username}:{this.Password}";
 	}
 }

@@ -5,6 +5,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 
@@ -33,7 +34,7 @@ namespace Tests.Cluster.TaskManagement.GetTask
 
 		protected override void ExpectResponse(IGetTaskResponse response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 			response.Task.Should().NotBeNull();
 			var task = response.Task;
 			task.Node.Should().NotBeNullOrEmpty();

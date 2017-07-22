@@ -4,12 +4,24 @@ using Nest;
 using Tests.Framework;
 using Tests.Framework.MockData;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
+using static Tests.Framework.Promisify;
 
 namespace Tests.Mapping.Types.Core.Keyword
 {
+	[SkipVersion("<5.2.0", "This uses the normalizer feature introduced in 5.2.0")]
 	public class KeywordPropertyTests : PropertyTestsBase
 	{
 		public KeywordPropertyTests(WritableCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+
+		protected override ICreateIndexRequest CreateIndexSettings(CreateIndexDescriptor create) => create
+			.Settings(s => s
+				.Analysis(a => a
+					.CharFilters(t => Promise(Analysis.CharFilters.CharFilterUsageTests.FluentExample(s).Value.Analysis.CharFilters))
+					.TokenFilters(t => Promise(Analysis.TokenFilters.TokenFilterUsageTests.FluentExample(s).Value.Analysis.TokenFilters))
+					.Normalizers(t => Promise(Analysis.Normalizers.NormalizerUsageTests.FluentExample(s).Value.Analysis.Normalizers))
+				)
+			);
 
 		protected override object ExpectJson => new
 		{
@@ -22,7 +34,6 @@ namespace Tests.Mapping.Types.Core.Keyword
 					boost = 1.2,
 					eager_global_ordinals = true,
 					ignore_above = 50,
-					include_in_all = true,
 					index = false,
 					index_options = "freqs",
 					null_value = "null",
@@ -37,6 +48,7 @@ namespace Tests.Mapping.Types.Core.Keyword
 						}
 					},
 					store = true,
+					normalizer = "myCustom",
 				}
 			}
 		};
@@ -48,10 +60,10 @@ namespace Tests.Mapping.Types.Core.Keyword
 				.Boost(1.2)
 				.EagerGlobalOrdinals()
 				.IgnoreAbove(50)
-				.IncludeInAll()
 				.Index(false)
 				.IndexOptions(IndexOptions.Freqs)
 				.NullValue("null")
+				.Normalizer("myCustom")
 				.Norms(false)
 				.Similarity(SimilarityOption.Classic)
 				.Store(true)
@@ -72,10 +84,10 @@ namespace Tests.Mapping.Types.Core.Keyword
 					Boost = 1.2,
 					EagerGlobalOrdinals = true,
 					IgnoreAbove = 50,
-					IncludeInAll = true,
 					Index = false,
 					IndexOptions = IndexOptions.Freqs,
 					NullValue = "null",
+					Normalizer = "myCustom",
 					Norms = false,
 					Similarity = SimilarityOption.Classic,
 					Store = true,

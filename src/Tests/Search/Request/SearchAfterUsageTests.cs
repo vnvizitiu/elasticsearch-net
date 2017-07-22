@@ -5,6 +5,7 @@ using Tests.Framework.Integration;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 using System.Collections.Generic;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Search.Request
 {
@@ -22,8 +23,8 @@ namespace Tests.Search.Request
 				},
 				search_after = new object []
 				{
-					Project.Projects.FirstOrDefault().NumberOfCommits,
-					Project.Projects.FirstOrDefault().Name
+					Project.First.NumberOfCommits,
+					Project.First.Name
 				}
 			};
 
@@ -33,8 +34,8 @@ namespace Tests.Search.Request
 				.Descending(p => p.Name)
 			)
 			.SearchAfter(
-				Project.Projects.FirstOrDefault().NumberOfCommits,
-				Project.Projects.FirstOrDefault().Name
+				Project.First.NumberOfCommits,
+				Project.First.Name
 			);
 
 
@@ -48,8 +49,8 @@ namespace Tests.Search.Request
 				},
 				SearchAfter = new List<object>
 				{
-					Project.Projects.FirstOrDefault().NumberOfCommits,
-					Project.Projects.FirstOrDefault().Name,
+					Project.First.NumberOfCommits,
+					Project.First.Name,
 				}
 			};
 	}

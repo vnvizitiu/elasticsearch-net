@@ -2,33 +2,12 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
-#if DOTNETCORE
-using System.Reflection;
-#endif
 
 namespace Elasticsearch.Net
 {
 	internal static class Extensions
 	{
-		internal static string GetStringValue(this Enum enumValue)
-		{
-			var knownEnum = KnownEnums.Resolve(enumValue);
-			if (knownEnum != KnownEnums.UnknownEnum) return knownEnum;
-
-			//TODO measure performance and cache
-			var type = enumValue.GetType();
-#if DOTNETCORE
-			var info = type.GetTypeInfo().GetDeclaredField(enumValue.ToString());
-#else
-			var info = type.GetField(enumValue.ToString());
-#endif
-			var da = (EnumMemberAttribute[])(info.GetCustomAttributes(typeof(EnumMemberAttribute), false));
-
-			return da.Length > 0 ? da[0].Value : Enum.GetName(enumValue.GetType(), enumValue);
-		}
-
 #if !DOTNETCORE
 		internal static string Utf8String(this byte[] bytes) => bytes == null ? null : Encoding.UTF8.GetString(bytes);
 #else
@@ -61,6 +40,12 @@ namespace Elasticsearch.Net
 			if (string.IsNullOrWhiteSpace(@object))
 				throw new ArgumentException("String argument is empty", parameterName);
 			return @object;
+		}
+
+		internal static string NotNull(this Enum @object, string parameterName)
+		{
+			@object.ThrowIfNull(parameterName);
+			return @object.GetStringValue();
 		}
 
 		internal static void ThrowIfEmpty<T>(this IEnumerable<T> @object, string parameterName)
@@ -134,5 +119,6 @@ namespace Elasticsearch.Net
 
 			return factor.ToString("0.##", CultureInfo.InvariantCulture) + interval;
 		}
+
 	}
 }

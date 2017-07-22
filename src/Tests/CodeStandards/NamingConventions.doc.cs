@@ -93,12 +93,21 @@ namespace Tests.CodeStandards
 		* There are a few exceptions to this rule, most notably the `Cat` prefixed requests and
 		* the `Exists` requests.
 		*/
-		//[U]
-		// TODO unignore when new APIs are mapped
+		[U]
 		public void ParityBetweenRequestsAndResponses()
 		{
 			var exceptions = new[] // <1> _Exceptions to the rule_
 			{
+				//TODO These are new API's should be removed, also add test that no request or response starts with Xpack
+				//only XPack
+				typeof(XpackSecurityDeleteRoleMappingRequest),
+				typeof(XpackSecurityGetRoleMappingRequest),
+				typeof(XpackSecurityGetTokenRequest),
+				typeof(XpackSecurityInvalidateTokenRequest),
+				typeof(XpackSecurityPutRoleMappingRequest),
+				//TODO add unit tests that we have no requests starting with Exists
+				typeof(SourceExistsRequest),
+				typeof(SourceExistsRequest<>),
 				typeof(DocumentExistsRequest),
 				typeof(DocumentExistsRequest<>),
 				typeof(AliasExistsRequest),
@@ -114,11 +123,12 @@ namespace Tests.CodeStandards
 				typeof(GetAliasRequest),
 				typeof(IndicesShardStoresRequest),
 				typeof(RenderSearchTemplateRequest),
-				//UNMAPPED
-				typeof(ClusterAllocationExplainRequest),
-				typeof(ReindexRethrottleRequest),
-				//typeof(ReindexRequest),
-				typeof(UpdateByQueryRequest)
+				typeof(MultiSearchTemplateRequest),
+				typeof(CreateRequest<>)
+
+
+
+
 			};
 
 			var types = typeof(IRequest).Assembly().GetTypes();
@@ -273,3 +283,5 @@ namespace Tests.CodeStandards
 		}
 	}
 }
+
+

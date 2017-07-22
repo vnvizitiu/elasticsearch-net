@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace Nest
 {
@@ -37,7 +38,7 @@ namespace Nest
 			if (seenTypes != null && seenTypes.TryGetValue(_type, out seen) && seen > maxRecursion)
 				return properties;
 
-			foreach (var propertyInfo in _type.GetProperties())
+			foreach (var propertyInfo in _type.AllPropertiesCached())
 			{
 				var attribute = ElasticsearchPropertyAttributeBase.From(propertyInfo);
 				if (attribute != null && attribute.Ignore)
@@ -62,10 +63,7 @@ namespace Nest
 			if (propertyInfo.GetGetMethod().IsStatic)
 				return null;
 
-			if (attribute != null)
-				property = attribute;
-			else
-				property = InferProperty(propertyInfo.PropertyType);
+			property = attribute ?? InferProperty(propertyInfo.PropertyType);
 
 			var objectProperty = property as IObjectProperty;
 			if (objectProperty != null)
@@ -141,8 +139,20 @@ namespace Nest
 			if (type == typeof(CompletionField))
 				return new CompletionProperty();
 
-			if (type == typeof(Attachment))
-				return new AttachmentProperty();
+			if (type == typeof(DateRange))
+				return new DateRangeProperty();
+
+			if (type == typeof(DoubleRange))
+				return new DoubleRangeProperty();
+
+			if (type == typeof(FloatRange))
+				return new FloatRangeProperty();
+
+			if (type == typeof(IntegerRange))
+				return new IntegerRangeProperty();
+
+			if (type == typeof(LongRange))
+				return new LongRangeProperty();
 
 			return new ObjectProperty();
 		}

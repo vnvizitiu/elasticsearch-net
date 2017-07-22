@@ -6,6 +6,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 using static Nest.Infer;
@@ -27,18 +28,16 @@ namespace Tests.Document.Multiple.UpdateByQuery
 		{
 			foreach (var index in values.Values)
 			{
-#pragma warning disable 618
 				this.Client.CreateIndex(index, c => c
 					.Mappings(m => m
 						.Map<Test>(map => map
 							.Dynamic(false)
 							.Properties(props => props
-								.String(s => s.Name(p => p.Text))
+								.Text(s => s.Name(p => p.Text))
 							)
 						)
 					)
 				);
-#pragma warning restore 618
 				this.Client.Index(new Test { Text = "words words", Flag = "bar" }, i => i.Index(index).Refresh(Refresh.True));
 				this.Client.Index(new Test { Text = "words words", Flag = "foo" }, i => i.Index(index).Refresh(Refresh.True));
 				this.Client.Map<Test>(m => m
@@ -69,17 +68,19 @@ namespace Tests.Document.Multiple.UpdateByQuery
 
 		protected override bool SupportsDeserialization => false;
 
-		protected override object ExpectJson { get; } = new { };
+		protected override object ExpectJson { get; } = new { query = new { match_all = new { } } };
 
 		protected override UpdateByQueryDescriptor<Test> NewDescriptor() => new UpdateByQueryDescriptor<Test>(CallIsolatedValue).Type<Test>();
 
 		protected override Func<UpdateByQueryDescriptor<Test>, IUpdateByQueryRequest> Fluent => d => d
 			.Index(CallIsolatedValue)
+			.Query(q=>q.MatchAll())
 			.Refresh()
 			.Conflicts(Conflicts.Proceed);
 
 		protected override UpdateByQueryRequest Initializer => new UpdateByQueryRequest(CallIsolatedValue, Type<Test>())
 		{
+			Query = new MatchAllQuery(),
 			Refresh = true,
 			Conflicts = Conflicts.Proceed
 		};
@@ -111,12 +112,14 @@ namespace Tests.Document.Multiple.UpdateByQuery
 		protected override string UrlPath => $"/{CallIsolatedValue}/test/_update_by_query?wait_for_completion=false&conflicts=proceed";
 
 		protected override Func<UpdateByQueryDescriptor<Test>, IUpdateByQueryRequest> Fluent => d => d
+			.Query(q=>q.MatchAll())
 			.Index(CallIsolatedValue)
 			.WaitForCompletion(false)
 			.Conflicts(Conflicts.Proceed);
 
 		protected override UpdateByQueryRequest Initializer => new UpdateByQueryRequest(CallIsolatedValue, Type<Test>())
 		{
+			Query = new MatchAllQuery(),
 			WaitForCompletion = false,
 			Conflicts = Conflicts.Proceed
 		};
@@ -158,13 +161,13 @@ namespace Tests.Document.Multiple.UpdateByQuery
 			new
 			{
 				query = new { match = new { flag = new { query = "bar" } } },
-				script = new { inline = "ctx._source.text = 'x'", lang = "groovy" }
+				script = new { inline = "ctx._source.text = 'x'" }
 			};
 
 		protected override Func<UpdateByQueryDescriptor<Test>, IUpdateByQueryRequest> Fluent => d => d
 			.Index(CallIsolatedValue)
 			.Query(q => q.Match(m => m.Field(p => p.Flag).Query("bar")))
-			.Script(ss => ss.Inline(_script).Lang("groovy"))
+			.Script(ss => ss.Inline(_script))
 			;
 
 		protected override UpdateByQueryRequest Initializer => new UpdateByQueryRequest(CallIsolatedValue, Type<Test>())
@@ -174,7 +177,7 @@ namespace Tests.Document.Multiple.UpdateByQuery
 				Field = Field<Test>(p => p.Flag),
 				Query = "bar"
 			},
-			Script = new InlineScript(_script) { Lang = "groovy" },
+			Script = new InlineScript(_script),
 		};
 
 		protected override void ExpectResponse(IUpdateByQueryResponse response)

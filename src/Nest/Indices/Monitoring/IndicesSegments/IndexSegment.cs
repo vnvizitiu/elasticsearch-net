@@ -7,7 +7,8 @@ namespace Nest
 	public class IndexSegment
 	{
 		[JsonProperty(PropertyName = "shards")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
-		public Dictionary<string, ShardsSegment> Shards { get; internal set; }
+		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, ShardsSegment>))]
+		public IReadOnlyDictionary<string, ShardsSegment> Shards { get; internal set; } =
+			EmptyReadOnly<string, ShardsSegment>.Dictionary;
 	}
 }

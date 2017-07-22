@@ -7,6 +7,7 @@ using ApiGenerator.Domain;
 using Newtonsoft.Json;
 using Xipton.Razor;
 using ShellProgressBar;
+using Newtonsoft.Json.Linq;
 
 namespace ApiGenerator
 {
@@ -53,9 +54,16 @@ namespace ApiGenerator
 				{
 					using (var fileProgress = pbar.Spawn(jsonFiles.Count, $"Listing {jsonFiles.Count} files", new ProgressBarOptions { ProgressCharacter = '─', BackgroundColor = ConsoleColor.DarkGray }))
 					{
-						foreach (var endpoint in jsonFiles.Select(CreateApiEndpoint))
+						foreach (var file in jsonFiles)
 						{
-							endpoints.Add(endpoint.Key, endpoint.Value);
+							if (file.EndsWith("_common.json")) RestApiSpec.CommonApiQueryParameters = CreateCommonApiQueryParameters(file);
+							else if (file.EndsWith(".obsolete.json")) continue;
+							else if (file.EndsWith(".patch.json")) continue;
+							else
+							{
+								var endpoint = CreateApiEndpoint(file);
+								endpoints.Add(endpoint.Key, endpoint.Value);
+							}
 							fileProgress.Tick();
 						}
 					}
@@ -76,15 +84,51 @@ namespace ApiGenerator
 
 		private static KeyValuePair<string, ApiEndpoint> CreateApiEndpoint(string jsonFile)
 		{
-			var json = File.ReadAllText(jsonFile);
-			var endpoint = JsonConvert.DeserializeObject<Dictionary<string, ApiEndpoint>>(json).First();
+			var officialJsonSpec = JObject.Parse(File.ReadAllText(jsonFile));
+			PatchOfficialSpec(officialJsonSpec, jsonFile);
+			var endpoint = officialJsonSpec.ToObject<Dictionary<string, ApiEndpoint>>().First();
 			endpoint.Value.CsharpMethodName = CreateMethodName(endpoint.Key);
+			AddObsoletes(jsonFile, endpoint.Value);
 			return endpoint;
 		}
 
-		private static string CreateMethodName(string apiEnpointKey)
+		private static void PatchOfficialSpec(JObject original, string jsonFile)
 		{
-			return PascalCase(apiEnpointKey);
+			var directory = Path.GetDirectoryName(jsonFile);
+			var patchFile = Path.Combine(directory, Path.GetFileNameWithoutExtension(jsonFile)) + ".patch.json";
+			if (!File.Exists(patchFile)) return;
+
+			var patchedJson = JObject.Parse(File.ReadAllText(patchFile));
+
+			original.Merge(patchedJson, new JsonMergeSettings
+			{
+				MergeArrayHandling = MergeArrayHandling.Union
+			});
+		}
+
+		private static void AddObsoletes(string jsonFile, ApiEndpoint endpoint)
+		{
+			var directory = Path.GetDirectoryName(jsonFile);
+			var obsoleteFile = Path.Combine(directory, Path.GetFileNameWithoutExtension(jsonFile)) + ".obsolete.json";
+			if (!File.Exists(obsoleteFile)) return;
+
+			var json = File.ReadAllText(obsoleteFile);
+			var endpointOverride = JsonConvert.DeserializeObject<Dictionary<string, ApiEndpoint>>(json).First();
+			endpoint.ObsoleteQueryParameters = endpointOverride.Value?.Url?.Params ?? new Dictionary<string, ApiQueryParameters>();
+			endpoint.RemovedMethods = endpointOverride.Value?.RemovedMethods ?? new Dictionary<string, string>();
+		}
+
+		private static Dictionary<string, ApiQueryParameters> CreateCommonApiQueryParameters(string jsonFile)
+		{
+			var json = File.ReadAllText(jsonFile);
+			var jobject = JObject.Parse(json);
+			var commonParameters = jobject.Property("params").Value.ToObject<Dictionary<string, ApiQueryParameters>>();
+			return commonParameters;
+		}
+
+		private static string CreateMethodName(string apiEndpointKey)
+		{
+			return PascalCase(apiEndpointKey);
 		}
 
 		private static void GenerateClientInterface(RestApiSpec model)

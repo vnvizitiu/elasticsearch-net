@@ -9,7 +9,7 @@ namespace Nest
 		where TPartialDocument : class
 	{
 		/// <summary>
-		/// Infers the id of the object to update from the provided <param name="object">object</param>. 
+		/// Infers the id of the object to update from the provided object.
 		/// See <see cref="Doc"/> to apply a partial object merge.
 		/// </summary>
 		TDocument IdFrom { get; set; }
@@ -25,11 +25,17 @@ namespace Nest
 		TPartialDocument Doc { get; set; }
 
 		/// <summary>
-		/// Instead of sending a partial doc with <see cref="Doc"/> plus an upsert doc 
-		/// with <see cref="Upsert"/>, setting <see cref="DocAsUpsert"/> to <c>true</c> will 
+		/// Instead of sending a partial doc with <see cref="Doc"/> plus an upsert doc
+		/// with <see cref="Upsert"/>, setting <see cref="DocAsUpsert"/> to <c>true</c> will
 		/// use the contents of doc as the upsert value.
 		/// </summary>
 		bool? DocAsUpsert { get; set; }
+
+		/// <summary>
+		/// If you would like your script to run regardless of whether the document exists or not — i.e. the script handles
+		/// initializing the document instead of the upsert element — then set scripted_upsert to true
+		/// </summary>
+		bool? ScriptedUpsert { get; set; }
 
 		/// <summary>
 		/// A script to specify the update.
@@ -74,7 +80,7 @@ namespace Nest
 
 		protected override Type ClrType => typeof(TDocument);
 
-		protected override Id GetIdForOperation(Inferrer inferrer) => 
+		protected override Id GetIdForOperation(Inferrer inferrer) =>
 			this.Id ?? new Id(new[] { this.IdFrom, this.Upsert }.FirstOrDefault(o=>o != null));
 
 		protected override object GetBody() =>
@@ -87,7 +93,7 @@ namespace Nest
 		};
 
 		/// <summary>
-		/// Infers the id of the object to update from the provided <param name="object">object</param>. 
+		/// Infers the id of the object to update from the provided object.
 		/// See <see cref="Doc"/> to apply a partial object merge.
 		/// </summary>
 		public TDocument IdFrom { get; set; }
@@ -103,11 +109,17 @@ namespace Nest
 		public TPartialDocument Doc { get; set; }
 
 		/// <summary>
-		/// Instead of sending a partial doc with <see cref="Doc"/> plus an upsert doc 
-		/// with <see cref="Upsert"/>, setting <see cref="DocAsUpsert"/> to <c>true</c> will 
+		/// Instead of sending a partial doc with <see cref="Doc"/> plus an upsert doc
+		/// with <see cref="Upsert"/>, setting <see cref="DocAsUpsert"/> to <c>true</c> will
 		/// use the contents of doc as the upsert value.
 		/// </summary>
 		public bool? DocAsUpsert { get; set; }
+
+		/// <summary>
+		/// If you would like your script to run regardless of whether the document exists or not — i.e. the script handles
+		/// initializing the document instead of the upsert element — then set scripted_upsert to true
+		/// </summary>
+		public bool? ScriptedUpsert { get; set; }
 
 		/// <summary>
 		/// A script to specify the update.
@@ -128,6 +140,7 @@ namespace Nest
 		TDocument IBulkUpdateOperation<TDocument, TPartialDocument>.Upsert { get; set; }
 		TPartialDocument IBulkUpdateOperation<TDocument, TPartialDocument>.Doc { get; set; }
 		bool? IBulkUpdateOperation<TDocument, TPartialDocument>.DocAsUpsert { get; set; }
+		bool? IBulkUpdateOperation<TDocument, TPartialDocument>.ScriptedUpsert { get; set; }
 		IScript IBulkUpdateOperation<TDocument, TPartialDocument>.Script { get; set; }
 
 		protected override object GetBulkOperationBody() =>
@@ -136,14 +149,15 @@ namespace Nest
 				_PartialUpdate = Self.Doc,
 				_Script = Self.Script,
 				_Upsert = Self.Upsert,
-				_DocAsUpsert = Self.DocAsUpsert
+				_DocAsUpsert = Self.DocAsUpsert,
+				_ScriptedUpsert = Self.ScriptedUpsert
 			};
 
-		protected override Id GetIdForOperation(Inferrer inferrer) => 
+		protected override Id GetIdForOperation(Inferrer inferrer) =>
 			Self.Id ?? new Id(new[] { Self.IdFrom, Self.Upsert }.FirstOrDefault(o=>o != null));
 
 		/// <summary>
-		/// Infers the id of the object to update from the provided <param name="object">object</param>. 
+		/// Infers the id of the object to update from the provided <param name="object">object</param>.
 		/// See <see cref="Doc(TPartialDocument)"/> to apply a partial object merge.
 		/// </summary>
 		public BulkUpdateDescriptor<TDocument, TPartialDocument> IdFrom(TDocument @object, bool useAsUpsert = false)
@@ -163,12 +177,19 @@ namespace Nest
 		public BulkUpdateDescriptor<TDocument, TPartialDocument> Doc(TPartialDocument @object) => Assign(a => a.Doc = @object);
 
 		/// <summary>
-		/// Instead of sending a partial doc with <see cref="Doc(TPartialDocument)"/> plus an upsert doc 
-		/// with <see cref="Upsert(TDocument)"/>, setting <see cref="DocAsUpsert"/> to <c>true</c> will 
+		/// Instead of sending a partial doc with <see cref="Doc(TPartialDocument)"/> plus an upsert doc
+		/// with <see cref="Upsert(TDocument)"/>, setting <see cref="DocAsUpsert"/> to <c>true</c> will
 		/// use the contents of doc as the upsert value.
 		/// </summary>
-		public BulkUpdateDescriptor<TDocument, TPartialDocument> DocAsUpsert(bool partialDocumentAsUpsert = true) => 
+		public BulkUpdateDescriptor<TDocument, TPartialDocument> DocAsUpsert(bool partialDocumentAsUpsert = true) =>
 			Assign(a => a.DocAsUpsert = partialDocumentAsUpsert);
+
+		/// <summary>
+		/// If you would like your script to run regardless of whether the document exists or not — i.e. the script handles
+		/// initializing the document instead of the upsert element — then set scripted_upsert to true
+		/// </summary>
+		public BulkUpdateDescriptor<TDocument, TPartialDocument> ScriptedUpsert(bool scriptedUpsert = true) =>
+			Assign(a => a.ScriptedUpsert = scriptedUpsert);
 
 		/// <summary>
 		/// A script to specify the update.
@@ -179,7 +200,7 @@ namespace Nest
 		/// <summary>
 		/// How many times an update should be retried in the case of a version conflict.
 		/// </summary>
-		public BulkUpdateDescriptor<TDocument, TPartialDocument> RetriesOnConflict(int? retriesOnConflict) => 
+		public BulkUpdateDescriptor<TDocument, TPartialDocument> RetriesOnConflict(int? retriesOnConflict) =>
 			Assign(a => a.RetriesOnConflict = retriesOnConflict);
 	}
 }

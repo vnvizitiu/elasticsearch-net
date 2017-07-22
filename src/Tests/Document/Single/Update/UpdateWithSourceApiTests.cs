@@ -10,6 +10,7 @@ using static Nest.Infer;
 using System.Threading.Tasks;
 using FluentAssertions;
 using System.Linq;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Document.Single.Update
 {
@@ -62,7 +63,7 @@ namespace Tests.Document.Single.Update
 			r.Get.Should().NotBeNull();
 			r.Get.Found.Should().BeTrue();
 			r.Get.Source.Should().NotBeNull();
-			var name = Project.Projects.First().Name;
+			var name = Project.First.Name;
 			r.Get.Source.Name.Should().Be(name);
 			r.Get.Fields.Should().NotBeEmpty().And.ContainKey("name");
 			r.Get.Fields.Value<string>("name").Should().Be(name);

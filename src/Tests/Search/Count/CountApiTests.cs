@@ -3,6 +3,7 @@ using Elasticsearch.Net;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 
@@ -24,8 +25,6 @@ namespace Tests.Search.Count
 		protected override bool ExpectIsValid => true;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
 		protected override string UrlPath => "/project/project/_count";
-
-		private Project _project = new Project { Name = "NEST" };
 
 		protected override object ExpectJson => new
 		{

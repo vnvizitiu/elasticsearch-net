@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Nest
 {
-	internal class IndexSettingsConverter : VerbatimDictionaryKeysJsonConverter
+	internal class IndexSettingsConverter : VerbatimDictionaryKeysJsonConverter<string, object>
 	{
 		public override bool CanRead => true;
 		public override bool CanWrite => true;
@@ -18,7 +18,7 @@ namespace Nest
 			var ds = value as IDynamicIndexSettings ?? (value as IUpdateIndexSettingsRequest)?.IndexSettings;
 
 			if (ds == null) return;
-			IDictionary d = ds;
+			IDictionary<string,object> d = ds;
 
 			d[UpdatableIndexSettings.NumberOfReplicas] = ds.NumberOfReplicas;
 			d[UpdatableIndexSettings.AutoExpandReplicas] = ds.AutoExpandReplicas;
@@ -41,13 +41,13 @@ namespace Nest
 			d[UpdatableIndexSettings.TranslogFlushThresholdSize] = flush?.ThresholdSize;
 			d[UpdatableIndexSettings.TranslogFlushThresholdPeriod] = flush?.ThresholdPeriod;
 
-			d[UpdatableIndexSettings.MergePolicyExpungeDeletesAllowed] = ds.Merge?.Policy.ExpungeDeletesAllowed;
-			d[UpdatableIndexSettings.MergePolicyFloorSegment] = ds.Merge?.Policy.FloorSegment;
-			d[UpdatableIndexSettings.MergePolicyMaxMergeAtOnce] = ds.Merge?.Policy.MaxMergeAtOnce;
-			d[UpdatableIndexSettings.MergePolicyMaxMergeAtOnceExplicit] = ds.Merge?.Policy.MaxMergeAtOnceExplicit;
-			d[UpdatableIndexSettings.MergePolicyMaxMergedSegment] = ds.Merge?.Policy.MaxMergedSegment;
-			d[UpdatableIndexSettings.MergePolicySegmentsPerTier] = ds.Merge?.Policy.SegmentsPerTier;
-			d[UpdatableIndexSettings.MergePolicyReclaimDeletesWeight] = ds.Merge?.Policy.ReclaimDeletesWeight;
+			d[UpdatableIndexSettings.MergePolicyExpungeDeletesAllowed] = ds.Merge?.Policy?.ExpungeDeletesAllowed;
+			d[UpdatableIndexSettings.MergePolicyFloorSegment] = ds.Merge?.Policy?.FloorSegment;
+			d[UpdatableIndexSettings.MergePolicyMaxMergeAtOnce] = ds.Merge?.Policy?.MaxMergeAtOnce;
+			d[UpdatableIndexSettings.MergePolicyMaxMergeAtOnceExplicit] = ds.Merge?.Policy?.MaxMergeAtOnceExplicit;
+			d[UpdatableIndexSettings.MergePolicyMaxMergedSegment] = ds.Merge?.Policy?.MaxMergedSegment;
+			d[UpdatableIndexSettings.MergePolicySegmentsPerTier] = ds.Merge?.Policy?.SegmentsPerTier;
+			d[UpdatableIndexSettings.MergePolicyReclaimDeletesWeight] = ds.Merge?.Policy?.ReclaimDeletesWeight;
 
 			d[UpdatableIndexSettings.MergeSchedulerMaxThreadCount] = ds.Merge?.Scheduler?.MaxThreadCount;
 			d[UpdatableIndexSettings.MergeSchedulerAutoThrottle] = ds.Merge?.Scheduler?.AutoThrottle;
@@ -74,15 +74,13 @@ namespace Nest
 			d[UpdatableIndexSettings.SlowlogIndexingLevel] = indexing?.LogLevel;
 			d[UpdatableIndexSettings.SlowlogIndexingSource] = indexing?.Source;
 
-			var indexSettings = value as IIndexSettings;
-			if (indexSettings != null)
-			{
-				d["index.number_of_shards"] = indexSettings?.NumberOfShards;
-				d[UpdatableIndexSettings.StoreType] = indexSettings?.FileSystemStorageImplementation;
-			}
-			d["index.queries.cache.enabled"] = indexSettings?.Queries?.Cache?.Enabled;
-
 			d[UpdatableIndexSettings.Analysis] = ds.Analysis;
+
+			var indexSettings = value as IIndexSettings;
+            d[FixedIndexSettings.NumberOfShards] = indexSettings?.NumberOfShards;
+            d[FixedIndexSettings.RoutingPartitionSize] = indexSettings?.RoutingPartitionSize;
+            d[UpdatableIndexSettings.StoreType] = indexSettings?.FileSystemStorageImplementation;
+            d[UpdatableIndexSettings.QueriesCacheEnabled] = indexSettings?.Queries?.Cache?.Enabled;
 
 			base.WriteJson(writer, d, serializer);
 		}
@@ -115,7 +113,7 @@ namespace Nest
 			var settings = Flatten(JObject.Load(reader)).Properties().ToDictionary(kv => kv.Name);
 
 			Set<int?>(s, settings, UpdatableIndexSettings.NumberOfReplicas, v => s.NumberOfReplicas = v);
-			Set<string>(s, settings, UpdatableIndexSettings.AutoExpandReplicas, v => s.AutoExpandReplicas = v);
+			Set<AutoExpandReplicas>(s, settings, UpdatableIndexSettings.AutoExpandReplicas, v => s.AutoExpandReplicas = v);
 			Set<Time>(s, settings, UpdatableIndexSettings.RefreshInterval, v => s.RefreshInterval = v);
 			Set<bool?>(s, settings, UpdatableIndexSettings.BlocksReadOnly, v => s.BlocksReadOnly = v);
 			Set<bool?>(s, settings, UpdatableIndexSettings.BlocksRead, v => s.BlocksRead = v);
@@ -182,15 +180,15 @@ namespace Nest
 				v => indexing.ThresholdTrace = v);
 			Set<LogLevel?>(s, settings, UpdatableIndexSettings.SlowlogIndexingLevel, v => indexing.LogLevel = v);
 			Set<int?>(s, settings, UpdatableIndexSettings.SlowlogIndexingSource, v => indexing.Source = v);
-			Set<int?>(s, settings, "index.number_of_shards", v => s.NumberOfShards = v);
-			Set<FileSystemStorageImplementation?>(s, settings, UpdatableIndexSettings.StoreType, v => s.FileSystemStorageImplementation = v,
-				serializer);
+			Set<int?>(s, settings, FixedIndexSettings.NumberOfShards, v => s.NumberOfShards = v);
+			Set<int?>(s, settings, FixedIndexSettings.RoutingPartitionSize, v => s.RoutingPartitionSize = v);
+			Set<FileSystemStorageImplementation?>(s, settings, UpdatableIndexSettings.StoreType, v => s.FileSystemStorageImplementation = v, serializer);
 
 			var queries = s.Queries = new QueriesSettings();
 			var queriesCache = s.Queries.Cache = new QueriesCacheSettings();
-			Set<bool?>(s, settings, "index.queries.cache.enabled", v => queriesCache.Enabled = v);
+			Set<bool?>(s, settings, UpdatableIndexSettings.QueriesCacheEnabled, v => queriesCache.Enabled = v);
 
-			IDictionary dict = s;
+			IDictionary<string,object> dict = s;
 			foreach (var kv in settings)
 			{
 				var setting = kv.Value;

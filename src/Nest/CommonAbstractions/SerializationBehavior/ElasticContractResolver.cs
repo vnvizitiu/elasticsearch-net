@@ -18,9 +18,9 @@ namespace Nest
 		public static JsonSerializer Empty { get; } = new JsonSerializer();
 
 		/// <summary>
-		/// ConnectionSettings can be requested by JsonConverter's.
+		/// ConnectionSettings can be requested by JsonConverters.
 		/// </summary>
-		public IConnectionSettingsValues ConnectionSettings { get; private set; }
+		public IConnectionSettingsValues ConnectionSettings { get; }
 
 		/// <summary>
 		/// Signals to custom converter that it can get serialization state from one of the converters. Ugly but massive performance gain
@@ -40,9 +40,16 @@ namespace Nest
 			{
 				var contract = base.CreateContract(o);
 
-				if (typeof(IDictionary).IsAssignableFrom(o) && !typeof(IIsADictionary).IsAssignableFrom(o))
-					contract.Converter = new VerbatimDictionaryKeysJsonConverter();
-				if (typeof(IEnumerable<QueryContainer>).IsAssignableFrom(o))
+				if ((typeof(IDictionary).IsAssignableFrom(o) || o.IsGenericDictionary()) && !typeof(IIsADictionary).IsAssignableFrom(o))
+				{
+					Type[] genericArguments;
+					if (!o.TryGetGenericDictionaryArguments(out genericArguments))
+						contract.Converter = new VerbatimDictionaryKeysJsonConverter();
+					else
+						contract.Converter =
+							(JsonConverter)typeof(VerbatimDictionaryKeysJsonConverter<,>).CreateGenericInstance(genericArguments);
+				}
+				else if (typeof(IEnumerable<QueryContainer>).IsAssignableFrom(o))
 					contract.Converter = new QueryContainerCollectionJsonConverter();
 				else if (o == typeof(ServerError))
 					contract.Converter = new ServerErrorJsonConverter();
@@ -75,8 +82,7 @@ namespace Nest
 
 		private bool ApplyExactContractJsonAttribute(Type objectType, JsonContract contract)
 		{
-
-			var attribute = objectType.GetTypeInfo().GetCustomAttributes(typeof(ExactContractJsonConverterAttribute)).FirstOrDefault() as ExactContractJsonConverterAttribute;
+			var attribute = (ExactContractJsonConverterAttribute)objectType.GetTypeInfo().GetCustomAttributes(typeof(ExactContractJsonConverterAttribute)).FirstOrDefault();
 			if (attribute?.Converter == null) return false;
 			contract.Converter = attribute.Converter;
 			return true;
@@ -86,7 +92,7 @@ namespace Nest
 		{
 			foreach (var t in this.TypeWithInterfaces(objectType))
 			{
-				var attribute = t.GetTypeInfo().GetCustomAttributes(typeof(ContractJsonConverterAttribute), true).FirstOrDefault() as ContractJsonConverterAttribute;
+				var attribute = (ContractJsonConverterAttribute)t.GetTypeInfo().GetCustomAttributes(typeof(ContractJsonConverterAttribute), true).FirstOrDefault();
 				if (attribute?.Converter == null) continue;
 				contract.Converter = attribute.Converter;
 				return true;
@@ -159,8 +165,7 @@ namespace Nest
 			if (q == null) return false;
 			if (q.IsWritable) return true;
 			var nq = q as NoMatchQueryContainer;
-			if (nq != null && nq.Shortcut != null) return true;
-			return false;
+			return nq?.Shortcut != null;
 		}
 
 		protected static bool ShouldSerializeQueryContainers(object o, JsonProperty prop)
@@ -178,7 +183,7 @@ namespace Nest
 			else if (property.PropertyType == typeof(IEnumerable<QueryContainer>))
 				property.ShouldSerialize = o => ElasticContractResolver.ShouldSerializeQueryContainers(o, property);
 
-			// Skip serialization of empty collections that has DefaultValueHandling set to Ignore.
+			// Skip serialization of empty collections that have DefaultValueHandling set to Ignore.
 			else if (property.DefaultValueHandling.HasValue
 				&& property.DefaultValueHandling.Value == DefaultValueHandling.Ignore
 				&& !typeof(string).IsAssignableFrom(property.PropertyType)

@@ -1,12 +1,13 @@
 ﻿using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.QueryDsl.Geo.BoundingBox
 {
-	public class GeoBoundingBoxUsageTests : QueryDslUsageTestsBase
+	public class GeoBoundingBoxQueryUsageTests : QueryDslUsageTestsBase
 	{
-		public GeoBoundingBoxUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
+		public GeoBoundingBoxQueryUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
 		protected override object QueryJson => new
 		{

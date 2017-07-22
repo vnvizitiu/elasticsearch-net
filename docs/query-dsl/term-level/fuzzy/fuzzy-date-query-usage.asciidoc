@@ -13,9 +13,9 @@ please modify the original csharp file found at the link and submit the PR with 
 ////
 
 [[fuzzy-date-query-usage]]
-== Fuzzy Date Query Usage
+=== Fuzzy Date Query Usage
 
-=== Fluent DSL Example
+==== Fluent DSL example
 
 [source,csharp]
 ----
@@ -28,12 +28,12 @@ q
     .Value(Project.Instance.StartedOn)
     .MaxExpansions(100)
     .PrefixLength(3)
-    .Rewrite(RewriteMultiTerm.ConstantScore)
+    .Rewrite(MultiTermQueryRewrite.ConstantScore)
     .Transpositions()
 )
 ----
 
-=== Object Initializer Syntax Example
+==== Object Initializer syntax example
 
 [source,csharp]
 ----
@@ -46,7 +46,7 @@ new FuzzyDateQuery
     Value = Project.Instance.StartedOn,
     MaxExpansions = 100,
     PrefixLength = 3,
-    Rewrite = RewriteMultiTerm.ConstantScore,
+    Rewrite = MultiTermQueryRewrite.ConstantScore,
     Transpositions = true
 }
 ----

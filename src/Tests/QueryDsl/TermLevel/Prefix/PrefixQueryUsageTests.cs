@@ -1,5 +1,6 @@
 using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.QueryDsl.PrefixLevel.Prefix
@@ -16,7 +17,7 @@ namespace Tests.QueryDsl.PrefixLevel.Prefix
 				{
 					_name = "named_query",
 					boost = 1.1,
-					rewrite = "top_terms_boost_N",
+					rewrite = "top_terms_10",
 					value = "proj"
 				}
 			}
@@ -28,7 +29,7 @@ namespace Tests.QueryDsl.PrefixLevel.Prefix
 			Boost = 1.1,
 			Field = "description",
 			Value = "proj",
-			Rewrite = RewriteMultiTerm.TopTermsBoostN
+			Rewrite = MultiTermQueryRewrite.TopTerms(10)
 		};
 
 		protected override QueryContainer QueryFluent(QueryContainerDescriptor<Project> q) => q
@@ -37,7 +38,7 @@ namespace Tests.QueryDsl.PrefixLevel.Prefix
 				.Boost(1.1)
 				.Field(p => p.Description)
 				.Value("proj")
-				.Rewrite(RewriteMultiTerm.TopTermsBoostN)
+				.Rewrite(MultiTermQueryRewrite.TopTerms(10))
 			);
 
 		protected override ConditionlessWhen ConditionlessWhen => new ConditionlessWhen<IPrefixQuery>(a => a.Prefix)

@@ -10,8 +10,8 @@ namespace Nest
 
 	public partial class CreateIndexRequest
 	{
-		//TODO Only here for ReadAsType new() constraint needs to be updated
-		public CreateIndexRequest() { }
+		//Only here for ReadAsType new() constraint needs to be updated
+		internal CreateIndexRequest() { }
 
 		public CreateIndexRequest(IndexName index, IndexState state) : this(index)
 		{
@@ -22,18 +22,19 @@ namespace Nest
 			CreateIndexRequest.RemoveReadOnlySettings(this.Settings);
 		}
 
-		private static string[] ReadOnlySettings =
+		private static readonly string[] ReadOnlySettings =
 		{
 			"index.creation_date",
 			"index.uuid",
 			"index.version.created",
 		};
+
 		internal static void RemoveReadOnlySettings (IIndexSettings settings)
 		{
 			if (settings == null) return;
 			foreach(var bad in ReadOnlySettings)
 			{
-				if (settings.Contains(bad))
+				if (settings.ContainsKey(bad))
 					settings.Remove(bad);
 			}
 		}

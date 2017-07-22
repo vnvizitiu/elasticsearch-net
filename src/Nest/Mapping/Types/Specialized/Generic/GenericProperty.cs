@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Newtonsoft.Json;
 
 namespace Nest
@@ -51,9 +52,12 @@ namespace Nest
 	/// A generic property to map properties that may be of different types.
 	/// Not all methods are valid for all types.
 	/// </summary>
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class GenericProperty : DocValuesPropertyBase, IGenericProperty
 	{
+#pragma warning disable 618
 		public GenericProperty() : base(null) { }
+#pragma warning restore 618
 
 		public TermVectorOption? TermVector { get; set; }
 		public double? Boost { get; set; }
@@ -74,6 +78,7 @@ namespace Nest
 	/// Not all methods are valid for all types.
 	/// </summary>
 	/// <typeparam name="T">the type on which the property is declared</typeparam>
+	[DebuggerDisplay("{DebugDisplay}")]
 	public class GenericPropertyDescriptor<T>
 		: DocValuesPropertyDescriptorBase<GenericPropertyDescriptor<T>, IGenericProperty, T>, IGenericProperty
 		where T : class
@@ -91,7 +96,9 @@ namespace Nest
 		int? IGenericProperty.PositionIncrementGap { get; set; }
 		IStringFielddata IGenericProperty.Fielddata { get; set; }
 
+#pragma warning disable 618
 		public GenericPropertyDescriptor() : base(null) { }
+#pragma warning restore 618
 
 		public GenericPropertyDescriptor<T> Index(FieldIndexOption? index = FieldIndexOption.NotAnalyzed) => Assign(a => a.Index = index);
 

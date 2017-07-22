@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Elasticsearch.Net;
 
 namespace Nest
 {
@@ -46,8 +47,8 @@ namespace Nest
 		private void Write(string queryType, Dictionary<string, string> properties)
 		{
 			properties = properties ?? new Dictionary<string, string>();
-			var props = string.Join(", ", properties.Select(kv => "{0}: {1}".F(kv.Key, kv.Value)));
-			var indent = new String('-',(Depth -1) * 2);
+			var props = string.Join(", ", properties.Select(kv => $"{kv.Key}: {kv.Value}"));
+			var indent = new string('-',(Depth -1) * 2);
 			var scope = this.Scope.GetStringValue().ToLowerInvariant();
 			_sb.AppendFormat("{0}{1}: {2} ({3}){4}", indent, scope, queryType, props, Environment.NewLine);
 		}
@@ -104,6 +105,10 @@ namespace Nest
 
 		public virtual void Visit(IMatchQuery query) => Write("match", query.Field);
 
+		public virtual void Visit(IMatchPhraseQuery query) => Write("match_phrase", query.Field);
+
+		public virtual void Visit(IMatchPhrasePrefixQuery query) => Write("match_phrase_prefix", query.Field);
+
 		public virtual void Visit(IMatchAllQuery query) => Write("match_all");
 
 		public virtual void Visit(IMatchNoneQuery query) => Write("match_none");
@@ -146,8 +151,6 @@ namespace Nest
 
 		public virtual void Visit(IGeoPolygonQuery query) => Write("geo_polygon");
 
-		public virtual void Visit(IGeoDistanceRangeQuery query) => Write("geo_distance_range");
-
 		public virtual void Visit(IGeoDistanceQuery query) => Write("geo_distance");
 
 		public virtual void Visit(IGeoHashCellQuery filter) => Write("geohash_cell");
@@ -169,6 +172,8 @@ namespace Nest
 		public virtual void Visit(IGeoShapeLineStringQuery query)=> Write("geo_shape_line");
 
 		public virtual void Visit(IGeoShapeEnvelopeQuery query)=> Write("geo_shape_envelope");
+
+		public virtual void Visit(IGeoShapeGeometryCollectionQuery query)=> Write("geo_shape_geometrycollection");
 
 		public virtual void Visit(ISpanSubQuery query)=> Write("span_sub");
 

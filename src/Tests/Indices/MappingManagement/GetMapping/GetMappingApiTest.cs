@@ -5,13 +5,15 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 using static Nest.Infer;
 
 namespace Tests.Indices.MappingManagement.GetMapping
 {
-	public class GetMappingApiTests : ApiIntegrationTestBase<ReadOnlyCluster, IGetMappingResponse, IGetMappingRequest, GetMappingDescriptor<Project>, GetMappingRequest>
+	public class GetMappingApiTests : ApiIntegrationTestBase<ReadOnlyCluster, IGetMappingResponse, IGetMappingRequest, GetMappingDescriptor<Project>,
+		GetMappingRequest>
 	{
 		public GetMappingApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
@@ -37,29 +39,37 @@ namespace Tests.Indices.MappingManagement.GetMapping
 
 		protected override void ExpectResponse(IGetMappingResponse response)
 		{
-			response.IsValid.Should().BeTrue();
+			response.ShouldBeValid();
 
 			var visitor = new TestVisitor();
 			response.Accept(visitor);
 
 			visitor.CountsShouldContainKeyAndCountBe("type", 1);
-			visitor.CountsShouldContainKeyAndCountBe("object", 4);
+			visitor.CountsShouldContainKeyAndCountBe("object", 5);
 			visitor.CountsShouldContainKeyAndCountBe("date", 4);
-			visitor.CountsShouldContainKeyAndCountBe("text", 10);
-			visitor.CountsShouldContainKeyAndCountBe("keyword", 9);
+			visitor.CountsShouldContainKeyAndCountBe("text", 11);
+			visitor.CountsShouldContainKeyAndCountBe("keyword", 10);
 			visitor.CountsShouldContainKeyAndCountBe("ip", 1);
 			visitor.CountsShouldContainKeyAndCountBe("number", 3);
 			visitor.CountsShouldContainKeyAndCountBe("geo_point", 2);
 			visitor.CountsShouldContainKeyAndCountBe("completion", 2);
 			visitor.CountsShouldContainKeyAndCountBe("nested", 1);
+			visitor.CountsShouldContainKeyAndCountBe("date_range", 1);
+			visitor.CountsShouldContainKeyAndCountBe("float_range", 1);
+			visitor.CountsShouldContainKeyAndCountBe("integer_range", 1);
+			visitor.CountsShouldContainKeyAndCountBe("double_range", 1);
+			visitor.CountsShouldContainKeyAndCountBe("long_range", 1);
 		}
 	}
 
-	public class GetMappingNonExistentIndexApiTests : ApiIntegrationTestBase<ReadOnlyCluster, IGetMappingResponse, IGetMappingRequest, GetMappingDescriptor<Project>, GetMappingRequest>
+	public class GetMappingNonExistentIndexApiTests : ApiIntegrationTestBase<ReadOnlyCluster, IGetMappingResponse, IGetMappingRequest,
+		GetMappingDescriptor<Project>, GetMappingRequest>
 	{
 		private string _nonExistentIndex = "non-existent-index";
 
-		public GetMappingNonExistentIndexApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+		public GetMappingNonExistentIndexApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage)
+		{
+		}
 
 		protected override LazyResponses ClientUsage() => Calls(
 			fluent: (client, f) => client.GetMapping<Project>(f),
@@ -117,11 +127,14 @@ namespace Tests.Indices.MappingManagement.GetMapping
 		}
 
 #pragma warning disable 618
+
 		public void Visit(IStringProperty mapping)
 		{
 			Increment("string");
 		}
+
 #pragma warning restore 618
+
 		public void Visit(IDateProperty mapping)
 		{
 			Increment("date");
@@ -142,11 +155,6 @@ namespace Tests.Indices.MappingManagement.GetMapping
 			Increment("geo_point");
 		}
 
-		public void Visit(IAttachmentProperty mapping)
-		{
-			Increment("attachment");
-		}
-
 		public void Visit(ICompletionProperty mapping)
 		{
 			Increment("completion");
@@ -155,6 +163,36 @@ namespace Tests.Indices.MappingManagement.GetMapping
 		public void Visit(ITokenCountProperty mapping)
 		{
 			Increment("token_count");
+		}
+
+		public void Visit(IPercolatorProperty property)
+		{
+			Increment("percolator");
+		}
+
+		public void Visit(IIntegerRangeProperty property)
+		{
+			Increment("integer_range");
+		}
+
+		public void Visit(IFloatRangeProperty property)
+		{
+			Increment("float_range");
+		}
+
+		public void Visit(ILongRangeProperty property)
+		{
+			Increment("long_range");
+		}
+
+		public void Visit(IDoubleRangeProperty property)
+		{
+			Increment("double_range");
+		}
+
+		public void Visit(IDateRangeProperty property)
+		{
+			Increment("date_range");
 		}
 
 		public void Visit(IMurmur3HashProperty mapping)

@@ -1,8 +1,10 @@
 ﻿using System;
 using Elasticsearch.Net;
+using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 using static Nest.Infer;
@@ -22,7 +24,7 @@ namespace Tests.Document.Single.TermVectors
 		protected override bool ExpectIsValid => true;
 		protected override int ExpectStatusCode => 200;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
-		protected override string UrlPath => $"/project/project/{Uri.EscapeDataString(Project.Instance.Name)}/_termvectors?offsets=true";
+		protected override string UrlPath => $"/project/project/{UrlEncode(Project.Instance.Name)}/_termvectors?offsets=true";
 
 		protected override bool SupportsDeserialization => false;
 
@@ -70,5 +72,24 @@ namespace Tests.Document.Single.TermVectors
 				MaximumWordLength = 200
 			}
 		};
+
+		protected override void ExpectResponse(ITermVectorsResponse response)
+		{
+			response.ShouldBeValid();
+
+			response.TermVectors.Should().NotBeEmpty();
+			response.Found.Should().BeTrue();
+			response.Version.Should().Be(1);
+			response.Id.Should().NotBeNullOrEmpty();
+			response.Index.Should().NotBeNullOrEmpty();
+			response.Type.Should().NotBeNullOrEmpty();
+
+			foreach (var termVector in response.TermVectors)
+			{
+				termVector.Key.Should().NotBeNullOrEmpty();
+				termVector.Value.FieldStatistics.Should().NotBeNull();
+				termVector.Value.Terms.Should().NotBeEmpty();
+			}
+		}
 	}
 }

@@ -13,16 +13,16 @@ please modify the original csharp file found at the link and submit the PR with 
 ////
 
 [[char-filter-usage]]
-== Char Filter Usage
+=== Char Filter Usage
 
-=== Fluent DSL Example
+==== Fluent DSL example
 
 [source,csharp]
 ----
 FluentExample
 ----
 
-=== Object Initializer Syntax Example
+==== Object Initializer syntax example
 
 [source,csharp]
 ----
@@ -35,6 +35,11 @@ InitializerExample
 {
   "analysis": {
     "char_filter": {
+      "icun": {
+        "mode": "compose",
+        "name": "nfkc_cf",
+        "type": "icu_normalizer"
+      },
       "stripMe": {
         "type": "html_strip"
       },
@@ -48,6 +53,11 @@ InitializerExample
           "a=>b"
         ],
         "type": "mapping"
+      },
+      "kmark": {
+        "normalize_kanji": true,
+        "normalize_kana": true,
+        "type": "kuromoji_iteration_mark"
       }
     }
   }

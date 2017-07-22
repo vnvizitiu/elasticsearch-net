@@ -1,12 +1,13 @@
 ﻿using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.QueryDsl.Geo.Distance
 {
-	public class GeoDistanceUsageTests : QueryDslUsageTestsBase
+	public class GeoDistanceQueryUsageTests : QueryDslUsageTestsBase
 	{
-		public GeoDistanceUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
+		public GeoDistanceQueryUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
 		protected override object QueryJson => new
 		{
@@ -15,7 +16,6 @@ namespace Tests.QueryDsl.Geo.Distance
 				_name = "named_query",
 				boost = 1.1,
 				distance = "200.0m",
-				optimize_bbox = "memory",
 				distance_type = "arc",
 				validation_method = "ignore_malformed",
 				location = new
@@ -34,7 +34,6 @@ namespace Tests.QueryDsl.Geo.Distance
 			DistanceType = GeoDistanceType.Arc,
 			Location = new GeoLocation(34,-34),
 			Distance = "200.0m",
-			OptimizeBoundingBox = GeoOptimizeBBox.Memory,
 			ValidationMethod = GeoValidationMethod.IgnoreMalformed
 		};
 
@@ -46,7 +45,6 @@ namespace Tests.QueryDsl.Geo.Distance
 				.DistanceType(GeoDistanceType.Arc)
 				.Location(34, -34)
 				.Distance("200.0m")
-				.Optimize(GeoOptimizeBBox.Memory)
 				.ValidationMethod(GeoValidationMethod.IgnoreMalformed)
 			);
 

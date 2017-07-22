@@ -7,10 +7,12 @@ namespace ApiGenerator
 {
 	public static class Program
 	{
+		private static readonly string DownloadBranch = "master";
+
 		static void Main(string[] args)
 		{
 			bool redownloadCoreSpecification = false;
-			string downloadBranch = "master";
+			string downloadBranch = DownloadBranch;
 
 			var answer = "invalid";
 			while (answer != "y" && answer != "n" && answer != "")
@@ -23,7 +25,8 @@ namespace ApiGenerator
 			if (redownloadCoreSpecification)
 			{
 				Console.Write("Branch to download specification from (default master): ");
-				downloadBranch = Console.ReadLine()?.Trim();
+				var readBranch = Console.ReadLine()?.Trim();
+				if (!string.IsNullOrEmpty(readBranch)) downloadBranch = readBranch;
 			}
 			else
 			{
@@ -34,12 +37,14 @@ namespace ApiGenerator
 				}
 			}
 
+			if (string.IsNullOrEmpty(downloadBranch))
+				downloadBranch = DownloadBranch;
+
 			if (redownloadCoreSpecification)
 				RestSpecDownloader.Download(downloadBranch);
 
-			ApiGenerator.Generate(downloadBranch, "Core", "Graph", "License", "Security");
-			//ApiGenerator.Generate("Core", "DeleteByQuery", "Graph", "License", "Shield");
-			//ApiGenerator.Generate("Core", "Graph", "License");
+			ApiGenerator.Generate(downloadBranch, "Core", "Graph", "License", "Security", "Watcher", "Info");
+
 			//ApiGenerator.Generate(); //generates everything under ApiSpecification
 		}
 

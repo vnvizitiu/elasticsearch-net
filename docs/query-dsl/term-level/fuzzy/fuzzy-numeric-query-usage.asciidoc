@@ -13,9 +13,9 @@ please modify the original csharp file found at the link and submit the PR with 
 ////
 
 [[fuzzy-numeric-query-usage]]
-== Fuzzy Numeric Query Usage
+=== Fuzzy Numeric Query Usage
 
-=== Fluent DSL Example
+==== Fluent DSL example
 
 [source,csharp]
 ----
@@ -28,12 +28,12 @@ q
     .Value(12)
     .MaxExpansions(100)
     .PrefixLength(3)
-    .Rewrite(RewriteMultiTerm.ConstantScore)
+    .Rewrite(MultiTermQueryRewrite.ConstantScore)
     .Transpositions()
 )
 ----
 
-=== Object Initializer Syntax Example
+==== Object Initializer syntax example
 
 [source,csharp]
 ----
@@ -46,7 +46,7 @@ new FuzzyNumericQuery
     Value = 12,
     MaxExpansions = 100,
     PrefixLength = 3,
-    Rewrite = RewriteMultiTerm.ConstantScore,
+    Rewrite = MultiTermQueryRewrite.ConstantScore,
     Transpositions = true
 }
 ----

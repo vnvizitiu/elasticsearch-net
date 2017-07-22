@@ -12,9 +12,9 @@ namespace Nest
 
 		public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
 		{
-			JObject o = JObject.Load(reader);
+			var o = JObject.Load(reader);
 
-			JProperty typeProperty = o.Property("type");
+			var typeProperty = o.Property("type");
 			if (typeProperty == null) return null;
 
 			var typePropertyValue = typeProperty.Value.ToString();
@@ -28,6 +28,7 @@ namespace Nest
 				case "whitespace": return o.ToObject<WhitespaceAnalyzer>(ElasticContractResolver.Empty);
 				case "simple": return o.ToObject<SimpleAnalyzer>(ElasticContractResolver.Empty);
 				case "fingerprint": return o.ToObject<FingerprintAnalyzer>(ElasticContractResolver.Empty);
+				case "kuromoji": return o.ToObject<KuromojiAnalyzer>(ElasticContractResolver.Empty);
 				default:
 					if (o.Property("tokenizer") != null)
 						return o.ToObject<CustomAnalyzer>(ElasticContractResolver.Empty);
@@ -37,7 +38,7 @@ namespace Nest
 
 		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
 		{
-			throw new NotImplementedException();
+			throw new NotSupportedException();
 		}
 	}
 }

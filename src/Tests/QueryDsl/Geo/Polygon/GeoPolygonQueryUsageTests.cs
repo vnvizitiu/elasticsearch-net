@@ -1,13 +1,14 @@
 ﻿using System.Linq;
 using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.QueryDsl.Geo.Polygon
 {
-	public class GeoPolygonUsageTests : QueryDslUsageTestsBase
+	public class GeoPolygonQueryUsageTests : QueryDslUsageTestsBase
 	{
-		public GeoPolygonUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
+		public GeoPolygonQueryUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
 		protected override object QueryJson => new
 		{

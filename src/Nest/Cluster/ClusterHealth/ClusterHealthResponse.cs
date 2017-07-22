@@ -16,7 +16,7 @@ namespace Nest
 		int InitializingShards { get; }
 		int UnassignedShards { get; }
 		int NumberOfPendingTasks { get; }
-		Dictionary<string, IndexHealthStats> Indices { get; }
+		IReadOnlyDictionary<string, IndexHealthStats> Indices { get; }
 	}
 
 	[JsonObject]
@@ -47,7 +47,7 @@ namespace Nest
 		[JsonProperty(PropertyName="number_of_pending_tasks")]
 		public int NumberOfPendingTasks { get; internal set; }
 		[JsonProperty(PropertyName = "indices")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
-		public Dictionary<string, IndexHealthStats> Indices { get; set; }
+		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, IndexHealthStats>))]
+		public IReadOnlyDictionary<string, IndexHealthStats> Indices { get; internal set; } = EmptyReadOnly<string, IndexHealthStats>.Dictionary;
 	}
 }

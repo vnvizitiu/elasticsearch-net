@@ -3,6 +3,7 @@ using Elasticsearch.Net;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Xunit;
 
 namespace Tests.Modules.SnapshotAndRestore.Repositories.CreateRepository
@@ -251,7 +252,6 @@ namespace Tests.Modules.SnapshotAndRestore.Repositories.CreateRepository
 			type = "s3",
 			settings = new {
 				bucket = "foobucket",
-				region = "us-east",
 				base_path = "some/path",
 				access_key = "fooaccess",
 				secret_key = "foosecret",
@@ -266,7 +266,6 @@ namespace Tests.Modules.SnapshotAndRestore.Repositories.CreateRepository
 		protected override Func<CreateRepositoryDescriptor, ICreateRepositoryRequest> Fluent => d => d
 			.S3(fs => fs
 				.Settings("foobucket", s => s
-					.Region("us-east")
 					.BasePath("some/path")
 					.AccessKey("fooaccess")
 					.SecretKey("foosecret")
@@ -280,7 +279,6 @@ namespace Tests.Modules.SnapshotAndRestore.Repositories.CreateRepository
 		{
 			Repository = new S3Repository(new S3RepositorySettings("foobucket")
 			{
-				Region = "us-east",
 				BasePath = "some/path",
 				AccessKey = "fooaccess",
 				SecretKey = "foosecret",

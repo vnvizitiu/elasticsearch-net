@@ -6,6 +6,8 @@ using Elasticsearch.Net;
 using FluentAssertions;
 using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Xunit;
 
 namespace Tests.Framework
@@ -20,13 +22,13 @@ namespace Tests.Framework
 	{
 		private readonly EndpointUsage _usage;
 		private readonly LazyResponses _responses;
-		private readonly int _port;
 		private readonly CallUniqueValues _uniqueValues;
 
 		protected static string RandomString() => Guid.NewGuid().ToString("N").Substring(0, 8);
 		protected bool RanIntegrationSetup => this._usage?.CalledSetup ?? false;
+	    protected string UrlEncode(string s) => Uri.EscapeDataString(s);
 
-		protected ClusterBase Cluster { get; }
+        protected ClusterBase Cluster { get; }
 
 		protected string CallIsolatedValue => _uniqueValues.Value;
 		protected T ExtendedValue<T>(string key) where T : class => this._uniqueValues.ExtendedValue<T>(key);
@@ -47,11 +49,10 @@ namespace Tests.Framework
 
 		protected ApiTestBase(ClusterBase cluster, EndpointUsage usage) : base(cluster)
 		{
-			this._usage = usage;
-			this.Cluster = cluster;
+			this._usage = usage ?? throw new ArgumentNullException(nameof(usage));
+			this.Cluster = cluster ?? throw new ArgumentNullException(nameof(cluster));
 
 			this._responses = usage.CallOnce(this.ClientUsage);
-			this._port = cluster.Node.Port;
 			this._uniqueValues = usage.CallUniqueValues;
 			this.SetupSerialization();
 		}
@@ -60,7 +61,9 @@ namespace Tests.Framework
 			await this.AssertOnAllResponses(r => this.AssertUrl(r.ApiCall.Uri));
 
 		[U] protected async Task UsesCorrectHttpMethod() =>
-			await this.AssertOnAllResponses(r => r.ApiCall.HttpMethod.Should().Be(this.HttpMethod));
+			await this.AssertOnAllResponses(
+				r => r.ApiCall.HttpMethod.Should().Be(this.HttpMethod,
+					this._uniqueValues.CurrentView.GetStringValue()));
 
 		[U] protected void SerializesInitializer() =>
 			this.AssertSerializesAndRoundTrips<TInterface>(this.Initializer);
@@ -85,7 +88,6 @@ namespace Tests.Framework
 					this.IntegrationSetup(client, _uniqueValues);
 					this._usage.CalledSetup = true;
 				}
-
 
 				var dict = new Dictionary<ClientMethod, IResponse>();
 				_uniqueValues.CurrentView = ClientMethod.Fluent;
@@ -112,7 +114,7 @@ namespace Tests.Framework
 			});
 		}
 
-		private void AssertUrl(Uri u) => u.PathEquals(this.UrlPath);
+		private void AssertUrl(Uri u) => u.PathEquals(this.UrlPath, this._uniqueValues.CurrentView.GetStringValue());
 
 		protected virtual async Task AssertOnAllResponses(Action<TResponse> assert)
 		{
@@ -128,9 +130,11 @@ namespace Tests.Framework
 #pragma warning disable 7095 //enable this if you expect a single overload to act up
 				catch (Exception ex) when (false)
 #pragma warning restore 7095
+#pragma warning disable 0162 //dead code while the previous exception filter is false
 				{
 					throw new Exception($"asserting over the response from: {kv.Key} failed: {ex.Message}", ex);
 				}
+#pragma warning restore 0162
 			}
 		}
 

@@ -3,6 +3,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 
@@ -16,11 +17,11 @@ namespace Tests.Aggregations.Metric.Min
 		{
 			aggs = new
 			{
-				min_commits = new
+				min_last_activity = new
 				{
 					min = new
 					{
-						field = "numberOfCommits"
+						field = "lastActivity"
 					}
 				}
 			}
@@ -28,23 +29,24 @@ namespace Tests.Aggregations.Metric.Min
 
 		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
 			.Aggregations(a => a
-				.Min("min_commits", m => m
-					.Field(p => p.NumberOfCommits)
+				.Min("min_last_activity", m => m
+					.Field(p => p.LastActivity)
 				)
 			);
 
 		protected override SearchRequest<Project> Initializer =>
 			new SearchRequest<Project>
 			{
-				Aggregations = new MinAggregation("min_commits", Field<Project>(p => p.NumberOfCommits))
+				Aggregations = new MinAggregation("min_last_activity", Field<Project>(p => p.LastActivity))
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
-			var min = response.Aggs.Max("min_commits");
+			var min = response.Aggs.Min("min_last_activity");
 			min.Should().NotBeNull();
 			min.Value.Should().BeGreaterThan(0);
+			min.ValueAsString.Should().NotBeNullOrEmpty();
 		}
 	}
 }

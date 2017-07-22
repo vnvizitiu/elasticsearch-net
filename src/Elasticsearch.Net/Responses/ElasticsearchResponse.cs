@@ -11,6 +11,12 @@ namespace Elasticsearch.Net
 		private static readonly string RequestAlreadyCaptured = "<Request stream not captured or already read to completion by serializer. Set DisableDirectStreaming() on ConnectionSettings to force it to be set on the response.>";
 		public static string DebugInformationBuilder(IApiCallDetails r, StringBuilder sb)
 		{
+			if (r.DeprecationWarnings.HasAny())
+			{
+				sb.AppendLine($"# Server indicated deprecations:");
+				foreach(var deprecation in r.DeprecationWarnings)
+					sb.AppendLine($"- {deprecation}");
+			}
 			sb.AppendLine($"# Audit trail of this API call:");
 			var auditTrail = (r.AuditTrail ?? Enumerable.Empty<Audit>()).ToList();
 			DebugAuditTrail(auditTrail, sb);
@@ -42,7 +48,7 @@ namespace Elasticsearch.Net
 				sb.Append($" - [{a.i + 1}] {audit.Event.GetStringValue()}:");
 				if (audit.Node?.Uri != null) sb.Append($" Node: {audit.Node.Uri}");
 				if (audit.Exception != null) sb.Append($" Exception: {audit.Exception.GetType().Name}");
-				sb.AppendLine($" Took: {(audit.Ended - audit.Started)}");
+				sb.AppendLine($" Took: {(audit.Ended - audit.Started).ToString()}");
 			}
 		}
 	}
@@ -66,6 +72,10 @@ namespace Elasticsearch.Net
 		public int? HttpStatusCode { get; }
 
 		public List<Audit> AuditTrail { get; internal set; }
+
+		public IEnumerable<string> DeprecationWarnings { get; internal set; } = Enumerable.Empty<string>();
+
+		internal bool AllowAllStatusCodes { get; }
 
 		/// <summary>
 		/// The response is successful or has a response code between 400-599, the call should not be retried.
@@ -91,7 +101,8 @@ namespace Elasticsearch.Net
 		public ElasticsearchResponse(int statusCode, IEnumerable<int> allowedStatusCodes)
 		{
 			var statusCodes = allowedStatusCodes as int[] ?? allowedStatusCodes.ToArray();
-			this.Success = statusCode >= 200 && statusCode < 300 || statusCodes.Contains(statusCode) || statusCodes.Contains(-1);
+			this.AllowAllStatusCodes = statusCodes.Contains(-1);
+			this.Success = statusCode >= 200 && statusCode < 300 || statusCodes.Contains(statusCode) || this.AllowAllStatusCodes;
 			this.HttpStatusCode = statusCode;
 		}
 
@@ -104,6 +115,7 @@ namespace Elasticsearch.Net
 				return ResponseStatics.DebugInformationBuilder(this, sb);
 			}
 		}
+
 
 		public override string ToString() =>  $"{(Success ? "S" : "Uns")}uccessful low level call on {HttpMethod.GetStringValue()}: {Uri.PathAndQuery}";
 	}

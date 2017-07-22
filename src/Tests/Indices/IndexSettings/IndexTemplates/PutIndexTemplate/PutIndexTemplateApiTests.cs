@@ -4,6 +4,7 @@ using Elasticsearch.Net;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Xunit;
 
 namespace Tests.Indices.IndexSettings.IndexTemplates.PutIndexTemplate
@@ -31,7 +32,7 @@ namespace Tests.Indices.IndexSettings.IndexTemplates.PutIndexTemplate
 		protected override object ExpectJson { get; } = new
 		{
 			order = 1,
-			template = "nestx-*",
+			index_patterns = new [] {"nestx-*" },
 			settings = new Dictionary<string, object> { { "index.number_of_shards", 1 } },
 			mappings = new
 			{
@@ -60,7 +61,7 @@ namespace Tests.Indices.IndexSettings.IndexTemplates.PutIndexTemplate
 
 		protected override Func<PutIndexTemplateDescriptor, IPutIndexTemplateRequest> Fluent => d => d
 			.Order(1)
-			.Template("nestx-*")
+			.IndexPatterns("nestx-*")
 			.Create(false)
 			.Settings(p=>p.NumberOfShards(1))
 			.Mappings(m => m
@@ -82,7 +83,7 @@ namespace Tests.Indices.IndexSettings.IndexTemplates.PutIndexTemplate
 		protected override PutIndexTemplateRequest Initializer => new PutIndexTemplateRequest(CallIsolatedValue)
 		{
 			Order = 1,
-			Template = "nestx-*",
+			IndexPatterns = new[] { "nestx-*" },
 			Create = false,
 			Settings = new Nest.IndexSettings
 			{

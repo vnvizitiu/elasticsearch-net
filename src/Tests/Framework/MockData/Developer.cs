@@ -28,6 +28,7 @@ namespace Tests.Framework.MockData
 				.RuleFor(p => p.IPAddress, p => p.Internet.Ip())
 			;
 
-		public static IList<Developer> Developers { get; } = Developer.Generator.Generate(1000).ToList();
+		public static IList<Developer> Developers { get; } =
+			Developer.Generator.Generate(1000).ToList();
 	}
 }

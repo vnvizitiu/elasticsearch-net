@@ -58,6 +58,12 @@ namespace Nest
 		[JsonProperty("match")]
 		IMatchQuery Match { get; set; }
 
+		[JsonProperty("match_phrase")]
+		IMatchPhraseQuery MatchPhrase { get; set; }
+
+		[JsonProperty("match_phrase_prefix")]
+		IMatchPhrasePrefixQuery MatchPhrasePrefix { get; set; }
+
 		[JsonProperty("fuzzy")]
 		IFuzzyQuery Fuzzy { get; set; }
 
@@ -142,9 +148,6 @@ namespace Nest
 
 		[JsonProperty("geo_polygon")]
 		IGeoPolygonQuery GeoPolygon { get; set; }
-
-		[JsonProperty("geo_distance_range")]
-		IGeoDistanceRangeQuery GeoDistanceRange { get; set; }
 
 		[JsonProperty("geohash_cell")]
 		IGeoHashCellQuery GeoHashCell { get; set; }

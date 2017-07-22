@@ -13,16 +13,16 @@ please modify the original csharp file found at the link and submit the PR with 
 ////
 
 [[tokenizer-usage]]
-== Tokenizer Usage
+=== Tokenizer Usage
 
-=== Fluent DSL Example
+==== Fluent DSL example
 
 [source,csharp]
 ----
 FluentExample
 ----
 
-=== Object Initializer Syntax Example
+==== Object Initializer syntax example
 
 [source,csharp]
 ----
@@ -43,6 +43,17 @@ InitializerExample
           "letter"
         ],
         "type": "edge_ngram"
+      },
+      "icu": {
+        "rule_files": "Latn:icu-files/KeywordTokenizer.rbbi",
+        "type": "icu_tokenizer"
+      },
+      "kuromoji": {
+        "discard_punctuation": true,
+        "mode": "extended",
+        "nbest_cost": 1000,
+        "nbest_examples": "/箱根山-箱根/成田空港-成田/",
+        "type": "kuromoji_tokenizer"
       },
       "ng": {
         "min_gram": 1,

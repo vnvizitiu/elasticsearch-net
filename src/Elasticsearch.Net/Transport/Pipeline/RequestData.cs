@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
-using System.Threading;
+using System.Security.Cryptography.X509Certificates;
 using Purify;
 
 namespace Elasticsearch.Net
@@ -11,8 +11,9 @@ namespace Elasticsearch.Net
 	public class RequestData
 	{
 		public const string MimeType = "application/json";
+		public const string RunAsSecurityHeader = "es-security-runas-user";
 
-		public Uri Uri => new Uri(this.Node.Uri, this.Path).Purify();
+		public Uri Uri => this.Node != null ? new Uri(this.Node.Uri, this.Path).Purify() : null;
 
 		public HttpMethod Method { get; private set; }
 		public string Path { get; }
@@ -38,16 +39,17 @@ namespace Elasticsearch.Net
 		public string ProxyUsername { get; }
 		public string ProxyPassword { get; }
 		public bool DisableAutomaticProxyDetection { get; }
+
 		public BasicAuthenticationCredentials BasicAuthorizationCredentials { get; }
 		public IEnumerable<int> AllowedStatusCodes { get; }
 		public Func<IApiCallDetails, Stream, object> CustomConverter { get; private set; }
 		public IConnectionConfigurationValues ConnectionSettings { get; }
 		public IMemoryStreamFactory MemoryStreamFactory { get; }
 
+		public X509CertificateCollection ClientCertificates { get; set; }
+
 		public RequestData(HttpMethod method, string path, PostData<object> data, IConnectionConfigurationValues global, IRequestParameters local, IMemoryStreamFactory memoryStreamFactory)
-#pragma warning disable CS0618 // Type or member is obsolete
-			: this(method, path, data, global, (IRequestConfiguration)local?.RequestConfiguration, memoryStreamFactory)
-#pragma warning restore CS0618 // Type or member is obsolete
+			: this(method, path, data, global, local?.RequestConfiguration, memoryStreamFactory)
 		{
 			this.CustomConverter = local?.DeserializationOverride;
 			this.Path = this.CreatePathWithQueryStrings(path, this.ConnectionSettings, local);
@@ -65,13 +67,17 @@ namespace Elasticsearch.Net
 			this.MemoryStreamFactory = memoryStreamFactory;
 			this.Method = method;
 			this.PostData = data;
+
+			if (data != null)
+				data.DisableDirectStreaming = local?.DisableDirectStreaming ?? global.DisableDirectStreaming;
+
 			this.Path = this.CreatePathWithQueryStrings(path, this.ConnectionSettings, null);
 
-			this.Pipelined = global.HttpPipeliningEnabled || (local?.EnableHttpPipelining).GetValueOrDefault(false);
+			this.Pipelined = local?.EnableHttpPipelining ?? global.HttpPipeliningEnabled;
 			this.HttpCompression = global.EnableHttpCompression;
 			this.ContentType = local?.ContentType ?? MimeType;
 			this.Accept = local?.Accept ?? MimeType;
-			this.Headers = new NameValueCollection(global.Headers ?? new NameValueCollection());
+			this.Headers = global.Headers != null ? new NameValueCollection(global.Headers) : new NameValueCollection();
 			this.RunAs = local?.RunAs;
 
 			this.RequestTimeout = local?.RequestTimeout ?? global.RequestTimeout;
@@ -89,6 +95,7 @@ namespace Elasticsearch.Net
 			this.DisableAutomaticProxyDetection = global.DisableAutomaticProxyDetection;
 			this.BasicAuthorizationCredentials = local?.BasicAuthenticationCredentials ?? global.BasicAuthenticationCredentials;
 			this.AllowedStatusCodes = local?.AllowedStatusCodes ?? Enumerable.Empty<int>();
+			this.ClientCertificates = local?.ClientCertificates ?? global.ClientCertificates;
 		}
 
 		private string CreatePathWithQueryStrings(string path, IConnectionConfigurationValues global, IRequestParameters request = null)
@@ -109,55 +116,5 @@ namespace Elasticsearch.Net
 				path += "&" + queryString.Substring(1, queryString.Length - 1);
 			return path;
 		}
-
-
-		protected bool Equals(RequestData other) =>
-			RequestTimeout.Equals(other.RequestTimeout)
-			&& PingTimeout.Equals(other.PingTimeout)
-			&& KeepAliveTime == other.KeepAliveTime
-			&& KeepAliveInterval == other.KeepAliveInterval
-			&& Pipelined == other.Pipelined
-			&& HttpCompression == other.HttpCompression
-			&& Equals(Headers, other.Headers)
-			&& string.Equals(RunAs, other.RunAs)
-			&& string.Equals(ProxyAddress, other.ProxyAddress)
-			&& string.Equals(ProxyUsername, other.ProxyUsername)
-			&& string.Equals(ProxyPassword, other.ProxyPassword)
-			&& DisableAutomaticProxyDetection == other.DisableAutomaticProxyDetection
-			&& Equals(BasicAuthorizationCredentials, other.BasicAuthorizationCredentials)
-			&& Equals(ConnectionSettings, other.ConnectionSettings)
-			&& Equals(MemoryStreamFactory, other.MemoryStreamFactory);
-
-		public override bool Equals(object obj)
-		{
-			if (ReferenceEquals(null, obj)) return false;
-			if (ReferenceEquals(this, obj)) return true;
-			if (obj.GetType() != this.GetType()) return false;
-			return Equals((RequestData) obj);
-		}
-
-		public override int GetHashCode()
-		{
-			unchecked
-			{
-				var hashCode = RequestTimeout.GetHashCode();
-				hashCode = (hashCode*397) ^ PingTimeout.GetHashCode();
-				hashCode = (hashCode*397) ^ KeepAliveTime;
-				hashCode = (hashCode*397) ^ KeepAliveInterval;
-				hashCode = (hashCode*397) ^ (RunAs?.GetHashCode() ?? 0);
-				hashCode = (hashCode*397) ^ Pipelined.GetHashCode();
-				hashCode = (hashCode*397) ^ HttpCompression.GetHashCode();
-				hashCode = (hashCode*397) ^ (Headers?.GetHashCode() ?? 0);
-				hashCode = (hashCode*397) ^ (ProxyAddress?.GetHashCode() ?? 0);
-				hashCode = (hashCode*397) ^ (ProxyUsername?.GetHashCode() ?? 0);
-				hashCode = (hashCode*397) ^ (ProxyPassword?.GetHashCode() ?? 0);
-				hashCode = (hashCode*397) ^ DisableAutomaticProxyDetection.GetHashCode();
-				hashCode = (hashCode*397) ^ (BasicAuthorizationCredentials?.GetHashCode() ?? 0);
-				hashCode = (hashCode*397) ^ (ConnectionSettings?.GetHashCode() ?? 0);
-				hashCode = (hashCode*397) ^ (MemoryStreamFactory?.GetHashCode() ?? 0);
-				return hashCode;
-			}
-		}
-
 	}
 }

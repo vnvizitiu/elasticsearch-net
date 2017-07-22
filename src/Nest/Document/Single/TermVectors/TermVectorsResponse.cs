@@ -3,15 +3,8 @@ using Newtonsoft.Json;
 
 namespace Nest
 {
-	public interface ITermVectorsResponse : IResponse
+	public interface ITermVectorsResponse : IResponse, ITermVectors
 	{
-		string Index { get; }
-		string Type { get; }
-		string Id { get; }
-		long Version { get; }
-		bool Found { get; }
-		long Took { get; }
-		IDictionary<string, TermVector> TermVectors { get; }
 	}
 
 	[JsonObject]
@@ -32,10 +25,10 @@ namespace Nest
 		[JsonProperty("found")]
 		public bool Found { get; internal set; }
 
-		[JsonProperty(PropertyName = "took")]
+		[JsonProperty("took")]
 		public long Took { get; internal set; }
 
 		[JsonProperty("term_vectors")]
-		public IDictionary<string, TermVector> TermVectors { get; internal set; } =  new Dictionary<string, TermVector>();
+		public IReadOnlyDictionary<string, TermVector> TermVectors { get; internal set; } = EmptyReadOnly<string, TermVector>.Dictionary;
 	}
 }

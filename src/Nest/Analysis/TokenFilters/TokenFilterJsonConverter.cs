@@ -48,19 +48,28 @@ namespace Nest
 				case "stop": return o.ToObject<StopTokenFilter>(ElasticContractResolver.Empty);
 				case "standard": return o.ToObject<StandardTokenFilter>(ElasticContractResolver.Empty);
 				case "synonym": return o.ToObject<SynonymTokenFilter>(ElasticContractResolver.Empty);
+				case "synonym_graph": return o.ToObject<SynonymGraphTokenFilter>(ElasticContractResolver.Empty);
 				case "trim": return o.ToObject<TrimTokenFilter>(ElasticContractResolver.Empty);
 				case "truncate": return o.ToObject<TruncateTokenFilter>(ElasticContractResolver.Empty);
 				case "unique": return o.ToObject<UniqueTokenFilter>(ElasticContractResolver.Empty);
 				case "uppercase": return o.ToObject<UppercaseTokenFilter>(ElasticContractResolver.Empty);
 				case "word_delimiter": return o.ToObject<WordDelimiterTokenFilter>(ElasticContractResolver.Empty);
+				case "word_delimiter_graph": return o.ToObject<WordDelimiterGraphTokenFilter>(ElasticContractResolver.Empty);
 				case "fingerprint": return o.ToObject<FingerprintTokenFilter>(ElasticContractResolver.Empty);
+				case "kuromoji_readingform": return o.ToObject<KuromojiReadingFormTokenFilter>(ElasticContractResolver.Empty);
+				case "kuromoji_part_of_speech": return o.ToObject<KuromojiPartOfSpeechTokenFilter>(ElasticContractResolver.Empty);
+				case "kuromoji_stemmer": return o.ToObject<KuromojiStemmerTokenFilter>(ElasticContractResolver.Empty);
+				case "icu_collation": return o.ToObject<IcuCollationTokenFilter>(ElasticContractResolver.Empty);
+				case "icu_folding": return o.ToObject<IcuFoldingTokenFilter>(ElasticContractResolver.Empty);
+				case "icu_normalizer": return o.ToObject<IcuNormalizationTokenFilter>(ElasticContractResolver.Empty);
+				case "icu_transform": return o.ToObject<IcuTransformTokenFilter>(ElasticContractResolver.Empty);
 			}
 			return null;
 		}
 
 		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
 		{
-			throw new NotImplementedException();
+			throw new NotSupportedException();
 		}
 	}
 }

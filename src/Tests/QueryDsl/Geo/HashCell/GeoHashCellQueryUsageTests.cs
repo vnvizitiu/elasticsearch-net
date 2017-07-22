@@ -1,12 +1,13 @@
 ﻿using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.QueryDsl.Geo.HashCell
 {
-	public class GeoHashCellUsageTests : QueryDslUsageTestsBase
+	public class GeoHashCellQueryUsageTests : QueryDslUsageTestsBase
 	{
-		public GeoHashCellUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
+		public GeoHashCellQueryUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
 		protected override object QueryJson => new
 		{

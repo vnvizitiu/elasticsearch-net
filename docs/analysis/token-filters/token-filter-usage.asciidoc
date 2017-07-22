@@ -13,16 +13,16 @@ please modify the original csharp file found at the link and submit the PR with 
 ////
 
 [[token-filter-usage]]
-== Token Filter Usage
+=== Token Filter Usage
 
-=== Fluent DSL Example
+==== Fluent DSL example
 
 [source,csharp]
 ----
 FluentExample
 ----
 
-=== Object Initializer Syntax Example
+==== Object Initializer syntax example
 
 [source,csharp]
 ----
@@ -107,6 +107,32 @@ InitializerExample
           "<SOMETHINGELSE>"
         ]
       },
+      "icuc": {
+        "alternate": "non-ignorable",
+        "caseFirst": "lower",
+        "caseLevel": true,
+        "country": "DE",
+        "decomposition": "no",
+        "hiraganaQuaternaryMode": true,
+        "language": "de",
+        "numeric": true,
+        "strength": "tertiary",
+        "type": "icu_collation",
+        "variant": "@collation=phonebook"
+      },
+      "icuf": {
+        "type": "icu_folding",
+        "unicodeSetFilter": "[^åäöÅÄÖ]"
+      },
+      "icun": {
+        "name": "nfc",
+        "type": "icu_normalizer"
+      },
+      "icut": {
+        "dir": "forward",
+        "id": "Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC",
+        "type": "icu_transform"
+      },
       "keepwords": {
         "type": "keep",
         "keep_words": [
@@ -123,6 +149,21 @@ InitializerExample
           "b"
         ],
         "ignore_case": true
+      },
+      "kfr": {
+        "type": "kuromoji_readingform",
+        "use_romaji": true
+      },
+      "kpos": {
+        "stoptags": [
+          "#  verb-main:",
+          "動詞-自立"
+        ],
+        "type": "kuromoji_part_of_speech"
+      },
+      "ks": {
+        "minimum_length": 4,
+        "type": "kuromoji_stemmer"
       },
       "kstem": {
         "type": "kstem"
@@ -200,6 +241,18 @@ InitializerExample
       },
       "syn": {
         "type": "synonym",
+        "synonyms_path": "analysis/stopwords.txt",
+        "format": "wordnet",
+        "synonyms": [
+          "x=>y",
+          "z=>s"
+        ],
+        "ignore_case": true,
+        "expand": true,
+        "tokenizer": "whitespace"
+      },
+      "syn_graph": {
+        "type": "synonym_graph",
         "synonyms_path": "analysis/stopwords.txt",
         "format": "wordnet",
         "synonyms": [

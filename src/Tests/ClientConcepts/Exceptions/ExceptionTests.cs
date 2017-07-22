@@ -4,6 +4,7 @@ using Nest;
 using System;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 
@@ -90,7 +91,7 @@ namespace Tests.ClientConcepts.Exceptions
 			var settings = new ConnectionSettings(new Uri("http://doesntexist:9200"));
 			var client = new ElasticClient(settings);
 
-			Action dispatch = () => client.Index(new Project(), p=>p.Index(null));
+			System.Action dispatch = () => client.Index(new Project(), p=>p.Index(null));
 			var ce = dispatch.ShouldThrow<ArgumentException>();
 			ce.Should().NotBeNull();
 			ce.Which.Message.Should().Contain("index=<NULL>");

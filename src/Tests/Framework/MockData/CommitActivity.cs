@@ -47,7 +47,7 @@ namespace Tests.Framework.MockData
 			;
 
 		public static IList<CommitActivity> CommitActivities { get; } =
-			CommitActivity.Generator.Generate(1000).ToList();
+			Generator.Generate(1000).ToList();
 	}
 
 	internal class StringTimeSpanConverter : JsonConverter

@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
 using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 
 namespace Tests.QueryDsl.Specialized.Template
 {
-	public class TemplateUsageTests : QueryDslUsageTestsBase
+	public class TemplateQueryUsageTests : QueryDslUsageTestsBase
 	{
-		public TemplateUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
+		public TemplateQueryUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
 		private static readonly string _templateString = "{ \"match\": { \"text\": \"{{query_string}}\" }}";
 
@@ -36,6 +37,7 @@ namespace Tests.QueryDsl.Specialized.Template
 			}
 		};
 
+#pragma warning disable 618
 		protected override QueryContainer QueryFluent(QueryContainerDescriptor<Project> q) => q
 			.Template(sn => sn
 				.Name("named_query")
@@ -43,6 +45,7 @@ namespace Tests.QueryDsl.Specialized.Template
 				.Inline(_templateString)
 				.Params(p=>p.Add("query_string", "all about search"))
 			);
+#pragma warning restore 618
 
 		protected override ConditionlessWhen ConditionlessWhen => new ConditionlessWhen<ITemplateQuery>(a => a.Template)
 		{

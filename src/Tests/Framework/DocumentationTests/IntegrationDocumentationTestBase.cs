@@ -1,6 +1,8 @@
 ﻿using System;
 using Nest;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Framework
 {
@@ -11,6 +13,7 @@ namespace Tests.Framework
 		protected IElasticClient Client => TestClient.GetInMemoryClient();
 
 	}
+
 	public abstract class IntegrationDocumentationTestBase
 	{
 		protected static string RandomString() => Guid.NewGuid().ToString("N").Substring(0, 8);
@@ -22,6 +25,5 @@ namespace Tests.Framework
 		{
 			this._cluster = cluster;
 		}
-
 	}
 }

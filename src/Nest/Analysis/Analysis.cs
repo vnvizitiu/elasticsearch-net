@@ -13,6 +13,8 @@ namespace Nest
 		ITokenFilters TokenFilters { get; set; }
 		[JsonProperty("tokenizer")]
 		ITokenizers Tokenizers { get; set; }
+		[JsonProperty("normalizer")]
+		INormalizers Normalizers { get; set; }
 	}
 
 	public class Analysis : IAnalysis
@@ -22,6 +24,7 @@ namespace Nest
 		public ITokenFilters TokenFilters { get; set; }
 		public ITokenizers Tokenizers { get; set; }
 
+		public INormalizers Normalizers { get; set; }
 	}
 
 	public class AnalysisDescriptor : DescriptorBase<AnalysisDescriptor, IAnalysis>, IAnalysis
@@ -30,6 +33,7 @@ namespace Nest
 		ICharFilters IAnalysis.CharFilters { get; set; }
 		ITokenFilters IAnalysis.TokenFilters { get; set; }
 		ITokenizers IAnalysis.Tokenizers { get; set; }
+		INormalizers IAnalysis.Normalizers { get; set; }
 
 		public AnalysisDescriptor Analyzers(Func<AnalyzersDescriptor, IPromise<IAnalyzers>> selector) =>
 			Assign(a => a.Analyzers = selector?.Invoke(new AnalyzersDescriptor())?.Value);
@@ -43,5 +47,7 @@ namespace Nest
 		public AnalysisDescriptor Tokenizers(Func<TokenizersDescriptor, IPromise<ITokenizers>> selector) =>
 			Assign(a => a.Tokenizers = selector?.Invoke(new TokenizersDescriptor())?.Value);
 
+		public AnalysisDescriptor Normalizers(Func<NormalizersDescriptor, IPromise<INormalizers>> selector) =>
+			Assign(a => a.Normalizers = selector?.Invoke(new NormalizersDescriptor())?.Value);
 	}
 }

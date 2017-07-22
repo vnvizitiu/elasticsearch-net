@@ -9,6 +9,7 @@ using Nest;
 using Newtonsoft.Json.Linq;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 
@@ -27,7 +28,7 @@ namespace Tests.Search.MultiSearch
 		{
 			new {},
 			new { from = 0, size = 10, query = new { match_all = new {} } },
-			new { search_type = "query_and_fetch" },
+			new { search_type = "query_then_fetch" },
 			new {},
 			new { index = "devs", type = "developer" },
 			new { from = 0, size = 5, query = new { match_all = new {} } },

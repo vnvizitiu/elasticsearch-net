@@ -6,6 +6,7 @@ using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
 using static Nest.Infer;
@@ -53,7 +54,7 @@ namespace Tests.Document.Multiple.DeleteByQuery
 				ids = new
 				{
 					types = new[] { "project" },
-					values = new [] { Project.Projects.First().Name, "x" }
+					values = new [] { Project.First.Name, "x" }
 				}
 			}
 		};
@@ -66,7 +67,7 @@ namespace Tests.Document.Multiple.DeleteByQuery
 			.Query(q=>q
 				.Ids(ids=>ids
 					.Types(typeof(Project))
-					.Values(Project.Projects.First().Name, "x")
+					.Values(Project.First.Name, "x")
 				)
 			);
 
@@ -76,7 +77,7 @@ namespace Tests.Document.Multiple.DeleteByQuery
 			Query = new IdsQuery
 			{
 				Types = Types.Type<Project>(),
-				Values = new Id[] { Project.Projects.First().Name, "x" }
+				Values = new Id[] { Project.First.Name, "x" }
 			}
 		};
 
@@ -105,15 +106,17 @@ namespace Tests.Document.Multiple.DeleteByQuery
 
 		protected override DeleteByQueryDescriptor<Project> NewDescriptor() => new DeleteByQueryDescriptor<Project>(this.CallIsolatedValue);
 
-		protected override object ExpectJson => new { };
+		protected override object ExpectJson => new { query = new { match_all = new { } } };
 
 		protected override Func<DeleteByQueryDescriptor<Project>, IDeleteByQueryRequest> Fluent => d => d
 			.Index(this.CallIsolatedValue)
+			.Query(q=>q.MatchAll())
 			.WaitForCompletion(false)
 			.Conflicts(Conflicts.Proceed);
 
 		protected override DeleteByQueryRequest Initializer => new DeleteByQueryRequest(this.CallIsolatedValue, Type<Project>())
 		{
+			Query = new MatchAllQuery(),
 			WaitForCompletion = false,
 			Conflicts = Conflicts.Proceed
 		};

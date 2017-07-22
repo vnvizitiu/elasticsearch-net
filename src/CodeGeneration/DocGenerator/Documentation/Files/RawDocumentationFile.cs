@@ -1,11 +1,8 @@
-using System;
 using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
-#if !DOTNETCORE
+using System.Threading.Tasks;
 using AsciiDocNet;
 using DocGenerator.AsciiDoc;
-#endif
 
 namespace DocGenerator.Documentation.Files
 {
@@ -13,22 +10,23 @@ namespace DocGenerator.Documentation.Files
 	{
 		public RawDocumentationFile(FileInfo fileLocation) : base(fileLocation) { }
 
-		public override void SaveToDocumentationFolder()
+		public override Task SaveToDocumentationFolderAsync()
 		{
-			//we simply do a copy of the markdown file
-			var destination = this.CreateDocumentationLocation();
-
+			//load the asciidoc file for processing
+			var docFileName = this.CreateDocumentationLocation();
 			var document = Document.Load(FileLocation.FullName);
 
 			// make any modifications
-			var rawVisitor = new RawAsciidocVisitor(FileLocation, destination);
+			var rawVisitor = new RawAsciidocVisitor(FileLocation, docFileName);
 			document.Accept(rawVisitor);
 
 			// write out asciidoc to file
-			using (var visitor = new AsciiDocVisitor(destination.FullName))
+			using (var visitor = new AsciiDocVisitor(docFileName.FullName))
 			{
 				document.Accept(visitor);
 			}
+
+		    return Task.FromResult(0);
 		}
 
 		protected override FileInfo CreateDocumentationLocation()

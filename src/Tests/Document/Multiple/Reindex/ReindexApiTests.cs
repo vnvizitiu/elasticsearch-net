@@ -1,10 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading;
 using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
+using Tests.Framework.ManagedElasticsearch;
+using Tests.Framework.ManagedElasticsearch.Clusters;
+using Tests.Framework.ManagedElasticsearch.NodeSeeders;
 using Tests.Framework.MockData;
 using Xunit;
 
@@ -12,27 +17,40 @@ namespace Tests.Document.Multiple.Reindex
 {
 	public class ReindexCluster : ClusterBase
 	{
-		public override void Bootstrap()
+		protected override void SeedNode()
 		{
-			var seeder = new Seeder(this.Node);
+			var seeder = new DefaultSeeder(this.Node);
 			seeder.DeleteIndicesAndTemplates();
 			seeder.CreateIndices();
 		}
 	}
 
-	public class ReindexApiTests : SerializationTestBase, IClusterFixture<ReindexCluster>
+	public class ManualReindexCluster : ClusterBase
 	{
-		private readonly IObservable<IReindexResponse<ILazyDocument>> _reindexManyTypesResult;
-		private readonly IObservable<IReindexResponse<Project>> _reindexSingleTypeResult;
+		protected override void SeedNode()
+		{
+			var seeder = new DefaultSeeder(this.Node);
+			seeder.DeleteIndicesAndTemplates();
+			seeder.CreateIndices();
+		}
+	}
+
+	public class ReindexApiTests : SerializationTestBase, IClusterFixture<ManualReindexCluster>
+	{
+		private readonly IObservable<IBulkAllResponse> _reindexManyTypesResult;
+		private readonly IObservable<IBulkAllResponse> _reindexSingleTypeResult;
+		private readonly IObservable<IBulkAllResponse> _reindexProjectionResult;
 		private readonly IElasticClient _client;
 
-		private static string NewManyTypesIndexName { get; } = $"project-copy-{Guid.NewGuid().ToString("N").Substring(8)}";
+		private static string NewManyTypesIndexName { get; } = $"project-many-{Guid.NewGuid().ToString("N").Substring(8)}";
 
-		private static string NewSingleTypeIndexName { get; } = $"project-copy-{Guid.NewGuid().ToString("N").Substring(8)}";
+		private static string NewSingleTypeIndexName { get; } = $"project-single-{Guid.NewGuid().ToString("N").Substring(8)}";
+
+		private static string NewProjectionIndex { get; } = $"project-projection-{Guid.NewGuid().ToString("N").Substring(8)}";
 
 		private static string IndexName { get; } = "project";
 
-		public ReindexApiTests(ReindexCluster cluster, EndpointUsage usage)
+		public ReindexApiTests(ManualReindexCluster cluster, EndpointUsage usage)
 		{
 			this._client = cluster.Client;
 
@@ -42,7 +60,7 @@ namespace Tests.Document.Multiple.Reindex
 			this._client.Refresh(IndexName);
 
 			// create a thousand commits and associate with the projects
-			var commits = CommitActivity.CommitActivities;
+			var commits = CommitActivity.Generator.Generate(5000).ToList();
 			var bb = new BulkDescriptor();
 			for (int i = 0; i < commits.Count; i++)
 			{
@@ -65,47 +83,86 @@ namespace Tests.Document.Multiple.Reindex
 
 			this._client.Refresh(IndexName);
 
-			this._reindexManyTypesResult = this._client.Reindex<ILazyDocument>(IndexName, NewManyTypesIndexName, r => r.AllTypes());
+			this._reindexManyTypesResult = this._client.Reindex<ILazyDocument>(r => r
+				.BackPressureFactor(10)
+				.ScrollAll("1m", 2, s => s
+					.Search(ss => ss
+						.Index(IndexName)
+						.AllTypes()
+					)
+					.MaxDegreeOfParallelism(4)
+				)
+				.BulkAll(b => b
+					.Index(NewManyTypesIndexName)
+					.Size(100)
+					.MaxDegreeOfParallelism(2)
+					.RefreshOnCompleted()
+				)
+			);
 			this._reindexSingleTypeResult = this._client.Reindex<Project>(IndexName, NewSingleTypeIndexName);
+			this._reindexProjectionResult = this._client.Reindex<CommitActivity, CommitActivityVersion2>(IndexName, NewProjectionIndex, p =>  new CommitActivityVersion2(p));
 		}
 
-		[I]
-		public void ReturnsExpectedResponse()
+		public class CommitActivityVersion2
 		{
-			var handles = new[]
-			{
-				new ManualResetEvent(false),
-				new ManualResetEvent(false)
-			};
+			public string Id { get; }
+			public string ProjectName { get; }
+			public Developer Committer { get; }
 
-			var manyTypesObserver = new ReindexObserver<ILazyDocument>(
-				onError: (e) => { throw e; },
-				onCompleted: () => ReindexManyTypesCompleted(handles),
-				alter: (h, d, i) =>
-				{
-					//This would be a great place to alter the
-					// BulkIndexOperation i (use pipeline perhaps)
-					// Source Document d
-					// h is the whole hit including the documents metadata
-					//
-					// on a per document basis
-					i.RetriesOnConflict = 2;
-				}
+			public CommitActivityVersion2(CommitActivity commit)
+			{
+				this.ProjectName = commit.ProjectName + "-projected";
+				this.Id = commit.Id + "-projected";
+				this.Committer = commit.Committer;
+			}
+		}
+
+		[I] public void ReturnsExpectedResponse()
+		{
+			var observableWait = new CountdownEvent(3);
+
+			Exception ex = null;
+			var manyTypesObserver = new ReindexObserver(
+				onError: (e) => { ex = e; observableWait.Signal(); },
+				onCompleted: () => ReindexManyTypesCompleted(observableWait)
 			);
 
 			this._reindexManyTypesResult.Subscribe(manyTypesObserver);
+			this._reindexManyTypesResult.Wait(TimeSpan.FromMinutes(5), r => { });
 
-			var singleTypeObserver = new ReindexObserver<Project>(
-				onError: (e) => { throw e; },
-				onCompleted: () => ReindexSingleTypeCompleted(handles)
+
+			var singleTypeObserver = new ReindexObserver(
+				onError: (e) => { ex = e; observableWait.Signal(); },
+				onCompleted: () => ReindexSingleTypeCompleted(observableWait)
 			);
 			this._reindexSingleTypeResult.Subscribe(singleTypeObserver);
 
+			var projectionObserver = new ReindexObserver(
+				onError: (e) => { ex = e; observableWait.Signal(); },
+				onCompleted: () => ProjectionCompleted(observableWait)
+			);
+			this._reindexProjectionResult.Subscribe(projectionObserver);
 
-			WaitHandle.WaitAll(handles, TimeSpan.FromMinutes(3));
+			observableWait.Wait(TimeSpan.FromMinutes(3));
+			if (ex != null) throw ex;
 		}
 
-		private void ReindexSingleTypeCompleted(ManualResetEvent[] handles)
+		private void ProjectionCompleted(CountdownEvent handle)
+		{
+			var refresh = this._client.Refresh(NewProjectionIndex);
+			var originalIndexCount = this._client.Count<CommitActivity>(c => c.Index(IndexName));
+
+			// new index should only contain project document types
+			var newIndexSearch = this._client.Search<CommitActivity>(c => c.Index(NewProjectionIndex));
+
+			originalIndexCount.Count.Should().BeGreaterThan(0).And.Be(newIndexSearch.Total);
+
+			newIndexSearch.Documents.Should().OnlyContain(c => c.Id.EndsWith("-projected"));
+
+			handle.Signal();
+		}
+
+		private void ReindexSingleTypeCompleted(CountdownEvent handle)
 		{
 			var refresh = this._client.Refresh(NewSingleTypeIndexName);
 			var originalIndexCount = this._client.Count<Project>(c => c.Index(IndexName));
@@ -115,10 +172,10 @@ namespace Tests.Document.Multiple.Reindex
 
 			originalIndexCount.Count.Should().BeGreaterThan(0).And.Be(newIndexCount.Count);
 
-			handles[1].Set();
+			handle.Signal();
 		}
 
-		private void ReindexManyTypesCompleted(ManualResetEvent[] handles)
+		private void ReindexManyTypesCompleted(CountdownEvent handle)
 		{
 			var refresh = this._client.Refresh(NewManyTypesIndexName);
 			var originalIndexCount = this._client.Count<CommitActivity>(c => c.Index(IndexName));
@@ -146,7 +203,7 @@ namespace Tests.Document.Multiple.Reindex
 					hit.Routing.Should().NotBeNullOrEmpty();
 				}
 			} while (searchResult.IsValid && searchResult.Documents.Any());
-			handles[0].Set();
+			handle.Signal();
 		}
 	}
 }

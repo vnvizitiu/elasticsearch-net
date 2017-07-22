@@ -11,71 +11,77 @@ namespace Nest
 	[JsonConverter(typeof(ReadAsTypeJsonConverter<SearchRequest>))]
 	public partial interface ISearchRequest : ICovariantSearchRequest
 	{
-		[JsonProperty(PropertyName = "timeout")]
+		[JsonProperty("timeout")]
 		string Timeout { get; set; }
 
-		[JsonProperty(PropertyName = "from")]
+		[JsonProperty("from")]
 		int? From { get; set; }
 
-		[JsonProperty(PropertyName = "size")]
+		[JsonProperty("size")]
 		int? Size { get; set; }
 
-		[JsonProperty(PropertyName = "explain")]
+		[JsonProperty("explain")]
 		bool? Explain { get; set; }
 
-		[JsonProperty(PropertyName = "version")]
+		[JsonProperty("version")]
 		bool? Version { get; set; }
 
-		[JsonProperty(PropertyName = "track_scores")]
+		[JsonProperty("track_scores")]
 		bool? TrackScores { get; set; }
 
-		[JsonProperty(PropertyName = "profile")]
+		[JsonProperty("profile")]
 		bool? Profile { get; set; }
 
-		[JsonProperty(PropertyName = "min_score")]
+		[JsonProperty("min_score")]
 		double? MinScore { get; set; }
 
-		[JsonProperty(PropertyName = "terminate_after")]
+		[JsonProperty("terminate_after")]
 		long? TerminateAfter { get; set; }
 
-		[JsonProperty(PropertyName = "indices_boost")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter))]
+		[JsonProperty("indices_boost")]
+		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<IndexName, double>))]
 		IDictionary<IndexName, double> IndicesBoost { get; set; }
 
-		[JsonProperty(PropertyName = "sort")]
+		[JsonProperty("sort")]
 		IList<ISort> Sort { get; set; }
 
-		[JsonProperty(PropertyName = "search_after")]
+		[JsonProperty("search_after")]
 		IList<object> SearchAfter { get; set; }
 
-		[JsonProperty(PropertyName = "suggest")]
+		[JsonProperty("suggest")]
 		ISuggestContainer Suggest { get; set; }
 
-		[JsonProperty(PropertyName = "highlight")]
+		[JsonProperty("highlight")]
 		IHighlight Highlight { get; set; }
 
-		[JsonProperty(PropertyName = "rescore")]
+		[JsonProperty("collapse")]
+		IFieldCollapse Collapse { get; set; }
+
+		[JsonProperty("rescore")]
 		IList<IRescore> Rescore { get; set; }
 
-		[JsonProperty(PropertyName = "stored_fields")]
+		[JsonProperty("stored_fields")]
 		Fields StoredFields { get; set; }
 
-		[JsonProperty(PropertyName = "fielddata_fields")]
+		[JsonProperty("fielddata_fields")]
 		Fields FielddataFields { get; set; }
 
-		[JsonProperty(PropertyName = "script_fields")]
+		[JsonProperty("script_fields")]
 		IScriptFields ScriptFields { get; set; }
 
-		[JsonProperty(PropertyName = "_source")]
+		[JsonProperty("_source")]
 		Union<bool, ISourceFilter> Source { get; set; }
 
-		[JsonProperty(PropertyName = "aggs")]
+		[JsonProperty("aggs")]
 		AggregationDictionary Aggregations { get; set; }
 
-		[JsonProperty(PropertyName = "query")]
+		[JsonProperty("slice")]
+		ISlicedScroll Slice { get; set; }
+
+		[JsonProperty("query")]
 		QueryContainer Query { get; set; }
 
-		[JsonProperty(PropertyName = "post_filter")]
+		[JsonProperty("post_filter")]
 		QueryContainer PostFilter { get; set; }
 
 		string Preference { get; }
@@ -114,10 +120,12 @@ namespace Nest
 		public IList<object> SearchAfter { get; set; }
 		public IDictionary<IndexName, double> IndicesBoost { get; set; }
 		public QueryContainer PostFilter { get; set; }
+		public ISlicedScroll Slice { get; set; }
 		public QueryContainer Query { get; set; }
 		public IList<IRescore> Rescore { get; set; }
 		public ISuggestContainer Suggest { get; set; }
 		public IHighlight Highlight { get; set; }
+		public IFieldCollapse Collapse { get; set; }
 		public AggregationDictionary Aggregations { get; set; }
 
 		SearchType? ISearchRequest.SearchType => RequestState.RequestParameters?.GetQueryStringValue<SearchType?>("search_type");
@@ -157,10 +165,12 @@ namespace Nest
 		public IList<object> SearchAfter { get; set; }
 		public IDictionary<IndexName, double> IndicesBoost { get; set; }
 		public QueryContainer PostFilter { get; set; }
+		public ISlicedScroll Slice { get; set; }
 		public QueryContainer Query { get; set; }
 		public IList<IRescore> Rescore { get; set; }
 		public ISuggestContainer Suggest { get; set; }
 		public IHighlight Highlight { get; set; }
+		public IFieldCollapse Collapse { get; set; }
 		public AggregationDictionary Aggregations { get; set; }
 
 		SearchType? ISearchRequest.SearchType => RequestState.RequestParameters?.GetQueryStringValue<SearchType?>("search_type");
@@ -211,7 +221,9 @@ namespace Nest
 		IList<object> ISearchRequest.SearchAfter { get; set; }
 		ISuggestContainer ISearchRequest.Suggest { get; set; }
 		IHighlight ISearchRequest.Highlight { get; set; }
+		IFieldCollapse ISearchRequest.Collapse { get; set; }
 		IList<IRescore> ISearchRequest.Rescore { get; set; }
+		ISlicedScroll ISearchRequest.Slice { get; set; }
 		QueryContainer ISearchRequest.Query { get; set; }
 		QueryContainer ISearchRequest.PostFilter { get; set; }
 		Fields ISearchRequest.StoredFields { get; set; }
@@ -229,13 +241,12 @@ namespace Nest
 			Assign(a => a.Source = new Union<bool, ISourceFilter>(selector?.Invoke(new SourceFilterDescriptor<T>())));
 
 		/// <summary>
-		/// The number of hits to return. Defaults to 10. When using scroll search type
-		/// size is actually multiplied by the number of shards!
+		/// The number of hits to return. Defaults to 10.
 		/// </summary>
 		public SearchDescriptor<T> Size(int size) => Assign(a => a.Size = size);
 
 		/// <summary>
-		/// The number of hits to return. Defaults to 10.
+		/// The number of hits to return. Alias for <see cref="Size"/>. Defaults to 10.
 		/// </summary>
 		public SearchDescriptor<T> Take(int take) => this.Size(take);
 
@@ -245,7 +256,7 @@ namespace Nest
 		public SearchDescriptor<T> From(int from) => Assign(a => a.From = from);
 
 		/// <summary>
-		/// The starting from index of the hits to return. Defaults to 0.
+		/// The starting from index of the hits to return. Alias for <see cref="From"/>. Defaults to 0.
 		/// </summary>
 		public SearchDescriptor<T> Skip(int skip) => this.From(skip);
 
@@ -400,6 +411,12 @@ namespace Nest
 			Assign(a => a.Query = query?.Invoke(new QueryContainerDescriptor<T>()));
 
 		/// <summary>
+		/// For scroll queries that return a lot of documents it is possible to split the scroll in multiple slices which can be consumed independently
+		/// </summary>
+		public SearchDescriptor<T> Slice(Func<SlicedScrollDescriptor<T>, ISlicedScroll> selector) =>
+			Assign(a => a.Slice = selector?.Invoke(new SlicedScrollDescriptor<T>()));
+
+		/// <summary>
 		/// Shortcut to default to a match all query
 		/// </summary>
 		public SearchDescriptor<T> MatchAll(Func<MatchAllQueryDescriptor, IMatchAllQuery> selector = null) => this.Query(q => q.MatchAll(selector));
@@ -408,13 +425,24 @@ namespace Nest
 		/// Filter search using a filter descriptor lambda
 		/// </summary>
 		public SearchDescriptor<T> PostFilter(Func<QueryContainerDescriptor<T>, QueryContainer> filter) =>
-			Assign(a => a.PostFilter = filter.Invoke(new QueryContainerDescriptor<T>()));
+			Assign(a => a.PostFilter = filter?.Invoke(new QueryContainerDescriptor<T>()));
 
 		/// <summary>
 		/// Allow to highlight search results on one or more fields. The implementation uses the either lucene fast-vector-highlighter or highlighter.
 		/// </summary>
 		public SearchDescriptor<T> Highlight(Func<HighlightDescriptor<T>, IHighlight> highlightSelector) =>
 			Assign(a => a.Highlight = highlightSelector?.Invoke(new HighlightDescriptor<T>()));
+
+		/// <summary>
+		/// Allows to collapse search results based on field values.
+		/// The collapsing is done by selecting only the top sorted document per collapse key.
+		/// For instance the query below retrieves the best tweet for each user and sorts them by number of likes.
+		/// <para>
+		/// NOTE: The collapsing is applied to the top hits only and does not affect aggregations.
+		/// </para>
+		/// </summary>
+		public SearchDescriptor<T> Collapse(Func<FieldCollapseDescriptor<T>, IFieldCollapse> collapseSelector) =>
+			Assign(a => a.Collapse = collapseSelector?.Invoke(new FieldCollapseDescriptor<T>()));
 
 		/// <summary>
 		/// Allows you to specify one or more queries to use for rescoring

@@ -9,6 +9,7 @@ using FluentAssertions;
 using Newtonsoft.Json.Linq;
 using Xunit;
 using Tests.Framework;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Search.Request
 {
@@ -21,6 +22,8 @@ namespace Tests.Search.Request
 	public class HighlightingUsageTests : SearchUsageTestBase
 	{
 		public HighlightingUsageTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+
+		public string LastNameSearch { get; } = Project.First.LeadDeveloper.LastName;
 
 		protected override object ExpectJson => new
 		{
@@ -46,6 +49,7 @@ namespace Tests.Search.Request
 							{ "type", "plain" },
 							{ "force_source", true},
 							{ "fragment_size", 150 },
+							{ "fragmenter", "span" },
 							{ "number_of_fragments", 3},
 							{ "no_match_size", 150 }
 						}
@@ -63,6 +67,26 @@ namespace Tests.Search.Request
 											{ "leadDeveloper.firstName", new JObject
 												{
 													{ "query", "Kurt Edgardo Naomi Dariana Justice Felton" }
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					{ "leadDeveloper.lastName", new JObject
+						{
+							{ "type", "unified" },
+							{ "pre_tags", new JArray { "<name>" } },
+							{ "post_tags", new JArray { "</name>" } },
+							{ "highlight_query", new JObject
+								{
+									{ "match", new JObject
+										{
+											{ "leadDeveloper.lastName", new JObject
+												{
+													{ "query", LastNameSearch }
 												}
 											}
 										}
@@ -107,6 +131,7 @@ namespace Tests.Search.Request
 						.Type("plain")
 						.ForceSource()
 						.FragmentSize(150)
+						.Fragmenter(HighlighterFragmenter.Span)
 						.NumberOfFragments(3)
 						.NoMatchSize(150),
 					fs => fs
@@ -119,6 +144,17 @@ namespace Tests.Search.Request
 							.Match(m => m
 								.Field(p => p.LeadDeveloper.FirstName)
 								.Query("Kurt Edgardo Naomi Dariana Justice Felton")
+							)
+						),
+					fs => fs
+						.Field(p => p.LeadDeveloper.LastName)
+						.Type(HighlighterType.Unified)
+						.PreTags("<name>")
+						.PostTags("</name>")
+						.HighlightQuery(q => q
+							.Match(m => m
+								.Field(p => p.LeadDeveloper.LastName)
+								.Query(LastNameSearch)
 							)
 						),
 					fs => fs
@@ -157,6 +193,7 @@ namespace Tests.Search.Request
 								Type = HighlighterType.Plain,
 								ForceSource = true,
 								FragmentSize = 150,
+								Fragmenter = HighlighterFragmenter.Span,
 								NumberOfFragments = 3,
 								NoMatchSize = 150
 							}
@@ -171,6 +208,18 @@ namespace Tests.Search.Request
 								{
 									Field = "leadDeveloper.firstName",
 									Query = "Kurt Edgardo Naomi Dariana Justice Felton"
+								}
+							}
+						},
+						{ "leadDeveloper.lastName", new HighlightField
+							{
+								Type = HighlighterType.Unified,
+								PreTags = new[] { "<name>"},
+								PostTags = new[] { "</name>"},
+								HighlightQuery = new MatchQuery
+								{
+									Field = "leadDeveloper.lastName",
+									Query = LastNameSearch
 								}
 							}
 						},
@@ -207,6 +256,14 @@ namespace Tests.Search.Request
 						}
 					}
 					else if (highlightField.Key == "leadDeveloper.firstName")
+					{
+						foreach (var highlight in highlightField.Value.Highlights)
+						{
+							highlight.Should().Contain("<name>");
+							highlight.Should().Contain("</name>");
+						}
+					}
+					else if (highlightField.Key == "leadDeveloper.lastName")
 					{
 						foreach (var highlight in highlightField.Value.Highlights)
 						{

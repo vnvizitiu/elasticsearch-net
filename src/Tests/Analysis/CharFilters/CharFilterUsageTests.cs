@@ -12,6 +12,11 @@ namespace Tests.Analysis.CharFilters
 			{
 				char_filter = new
 				{
+					icun = new {
+						mode = "compose",
+						name = "nfkc_cf",
+						type = "icu_normalizer"
+					},
 					stripMe = new { type = "html_strip" },
 					patterned = new
 					{
@@ -23,6 +28,12 @@ namespace Tests.Analysis.CharFilters
 					{
 						mappings = new[] { "a=>b" },
 						type = "mapping"
+					},
+					kmark = new
+					{
+						normalize_kanji = true,
+						normalize_kana = true,
+						type = "kuromoji_iteration_mark"
 					}
 				}
 			}
@@ -30,7 +41,7 @@ namespace Tests.Analysis.CharFilters
 
 
 		/**
-		 * 
+		 *
 		 */
 		protected override Func<IndexSettingsDescriptor, IPromise<IIndexSettings>> Fluent => FluentExample;
 		public static Func<IndexSettingsDescriptor, IPromise<IIndexSettings>> FluentExample => s => s
@@ -39,6 +50,11 @@ namespace Tests.Analysis.CharFilters
 					.HtmlStrip("stripMe")
 					.PatternReplace("patterned", c => c.Pattern("x").Replacement("y"))
 					.Mapping("mapped", c => c.Mappings("a=>b"))
+					.KuromojiIterationMark("kmark", c => c.NormalizeKana().NormalizeKanji())
+					.IcuNormalization("icun", c => c
+						.Mode(IcuNormalizationMode.Compose)
+						.Name(IcuNormalizationType.CompatibilityCaseFold)
+					)
 				)
 			);
 
@@ -54,7 +70,17 @@ namespace Tests.Analysis.CharFilters
 					{
 							{ "stripMe", new HtmlStripCharFilter { } },
 							{ "patterned", new PatternReplaceCharFilter { Pattern = "x", Replacement = "y" } },
-							{ "mapped", new MappingCharFilter { Mappings = new [] { "a=>b"} } }
+							{ "mapped", new MappingCharFilter { Mappings = new [] { "a=>b"} } },
+							{ "kmark", new KuromojiIterationMarkCharFilter
+							{
+								NormalizeKana = true,
+								NormalizeKanji = true
+							} },
+							{ "icun", new IcuNormalizationCharFilter
+							{
+								Mode = IcuNormalizationMode.Compose,
+								Name = IcuNormalizationType.CompatibilityCaseFold
+							} }
 					}
 				}
 			};

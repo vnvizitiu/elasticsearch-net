@@ -6,6 +6,7 @@ using Tests.Framework.MockData;
 using static Nest.Infer;
 using System.Collections.Generic;
 using Tests.Framework;
+using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Aggregations.Metric.Average
 {
@@ -13,9 +14,6 @@ namespace Tests.Aggregations.Metric.Average
 	{
 		public AverageAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
-		/// <summary>
-		///
-		/// </summary>
 		protected override object ExpectJson => new
 		{
 			aggs = new
@@ -33,7 +31,6 @@ namespace Tests.Aggregations.Metric.Average
 						script = new
 						{
 							inline = "_value * 1.2",
-							lang = "groovy"
 						}
 					}
 				}
@@ -48,7 +45,7 @@ namespace Tests.Aggregations.Metric.Average
 					)
 					.Field(p => p.NumberOfCommits)
 					.Missing(10)
-					.Script(ss=>ss.Inline("_value * 1.2").Lang("groovy"))
+					.Script(ss=>ss.Inline("_value * 1.2"))
 				)
 			);
 
@@ -62,7 +59,7 @@ namespace Tests.Aggregations.Metric.Average
 						{ "foo", "bar" }
 					},
 					Missing = 10,
-					Script = new InlineScript("_value * 1.2") { Lang = "groovy" }
+					Script = new InlineScript("_value * 1.2")
 				}
 			};
 

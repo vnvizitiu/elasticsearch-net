@@ -18,10 +18,10 @@ namespace Nest
 		public string Description { get; internal set; }
 
 		/// <summary>
-		/// The time that this query took, inclusive of all children
+		/// The time that this query took in nanoseconds
 		/// </summary>
-		[JsonProperty("time")]
-		public Time Time { get; internal set; }
+		[JsonProperty("time_in_nanos")]
+		public long TimeInNanoseconds { get; internal set; }
 
 		/// <summary>
 		/// Detailed stats about how the time was spent
