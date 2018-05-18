@@ -1,16 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
-
-#if DOTNETCORE
-using System.Net;
 using System.Net.Http;
-#endif
 
 
 namespace Elasticsearch.Net
@@ -21,12 +18,7 @@ namespace Elasticsearch.Net
 	/// </summary>
 	public class ConnectionConfiguration : ConnectionConfiguration<ConnectionConfiguration>
 	{
-		internal static bool IsCurlHandler { get; } =
-            #if DOTNETCORE
-                typeof(HttpClientHandler).Assembly().GetType("System.Net.Http.CurlHandler") != null;
-            #else
-                 false;
-            #endif
+		internal static bool IsCurlHandler { get; } = typeof(HttpClientHandler).Assembly().GetType("System.Net.Http.CurlHandler") != null;
 		public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(1);
 		public static readonly TimeSpan DefaultPingTimeout = TimeSpan.FromSeconds(2);
 		public static readonly TimeSpan DefaultPingTimeoutOnSSL = TimeSpan.FromSeconds(5);
@@ -57,15 +49,15 @@ namespace Elasticsearch.Net
 			: this(connectionPool, connection, null)
 		{ }
 
-		public ConnectionConfiguration(IConnectionPool connectionPool, Func<ConnectionConfiguration, IElasticsearchSerializer> serializerFactory)
-			: this(connectionPool, null, serializerFactory)
+		public ConnectionConfiguration(IConnectionPool connectionPool, IElasticsearchSerializer serializer)
+			: this(connectionPool, null, serializer)
 		{ }
 
 		// ReSharper disable once MemberCanBePrivate.Global
 		// eventhough we use don't use this we very much would like to  expose this constructor
 
-		public ConnectionConfiguration(IConnectionPool connectionPool, IConnection connection, Func<ConnectionConfiguration, IElasticsearchSerializer> serializerFactory)
-			: base(connectionPool, connection, serializerFactory)
+		public ConnectionConfiguration(IConnectionPool connectionPool, IConnection connection, IElasticsearchSerializer serializer)
+			: base(connectionPool, connection, serializer)
 		{ }
 	}
 
@@ -143,6 +135,9 @@ namespace Elasticsearch.Net
 		private bool _throwExceptions;
 		bool IConnectionConfigurationValues.ThrowExceptions => _throwExceptions;
 
+		private IReadOnlyCollection<int> _skipDeserializationForStatusCodes = new ReadOnlyCollection<int>(new int[] {});
+		IReadOnlyCollection<int> IConnectionConfigurationValues.SkipDeserializationForStatusCodes => _skipDeserializationForStatusCodes;
+
 		private static void DefaultCompletedRequestHandler(IApiCallDetails response) { }
 		Action<IApiCallDetails> _completedRequestHandler = DefaultCompletedRequestHandler;
 		Action<IApiCallDetails> IConnectionConfigurationValues.OnRequestCompleted => _completedRequestHandler;
@@ -156,6 +151,9 @@ namespace Elasticsearch.Net
 
 		private X509CertificateCollection _clientCertificates;
 		X509CertificateCollection IConnectionConfigurationValues.ClientCertificates => _clientCertificates;
+
+		private ElasticsearchUrlFormatter _urlFormatter;
+		ElasticsearchUrlFormatter IConnectionConfigurationValues.UrlFormatter => _urlFormatter;
 
 		/// <summary>
 		/// The default predicate for <see cref="IConnectionPool"/> implementations that return true for <see cref="IConnectionPool.SupportsReseeding"/>
@@ -175,8 +173,8 @@ namespace Elasticsearch.Net
 		BasicAuthenticationCredentials _basicAuthCredentials;
 		BasicAuthenticationCredentials IConnectionConfigurationValues.BasicAuthenticationCredentials => _basicAuthCredentials;
 
-		private readonly IElasticsearchSerializer _serializer;
-		IElasticsearchSerializer IConnectionConfigurationValues.Serializer => _serializer;
+		protected IElasticsearchSerializer UseThisRequestResponseSerializer { get; set; }
+		IElasticsearchSerializer IConnectionConfigurationValues.RequestResponseSerializer => UseThisRequestResponseSerializer;
 
 		private readonly IConnectionPool _connectionPool;
 		IConnectionPool IConnectionConfigurationValues.ConnectionPool => _connectionPool;
@@ -184,15 +182,11 @@ namespace Elasticsearch.Net
 		private readonly IConnection _connection;
 		IConnection IConnectionConfigurationValues.Connection => _connection;
 
-		[SuppressMessage(
-			"Potential Code Quality Issues", "RECS0021:Warns about calls to virtual member functions occuring in the constructor",
-			Justification = "We want the virtual method to run on most derived")]
-		protected ConnectionConfiguration(IConnectionPool connectionPool, IConnection connection, Func<T, IElasticsearchSerializer> serializerFactory)
+		protected ConnectionConfiguration(IConnectionPool connectionPool, IConnection connection, IElasticsearchSerializer requestResponseSerializer)
 		{
 			this._connectionPool = connectionPool;
 			this._connection = connection ?? new HttpConnection();
-			// ReSharper disable once VirtualMemberCallInContructor
-			this._serializer = serializerFactory?.Invoke((T)this) ?? this.DefaultSerializer((T)this);
+			this.UseThisRequestResponseSerializer = requestResponseSerializer ?? new LowLevelRequestResponseSerializer();
 
 			this._connectionLimit = ConnectionConfiguration.DefaultConnectionLimit;
 			this._requestTimeout = ConnectionConfiguration.DefaultTimeout;
@@ -201,6 +195,8 @@ namespace Elasticsearch.Net
 			this._sniffLifeSpan = TimeSpan.FromHours(1);
 			if (this._connectionPool.SupportsReseeding)
 				this._nodePredicate = DefaultReseedableNodePredicate;
+
+			this._urlFormatter = new ElasticsearchUrlFormatter(this);
 		}
 
 		private T Assign(Action<ConnectionConfiguration<T>> assigner) => Fluent.Assign((T)this, assigner);
@@ -208,7 +204,7 @@ namespace Elasticsearch.Net
 		/// <summary>
 		/// The default serializer used to serialize documents to and from JSON
 		/// </summary>
-		protected virtual IElasticsearchSerializer DefaultSerializer(T settings) => new ElasticsearchDefaultSerializer();
+		protected virtual IElasticsearchSerializer DefaultSerializer(T settings) => new LowLevelRequestResponseSerializer();
 
 		/// <summary>
 		/// Sets the keep-alive option on a TCP connection.
@@ -339,16 +335,30 @@ namespace Elasticsearch.Net
 		}
 
 		/// <summary>
-		/// Forces all requests to have ?pretty=true querystring parameter appended, 
+		/// Forces all requests to have ?pretty=true querystring parameter appended,
 		/// causing Elasticsearch to return formatted JSON.
 		/// Also forces the client to send out formatted JSON. Defaults to <c>false</c>
 		/// </summary>
 		public T PrettyJson(bool b = true) => Assign(a =>
 		{
 			this._prettyJson = b;
-			if (!b && this._queryString["pretty"] != null) this._queryString.Remove("pretty");
-			else if (b && this._queryString["pretty"] == null)
-				this.GlobalQueryStringParameters(new NameValueCollection { { "pretty", b.ToString().ToLowerInvariant() } });
+			const string key = "pretty";
+			if (!b && this._queryString[key] != null) this._queryString.Remove(key);
+			else if (b && this._queryString[key] == null)
+				this.GlobalQueryStringParameters(new NameValueCollection { { key, "true" } });
+		});
+
+		/// <summary>
+		/// Forces all requests to have ?error_trace=true querystring parameter appended,
+		/// causing Elasticsearch to return stack traces as part of serialized exceptions
+		/// Defaults to <c>false</c>
+		/// </summary>
+		public T IncludeServerStackTraceOnError(bool b = true) => Assign(a =>
+		{
+			const string key = "error_trace";
+			if (!b && this._queryString[key] != null) this._queryString.Remove(key);
+			else if (b && this._queryString[key] == null)
+				this.GlobalQueryStringParameters(new NameValueCollection { { key, "true" } });
 		});
 
 		/// <summary>
@@ -415,7 +425,8 @@ namespace Elasticsearch.Net
 		public T EnableDebugMode(Action<IApiCallDetails> onRequestCompleted = null)
 		{
 			this._disableDirectStreaming = true;
-			this._prettyJson = true;
+			this.PrettyJson(true);
+			this.IncludeServerStackTraceOnError(true);
 
 			var originalCompletedRequestHandler = this._completedRequestHandler;
 			var debugCompletedRequestHandler = onRequestCompleted ?? (d => Debug.WriteLine(d.DebugInformation));
@@ -424,6 +435,7 @@ namespace Elasticsearch.Net
 				originalCompletedRequestHandler?.Invoke(d);
 				debugCompletedRequestHandler?.Invoke(d);
 			};
+
 			return (T)this;
 		}
 
@@ -455,6 +467,12 @@ namespace Elasticsearch.Net
 		/// </summary>
 		public T ClientCertificate(string certificatePath) =>
 			Assign(a => a._clientCertificates = new X509Certificate2Collection { new X509Certificate(certificatePath) });
+
+		/// <summary>
+		/// Configure the client to skip deserialization of certain status codes e.g: you run elasticsearch behind a proxy that returns a HTML for 401, 500
+		/// </summary>
+		public T SkipDeserializationForStatusCodes(params int[] statusCodes) =>
+			Assign(a => a._skipDeserializationForStatusCodes = new ReadOnlyCollection<int>(statusCodes));
 
 		void IDisposable.Dispose() => this.DisposeManagedResources();
 

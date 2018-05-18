@@ -11,7 +11,9 @@ namespace Tests.Framework.MockData
 
 		public static Faker<Tag> Generator { get; } =
 			new Faker<Tag>()
+				.UseSeed(TestClient.Configuration.Seed)
 				.RuleFor(p => p.Name, p => p.Lorem.Words(1).First())
-				.RuleFor(p => p.Added, p => p.Date.Recent());
+				.RuleFor(p => p.Added, p => p.Date.Recent())
+			;
 	}
 }

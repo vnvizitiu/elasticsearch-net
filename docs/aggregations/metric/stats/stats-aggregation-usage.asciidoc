@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,11 +19,9 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Aggregations(a => a
-    .Stats("commit_stats", st => st
-        .Field(p => p.NumberOfCommits)
-    )
+a => a
+.Stats("commit_stats", st => st
+    .Field(p => p.NumberOfCommits)
 )
 ----
 
@@ -31,21 +29,16 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
-{
-    Aggregations = new StatsAggregation("commit_stats", Field<Project>(p => p.NumberOfCommits))
-}
+new StatsAggregation("commit_stats", Field<Project>(p => p.NumberOfCommits))
 ----
 
 [source,javascript]
 .Example json output
 ----
 {
-  "aggs": {
-    "commit_stats": {
-      "stats": {
-        "field": "numberOfCommits"
-      }
+  "commit_stats": {
+    "stats": {
+      "field": "numberOfCommits"
     }
   }
 }
@@ -56,7 +49,7 @@ new SearchRequest<Project>
 [source,csharp]
 ----
 response.ShouldBeValid();
-var commitStats = response.Aggs.Stats("commit_stats");
+var commitStats = response.Aggregations.Stats("commit_stats");
 commitStats.Should().NotBeNull();
 commitStats.Average.Should().BeGreaterThan(0);
 commitStats.Max.Should().BeGreaterThan(0);

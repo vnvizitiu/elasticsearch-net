@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,22 +19,20 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Aggregations(a => a
-    .MatrixStats("matrixstats", ms => ms
-        .Meta(m => m
-            .Add("foo", "bar")
-        )
-        .Fields(fs => fs
-            .Field(p => p.NumberOfCommits)
-            .Field(p => p.NumberOfContributors)
-        )
-        .Missing(m => m
-            .Add(Field<Project>(p => p.NumberOfCommits), 0)
-            .Add(Field<Project>(p => p.NumberOfContributors), 1)
-        )
-        .Mode(MatrixStatsMode.Median)
+a => a
+.MatrixStats("matrixstats", ms => ms
+    .Meta(m => m
+        .Add("foo", "bar")
     )
+    .Fields(fs => fs
+        .Field(p => p.NumberOfCommits)
+        .Field(p => p.NumberOfContributors)
+    )
+    .Missing(m => m
+        .Add(Field<Project>(p => p.NumberOfCommits), 0)
+        .Add(Field<Project>(p => p.NumberOfContributors), 1)
+    )
+    .Mode(MatrixStatsMode.Median)
 )
 ----
 
@@ -42,22 +40,19 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new MatrixStatsAggregation("matrixstats", Field<Project>(p => p.NumberOfCommits))
 {
-    Aggregations = new MatrixStatsAggregation("matrixstats", Field<Project>(p => p.NumberOfCommits))
+    Meta = new Dictionary<string, object>
     {
-        Meta = new Dictionary<string, object>
-        {
-            { "foo", "bar" }
-        },
-        Missing = new Dictionary<Field, double>
-        {
-            { "numberOfCommits", 0.0 },
-            { "numberOfContributors", 1.0 },
-        },
-        Mode = MatrixStatsMode.Median,
-        Fields = Field<Project>(p => p.NumberOfCommits).And("numberOfContributors")
-    }
+        {"foo", "bar"}
+    },
+    Missing = new Dictionary<Field, double>
+    {
+        {"numberOfCommits", 0.0},
+        {"numberOfContributors", 1.0},
+    },
+    Mode = MatrixStatsMode.Median,
+    Fields = Field<Project>(p => p.NumberOfCommits).And("numberOfContributors")
 }
 ----
 
@@ -65,22 +60,20 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "matrixstats": {
-      "meta": {
-        "foo": "bar"
+  "matrixstats": {
+    "meta": {
+      "foo": "bar"
+    },
+    "matrix_stats": {
+      "fields": [
+        "numberOfCommits",
+        "numberOfContributors"
+      ],
+      "missing": {
+        "numberOfCommits": 0.0,
+        "numberOfContributors": 1.0
       },
-      "matrix_stats": {
-        "fields": [
-          "numberOfCommits",
-          "numberOfContributors"
-        ],
-        "missing": {
-          "numberOfCommits": 0.0,
-          "numberOfContributors": 1.0
-        },
-        "mode": "median"
-      }
+      "mode": "median"
     }
   }
 }
@@ -91,7 +84,7 @@ new SearchRequest<Project>
 [source,csharp]
 ----
 response.ShouldBeValid();
-var matrix = response.Aggs.MatrixStats("matrixstats");
+var matrix = response.Aggregations.MatrixStats("matrixstats");
 matrix.Should().NotBeNull();
 matrix.Fields.Should().NotBeNull().And.HaveCount(2);
 

@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,7 +19,7 @@ In <<auto-map, Auto mapping>>, you saw that the type mapping for a POCO can be i
 properties of the POCO, using `.AutoMap()`. But what do you do when you want to map differently
 to the inferred mapping? This is where attribute mapping can help.
 
-It is possible to define your mappings using attributes on your POCO type and properties. With 
+It is possible to define your mappings using attributes on your POCO type and properties. With
 attributes on properties and calling `.AutoMap()`, NEST will infer the mappings from the POCO property
 types **and** take into account the mapping attributes.
 
@@ -29,27 +29,14 @@ When you use attributes, you *must* also call `.AutoMap()` for the attributes to
 
 --
 
-Here we define the same two types as before, but this time using attributes to define the mappings.
+Here we define an `Employee` type and use attributes to define the mappings.
 
 [source,csharp]
 ----
-[ElasticsearchType(Name = "company")]
-public class Company
-{
-    [Keyword(NullValue = "null", Similarity = "BM25")]
-    public string Name { get; set; }
-
-    [Text(Name = "office_hours")]
-    public TimeSpan? HeadOfficeHours { get; set; }
-
-    [Object(Store = false)]
-    public List<Employee> Employees { get; set; }
-}
-
 [ElasticsearchType(Name = "employee")]
 public class Employee
 {
-    [Text(Name = "first_name")]
+    [Text(Name = "first_name", Norms = false, Similarity = "LMDirichlet")]
     public string FirstName { get; set; }
 
     [Text(Name = "last_name")]
@@ -65,8 +52,23 @@ public class Employee
     public bool IsManager { get; set; }
 
     [Nested]
-    [JsonProperty("empl")]
+    [PropertyName("empl")]
     public List<Employee> Employees { get; set; }
+
+     [Text(Name = "office_hours")]
+     public TimeSpan? OfficeHours { get; set; }
+
+     [Object]
+     public List<Skill> Skills { get; set; }
+}
+
+public class Skill
+{
+    [Text]
+    public string Name { get; set; }
+
+    [Number(NumberType.Byte, Name = "level")]
+    public int Proficiency { get; set; }
 }
 ----
 
@@ -74,60 +76,17 @@ Then we map the types by calling `.AutoMap()`
 
 [source,csharp]
 ----
-var descriptor = new CreateIndexDescriptor("myindex")
+var createIndexResponse = client.CreateIndex("myindex", c => c
     .Mappings(ms => ms
-        .Map<Company>(m => m.AutoMap())
         .Map<Employee>(m => m.AutoMap())
-    );
+    )
+);
 ----
 
 [source,javascript]
 ----
 {
   "mappings": {
-    "company": {
-      "properties": {
-        "employees": {
-          "properties": {
-            "birthday": {
-              "format": "MMddyyyy",
-              "type": "date"
-            },
-            "empl": {
-              "properties": {},
-              "type": "nested"
-            },
-            "first_name": {
-              "type": "text"
-            },
-            "isManager": {
-              "null_value": false,
-              "store": true,
-              "type": "boolean"
-            },
-            "last_name": {
-              "type": "text"
-            },
-            "salary": {
-              "coerce": true,
-              "doc_values": false,
-              "ignore_malformed": true,
-              "type": "float"
-            }
-          },
-          "type": "object",
-          "store": false
-        },
-        "name": {
-          "null_value": "null",
-          "similarity": "BM25",
-          "type": "keyword"
-        },
-        "office_hours": {
-          "type": "text"
-        }
-      }
-    },
     "employee": {
       "properties": {
         "birthday": {
@@ -139,7 +98,9 @@ var descriptor = new CreateIndexDescriptor("myindex")
           "type": "nested"
         },
         "first_name": {
-          "type": "text"
+          "type": "text",
+          "norms": false,
+          "similarity": "LMDirichlet"
         },
         "isManager": {
           "null_value": false,
@@ -149,11 +110,25 @@ var descriptor = new CreateIndexDescriptor("myindex")
         "last_name": {
           "type": "text"
         },
+        "office_hours": {
+          "type": "text"
+        },
         "salary": {
           "coerce": true,
           "doc_values": false,
           "ignore_malformed": true,
           "type": "float"
+        },
+        "skills": {
+          "properties": {
+            "level": {
+              "type": "byte"
+            },
+            "name": {
+              "type": "text"
+            }
+          },
+          "type": "object"
         }
       }
     }
@@ -163,6 +138,6 @@ var descriptor = new CreateIndexDescriptor("myindex")
 
 Attribute mapping can be a convenient way to control how POCOs are mapped with minimal code, however
 there are some mapping features that cannot be expressed with attributes, for example, <<multi-fields, Multi fields>>.
-In order to have the full power of mapping in NEST at your disposal, 
+In order to have the full power of mapping in NEST at your disposal,
 take a look at <<fluent-mapping, Fluent Mapping>> next.
 

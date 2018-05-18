@@ -15,6 +15,9 @@ namespace Nest
 		private static readonly MethodInfo GetActivatorMethodInfo =
 			typeof(TypeExtensions).GetMethod(nameof(GetActivator), BindingFlags.Static | BindingFlags.NonPublic);
 
+		private static readonly ConcurrentDictionary<Type, Func<object>> CachedDefaultValues =
+			new ConcurrentDictionary<Type, Func<object>>();
+
 		private static readonly ConcurrentDictionary<string, ObjectActivator<object>> CachedActivators =
 			new ConcurrentDictionary<string, ObjectActivator<object>>();
 
@@ -27,24 +30,16 @@ namespace Nest
 		private static readonly ConcurrentDictionary<Type, IList<PropertyInfo>> CachedTypePropertyInfos =
 			new ConcurrentDictionary<Type, IList<PropertyInfo>>();
 
-		//this contract is only used to resolve properties in class WE OWN.
-		//these are not subject to change depending on what the user passes as connectionsettings
-		private static readonly ElasticContractResolver JsonContract =
-			new ElasticContractResolver(new ConnectionSettings(), null);
+		private delegate T ObjectActivator<out T>(params object[] args);
 
-		public delegate T ObjectActivator<out T>(params object[] args);
-
-		internal static object CreateGenericInstance(this Type t, Type closeOver, params object[] args)
-		{
-			return t.CreateGenericInstance(new[] {closeOver}, args);
-		}
+		internal static object CreateGenericInstance(this Type t, Type closeOver, params object[] args) =>
+			t.CreateGenericInstance(new[] {closeOver}, args);
 
 		internal static object CreateGenericInstance(this Type t, Type[] closeOver, params object[] args)
 		{
 			var argKey = closeOver.Aggregate(new StringBuilder(), (sb, gt) => sb.Append("--" + gt.FullName), sb => sb.ToString());
 			var key = t.FullName + argKey;
-			Type closedType;
-			if (!CachedGenericClosedTypes.TryGetValue(key, out closedType))
+			if (!CachedGenericClosedTypes.TryGetValue(key, out var closedType))
 			{
 				closedType = t.MakeGenericType(closeOver);
 				CachedGenericClosedTypes.TryAdd(key, closedType);
@@ -56,10 +51,9 @@ namespace Nest
 
 		internal static object CreateInstance(this Type t, params object[] args)
 		{
-			ObjectActivator<object> activator;
 			var argKey = args.Length;
 			var key = argKey + "--" + t.FullName;
-			if (CachedActivators.TryGetValue(key, out activator))
+			if (CachedActivators.TryGetValue(key, out var activator))
 				return activator(args);
 
 			var generic = GetActivatorMethodInfo.MakeGenericMethod(t);
@@ -72,59 +66,63 @@ namespace Nest
 			var ctor = constructors.FirstOrDefault();
 			if (ctor == null)
 				throw new Exception($"Cannot create an instance of {t.FullName} because it has no constructor taking {args.Length} arguments");
-			activator = (ObjectActivator<object>) generic.Invoke(null, new[] {ctor});
+			activator = (ObjectActivator<object>) generic.Invoke(null, new object[] {ctor});
 			CachedActivators.TryAdd(key, activator);
 			return activator(args);
 		}
 
+		internal static object DefaultValue(this Type type) =>
+			type.IsValueType()
+				? CachedDefaultValues.GetOrAdd(type, t =>
+					Expression.Lambda<Func<object>>(
+						Expression.Convert(Expression.Default(type), typeof(object))
+					).Compile()
+				).Invoke()
+				: null;
+
 		//do not remove this is referenced through GetActivatorMethod
 		private static ObjectActivator<T> GetActivator<T>(ConstructorInfo ctor)
 		{
-			Type type = ctor.DeclaringType;
-			ParameterInfo[] paramsInfo = ctor.GetParameters();
+			var type = ctor.DeclaringType;
+			var paramsInfo = ctor.GetParameters();
 
 			//create a single param of type object[]
-			ParameterExpression param =
-				Expression.Parameter(typeof(object[]), "args");
+			var param = Expression.Parameter(typeof(object[]), "args");
 
-			Expression[] argsExp =
-				new Expression[paramsInfo.Length];
+			var argsExp = new Expression[paramsInfo.Length];
 
 			//pick each arg from the params array
 			//and create a typed expression of them
-			for (int i = 0; i < paramsInfo.Length; i++)
+			for (var i = 0; i < paramsInfo.Length; i++)
 			{
-				Expression index = Expression.Constant(i);
-				Type paramType = paramsInfo[i].ParameterType;
-
-				Expression paramAccessorExp =
-					Expression.ArrayIndex(param, index);
-
-				Expression paramCastExp =
-					Expression.Convert(paramAccessorExp, paramType);
-
+				var index = Expression.Constant(i);
+				var paramType = paramsInfo[i].ParameterType;
+				var paramAccessorExp = Expression.ArrayIndex(param, index);
+				var paramCastExp = Expression.Convert(paramAccessorExp, paramType);
 				argsExp[i] = paramCastExp;
 			}
 
 			//make a NewExpression that calls the
 			//ctor with the args we just created
-			NewExpression newExp = Expression.New(ctor, argsExp);
+			var newExp = Expression.New(ctor, argsExp);
 
 			//create a lambda with the New
 			//Expression as body and our param object[] as arg
-			LambdaExpression lambda =
-				Expression.Lambda(typeof(ObjectActivator<T>), newExp, param);
+			var lambda = Expression.Lambda(typeof(ObjectActivator<T>), newExp, param);
 
 			//compile it
-			ObjectActivator<T> compiled = (ObjectActivator<T>) lambda.Compile();
+			var compiled = (ObjectActivator<T>) lambda.Compile();
 			return compiled;
 		}
+
+		//this contract is only used to resolve properties in class WE OWN.
+		//these are not subject to change depending on what the user passes as connectionsettings
+		private static readonly ElasticContractResolver JsonContract = new ElasticContractResolver(new ConnectionSettings());
 
 		internal static IList<JsonProperty> GetCachedObjectProperties(this Type t,
 			MemberSerialization memberSerialization = MemberSerialization.OptIn)
 		{
-			IList<JsonProperty> propertyDictionary;
-			if (CachedTypeProperties.TryGetValue(t, out propertyDictionary))
+			if (CachedTypeProperties.TryGetValue(t, out var propertyDictionary))
 				return propertyDictionary;
 			propertyDictionary = JsonContract.PropertiesOfAll(t, memberSerialization);
 			CachedTypeProperties.TryAdd(t, propertyDictionary);
@@ -133,8 +131,7 @@ namespace Nest
 
 		internal static IList<PropertyInfo> AllPropertiesCached(this Type t)
 		{
-			IList<PropertyInfo> propertyInfos;
-			if (CachedTypePropertyInfos.TryGetValue(t, out propertyInfos))
+			if (CachedTypePropertyInfos.TryGetValue(t, out var propertyInfos))
 				return propertyInfos;
 			propertyInfos = t.AllPropertiesNotCached().ToList();
 			CachedTypePropertyInfos.TryAdd(t, propertyInfos);
@@ -163,13 +160,8 @@ namespace Nest
 						propertiesByName.Add(propertyInfo.Name, propertyInfo);
 					}
 				}
-#if DOTNETCORE
 				type = type.GetTypeInfo()?.BaseType;
 			} while (type?.GetTypeInfo()?.BaseType != null);
-#else
-				type = type.BaseType;
-			} while (type?.BaseType != null);
-#endif
 			return propertiesByName.Values;
 		}
 
@@ -178,11 +170,7 @@ namespace Nest
 		/// </summary>
 		private static bool IsHidingMember(PropertyInfo propertyInfo)
 		{
-#if DOTNETCORE
 			var baseType = propertyInfo.DeclaringType?.GetTypeInfo()?.BaseType;
-#else
-			var baseType = propertyInfo.DeclaringType?.BaseType;
-#endif
 			var baseProperty = baseType?.GetProperty(propertyInfo.Name);
 			if (baseProperty == null) return false;
 			var derivedGetMethod = propertyInfo.GetGetMethod().GetBaseDefinition();

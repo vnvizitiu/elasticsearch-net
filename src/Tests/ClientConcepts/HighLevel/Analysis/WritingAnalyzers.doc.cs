@@ -53,7 +53,7 @@ namespace Tests.ClientConcepts.HighLevel.Analysis
         public void AddAnalyzerToFieldMapping()
         {
             // hide
-            var client = TestClient.GetInMemoryClient();
+            var client = TestClient.DefaultInMemoryClient;
 
             var createIndexResponse = client.CreateIndex("my-index", c => c
                 .Mappings(m => m
@@ -83,7 +83,7 @@ namespace Tests.ClientConcepts.HighLevel.Analysis
         public void ChangingBuiltInAnalyzer()
         {
             // hide
-            var client = TestClient.GetInMemoryClient(c => c.DisableDirectStreaming().PrettyJson());
+	        var client = TestClient.DefaultInMemoryClient;
 
             var createIndexResponse = client.CreateIndex("my-index", c => c
                 .Settings(s => s
@@ -128,7 +128,7 @@ namespace Tests.ClientConcepts.HighLevel.Analysis
                 },
                 mappings = new
                 {
-                    project = new
+                    doc = new // <3> our connection settings map `Project` to `doc`
                     {
                         properties = new
                         {

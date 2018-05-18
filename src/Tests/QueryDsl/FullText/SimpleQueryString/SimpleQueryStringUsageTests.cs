@@ -22,11 +22,13 @@ namespace Tests.QueryDsl.FullText.SimpleQueryString
 				analyzer = "standard",
 				default_operator = "or",
 				flags = "AND|NEAR",
-				locale = "en_US",
-				lowercase_expanded_terms = true,
 				lenient = true,
 				analyze_wildcard = true,
-				minimum_should_match = "30%"
+				minimum_should_match = "30%",
+				fuzzy_prefix_length = 0,
+				fuzzy_max_expansions = 50,
+				fuzzy_transpositions = true,
+				auto_generate_synonyms_phrase_query = false
 			}
 		};
 
@@ -39,17 +41,16 @@ namespace Tests.QueryDsl.FullText.SimpleQueryString
 			Analyzer = "standard",
 			DefaultOperator = Operator.Or,
 			Flags = SimpleQueryStringFlags.And|SimpleQueryStringFlags.Near,
-#pragma warning disable 618 // usage of lowercase_expanded_terms and locale
-			Locale = "en_US",
-			LowercaseExpandedTerms = true,
-#pragma warning restore 618
 			Lenient = true,
 			AnalyzeWildcard = true,
-			MinimumShouldMatch = "30%"
+			MinimumShouldMatch = "30%",
+			FuzzyPrefixLength = 0,
+			FuzzyMaxExpansions = 50,
+			FuzzyTranspositions = true,
+			AutoGenerateSynonymsPhraseQuery = false
 		};
 
 		protected override QueryContainer QueryFluent(QueryContainerDescriptor<Project> q) => q
-#pragma warning disable 618 // usage of lowercase_expanded_terms and locale
 			.SimpleQueryString(c => c
 				.Name("named_query")
 				.Boost(1.1)
@@ -58,13 +59,14 @@ namespace Tests.QueryDsl.FullText.SimpleQueryString
 				.Analyzer("standard")
 				.DefaultOperator(Operator.Or)
 				.Flags(SimpleQueryStringFlags.And|SimpleQueryStringFlags.Near)
-				.Locale("en_US")
-				.LowercaseExpandedTerms()
 				.Lenient()
 				.AnalyzeWildcard()
 				.MinimumShouldMatch("30%")
+				.FuzzyPrefixLength(0)
+				.FuzzyMaxExpansions(50)
+				.FuzzyTranspositions()
+				.AutoGenerateSynonymsPhraseQuery(false)
 			);
-#pragma warning restore 618
 
 		protected override ConditionlessWhen ConditionlessWhen => new ConditionlessWhen<ISimpleQueryStringQuery>(a => a.SimpleQueryString)
 		{

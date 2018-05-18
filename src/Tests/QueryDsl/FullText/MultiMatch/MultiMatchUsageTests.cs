@@ -32,7 +32,8 @@ namespace Tests.QueryDsl.FullText.MultiMatch
 					"description",
 					"myOtherField"
 				},
-				zero_terms_query = "all"
+				zero_terms_query = "all",
+				auto_generate_synonyms_phrase_query = false
 			}
 		};
 
@@ -54,6 +55,7 @@ namespace Tests.QueryDsl.FullText.MultiMatch
 			Lenient = true,
 			ZeroTermsQuery = ZeroTermsQuery.All,
 			Name = "named_query",
+			AutoGenerateSynonymsPhraseQuery = false
 		};
 
 		protected override QueryContainer QueryFluent(QueryContainerDescriptor<Project> q) => q
@@ -74,13 +76,13 @@ namespace Tests.QueryDsl.FullText.MultiMatch
 				.Lenient()
 				.ZeroTermsQuery(ZeroTermsQuery.All)
 				.Name("named_query")
+				.AutoGenerateSynonymsPhraseQuery(false)
 			);
 
 		protected override ConditionlessWhen ConditionlessWhen => new ConditionlessWhen<IMultiMatchQuery>(a => a.MultiMatch)
 		{
 			q => q.Query = null,
-			q => q.Query = string.Empty,
-			q => q.Fields = null
+			q => q.Query = string.Empty
 		};
 	}
 
@@ -111,8 +113,37 @@ namespace Tests.QueryDsl.FullText.MultiMatch
 
 		protected override QueryContainer QueryFluent(QueryContainerDescriptor<Project> q) => q
 			.MultiMatch(c => c
-				//.Fields(f => f.Field(p=>p.Description, 2.2).Field("myOtherField^0.3"))
 				.Fields(Field<Project>(p=>p.Description, 2.2).And("myOtherField^0.3"))
+				.Query("hello world")
+			);
+	}
+
+	/**[float]
+	 * === Multi match with no fields specified
+	 *
+	 * Starting with Elasticsearch 6.1.0+, it's possible to send a Multi Match query without providing any fields.
+	 * When no fields are provided the Multi Match query will use the fields defined in the index setting `index.query.default_field`
+	 * (which in turns defaults to `*`).
+	 */
+	public class MultiMatchWithNoFieldsSpecifiedUsageTests : QueryDslUsageTestsBase
+	{
+		public MultiMatchWithNoFieldsSpecifiedUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
+
+		protected override object QueryJson => new
+		{
+			multi_match = new
+			{
+				query = "hello world"
+			}
+		};
+
+		protected override QueryContainer QueryInitializer => new MultiMatchQuery
+		{
+			Query = "hello world",
+		};
+
+		protected override QueryContainer QueryFluent(QueryContainerDescriptor<Project> q) => q
+			.MultiMatch(c => c
 				.Query("hello world")
 			);
 	}

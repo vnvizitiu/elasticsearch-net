@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,14 +19,12 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Aggregations(a => a
-    .GeoHash("my_geohash_grid", g => g
-        .Field(p => p.Location)
-        .GeoHashPrecision(GeoHashPrecision.Precision3)
-        .Size(1000)
-        .ShardSize(100)
-    )
+a => a
+.GeoHash("my_geohash_grid", g => g
+    .Field(p => p.Location)
+    .GeoHashPrecision(GeoHashPrecision.Precision3)
+    .Size(1000)
+    .ShardSize(100)
 )
 ----
 
@@ -34,15 +32,12 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new GeoHashGridAggregation("my_geohash_grid")
 {
-    Aggregations = new GeoHashGridAggregation("my_geohash_grid")
-    {
-        Field = Field<Project>(p => p.Location),
-        Precision = GeoHashPrecision.Precision3,
-        Size = 1000,
-        ShardSize = 100
-    }
+    Field = Field<Project>(p => p.Location),
+    Precision = GeoHashPrecision.Precision3,
+    Size = 1000,
+    ShardSize = 100
 }
 ----
 
@@ -50,14 +45,12 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "my_geohash_grid": {
-      "geohash_grid": {
-        "field": "location",
-        "precision": 3,
-        "size": 1000,
-        "shard_size": 100
-      }
+  "my_geohash_grid": {
+    "geohash_grid": {
+      "field": "location",
+      "precision": 3,
+      "size": 1000,
+      "shard_size": 100
     }
   }
 }
@@ -68,7 +61,7 @@ new SearchRequest<Project>
 [source,csharp]
 ----
 response.ShouldBeValid();
-var myGeoHashGrid = response.Aggs.GeoHash("my_geohash_grid");
+var myGeoHashGrid = response.Aggregations.GeoHash("my_geohash_grid");
 myGeoHashGrid.Should().NotBeNull();
 ----
 

@@ -103,9 +103,9 @@ namespace Tests.ClientConcepts.HighLevel
 				LastName = "Laarman"
 			};
 
-			var indexResponse = client.Index(person); //<1> synchronous method that returns an `IIndexResponse`
+			var indexResponse = client.IndexDocument(person); //<1> synchronous method that returns an `IIndexResponse`
 
-			var asyncIndexResponse = await client.IndexAsync(person); //<2> asynchronous method that returns a `Task<IIndexResponse>` that can be awaited
+			var asyncIndexResponse = await client.IndexDocumentAsync(person); //<2> asynchronous method that returns a `Task<IIndexResponse>` that can be awaited
 		}
 
 		/**
@@ -254,7 +254,7 @@ namespace Tests.ClientConcepts.HighLevel
 
 	    public void SearchingWithTheLowLevelClient()
 	    {
-            var searchResponse = client.LowLevel.Search<SearchResponse<Person>>("people", "person", new
+            var searchResponse = client.LowLevel.Search<SearchResponse<Person>>("people", "person", PostData.Serializable(new
             {
                 from = 0,
                 size = 10,
@@ -266,9 +266,9 @@ namespace Tests.ClientConcepts.HighLevel
                         query = "Martijn"
                     }
                 }
-            });
+            }));
 
-            var responseJson = searchResponse.Body;
+            var responseJson = searchResponse;
         }
         /**
          * Here, the query is represented as an anonymous type, but the body of the response is a concrete
@@ -299,7 +299,7 @@ namespace Tests.ClientConcepts.HighLevel
 				)
 			);
 
-			var termsAggregation = searchResponse.Aggs.Terms("last_names");
+			var termsAggregation = searchResponse.Aggregations.Terms("last_names");
 		}
 
 		/**

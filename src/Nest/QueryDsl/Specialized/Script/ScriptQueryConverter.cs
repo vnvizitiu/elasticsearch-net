@@ -24,8 +24,7 @@ namespace Nest
 			writer.WriteStartObject();
 			{
 				if (v.Id != null) writer.WriteProperty(serializer, "id", v.Id);
-				if (v.File != null) writer.WriteProperty(serializer, "file", v.File);
-				if (v.Inline != null) writer.WriteProperty(serializer, "inline", v.Inline);
+				if (v.Source != null) writer.WriteProperty(serializer, "source", v.Source);
 				if (v.Lang != null) writer.WriteProperty(serializer, "lang", v.Lang);
 				if (v.Params != null) writer.WriteProperty(serializer, "params", v.Params);
 			}
@@ -55,11 +54,9 @@ namespace Nest
 					case "id":
 						r.Id = p.Value.Value<string>();
 						break;
-					case "file":
-						r.File = p.Value.Value<string>();
-						break;
 					case "inline":
-						r.Inline = p.Value.Value<string>();
+					case "source":
+						r.Source = p.Value.Value<string>();
 						break;
 					case "lang":
 						r.Lang = p.Value.Value<string>();

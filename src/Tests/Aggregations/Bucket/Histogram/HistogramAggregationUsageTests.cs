@@ -13,52 +13,47 @@ namespace Tests.Aggregations.Bucket.Histogram
 	{
 		public HistogramAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
-		protected override object ExpectJson => new
+		protected override object AggregationJson => new
 		{
-			aggs = new
+			commits = new
 			{
-				commits = new
+				histogram = new
 				{
-					histogram = new
+					field = "numberOfCommits",
+					interval = 100.0,
+					missing = 0.0,
+					order = new
 					{
-						field = "numberOfCommits",
-						interval = 100.0,
-						missing = 0.0,
-						order = new
-						{
-							_key = "desc"
-						}
-					}
+						_key = "desc"
+					},
+					offset = 1.1
 				}
 			}
 		};
 
-		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
-			.Aggregations(a => a
-				.Histogram("commits", h => h
-					.Field(p => p.NumberOfCommits)
-					.Interval(100)
-					.Missing(0)
-					.Order(HistogramOrder.KeyDescending)
-				)
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.Histogram("commits", h => h
+				.Field(p => p.NumberOfCommits)
+				.Interval(100)
+				.Missing(0)
+				.Order(HistogramOrder.KeyDescending)
+				.Offset(1.1)
 			);
 
-		protected override SearchRequest<Project> Initializer =>
-			new SearchRequest<Project>
+		protected override AggregationDictionary InitializerAggs =>
+			new HistogramAggregation("commits")
 			{
-				Aggregations = new HistogramAggregation("commits")
-				{
-					Field = Field<Project>(p => p.NumberOfCommits),
-					Interval = 100,
-					Missing = 0,
-					Order = HistogramOrder.KeyDescending
-				}
+				Field = Field<Project>(p => p.NumberOfCommits),
+				Interval = 100,
+				Missing = 0,
+				Order = HistogramOrder.KeyDescending,
+				Offset = 1.1
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
-			var commits = response.Aggs.Histogram("commits");
+			var commits = response.Aggregations.Histogram("commits");
 			commits.Should().NotBeNull();
 			commits.Buckets.Should().NotBeNull();
 			commits.Buckets.Count.Should().BeGreaterThan(0);

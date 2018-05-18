@@ -22,10 +22,9 @@ namespace Nest
 		[JsonProperty("distance_type")]
 		GeoDistanceType? DistanceType { get; set; }
 
-		[JsonProperty(PropertyName = "ranges")]
-#pragma warning disable 618
-		IEnumerable<IRange> Ranges { get; set; }
-#pragma warning restore 618
+		[JsonProperty("ranges")]
+		IEnumerable<IAggregationRange> Ranges { get; set; }
+
 	}
 
 	public class GeoDistanceAggregation : BucketAggregationBase, IGeoDistanceAggregation
@@ -38,9 +37,7 @@ namespace Nest
 
 		public GeoDistanceType? DistanceType { get; set; }
 
-#pragma warning disable 618
-		public IEnumerable<IRange> Ranges { get; set; }
-#pragma warning restore 618
+		public IEnumerable<IAggregationRange> Ranges { get; set; }
 
 		internal GeoDistanceAggregation() { }
 
@@ -62,9 +59,7 @@ namespace Nest
 
 		GeoDistanceType? IGeoDistanceAggregation.DistanceType { get; set; }
 
-#pragma warning disable 618
-		IEnumerable<IRange> IGeoDistanceAggregation.Ranges { get; set; }
-#pragma warning restore 618
+		IEnumerable<IAggregationRange> IGeoDistanceAggregation.Ranges { get; set; }
 
 		public GeoDistanceAggregationDescriptor<T> Field(Field field) => Assign(a => a.Field = field);
 
@@ -74,13 +69,11 @@ namespace Nest
 
 		public GeoDistanceAggregationDescriptor<T> Origin(GeoLocation geoLocation) => Assign(a => a.Origin = geoLocation);
 
-		public GeoDistanceAggregationDescriptor<T> Unit(DistanceUnit unit) => Assign(a => a.Unit = unit);
+		public GeoDistanceAggregationDescriptor<T> Unit(DistanceUnit? unit) => Assign(a => a.Unit = unit);
 
 		public GeoDistanceAggregationDescriptor<T> DistanceType(GeoDistanceType? geoDistance) => Assign(a => a.DistanceType = geoDistance);
 
-#pragma warning disable 618
-		public GeoDistanceAggregationDescriptor<T> Ranges(params Func<RangeDescriptor, IRange>[] ranges) =>
-			Assign(a => a.Ranges = ranges?.Select(r => r(new RangeDescriptor())));
-#pragma warning restore 618
+		public GeoDistanceAggregationDescriptor<T> Ranges(params Func<AggregationRangeDescriptor, IAggregationRange>[] ranges) =>
+			Assign(a => a.Ranges = ranges?.Select(r => r(new AggregationRangeDescriptor())));
 	}
 }

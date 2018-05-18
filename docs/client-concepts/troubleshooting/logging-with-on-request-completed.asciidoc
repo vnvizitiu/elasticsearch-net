@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -15,7 +15,8 @@ please modify the original csharp file found at the link and submit the PR with 
 [[logging-with-on-request-completed]]
 === Logging with OnRequestCompleted
 
-When constructing the connection settings to pass to the client, you can pass a callback of type`Action<IApiCallDetails>` to the `OnRequestCompleted` method that can eavesdrop every time a
+When constructing the connection settings to pass to the client, you can pass a callback of type
+`Action<IApiCallDetails>` to the `OnRequestCompleted` method that can eavesdrop every time a
 response(good or bad) is received.
 
 If you have complex logging needs this is a good place to add that in
@@ -135,9 +136,9 @@ var asyncResponse = await client.SearchAsync<object>(s => s <5>
 list.Count.Should().Be(4);
 list.ShouldAllBeEquivalentTo(new[] <6>
 {
-    @"POST http://localhost:9200/_search?scroll=2m {""sort"":[{""_doc"":{""order"":""asc""}}]}",
+    @"POST http://localhost:9200/_search?typed_keys=true&scroll=2m {""sort"":[{""_doc"":{""order"":""asc""}}]}",
     @"Status: 200",
-    @"POST http://localhost:9200/_search?scroll=10m {""sort"":[{""_doc"":{""order"":""asc""}}]}",
+    @"POST http://localhost:9200/_search?typed_keys=true&scroll=10m {""sort"":[{""_doc"":{""order"":""asc""}}]}",
     @"Status: 200"
 });
 ----
@@ -218,9 +219,9 @@ var asyncResponse = await client.SearchAsync<object>(s => s <2>
 list.Count.Should().Be(4);
 list.ShouldAllBeEquivalentTo(new[]
 {
-    @"POST http://localhost:9200/_search?scroll=2m", <3>
+    @"POST http://localhost:9200/_search?typed_keys=true&scroll=2m", <3>
     @"Status: 200",
-    @"POST http://localhost:9200/_search?scroll=10m {""sort"":[{""_doc"":{""order"":""asc""}}]}", <4>
+    @"POST http://localhost:9200/_search?typed_keys=true&scroll=10m {""sort"":[{""_doc"":{""order"":""asc""}}]}", <4>
     @"Status: 200"
 });
 ----

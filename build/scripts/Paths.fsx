@@ -15,20 +15,16 @@ open Projects
 
 module Paths =
 
-    let Repository = "https://github.com/elastic/elasticsearch-net"
+    let OwnerName = "elastic"
+    let RepositoryName = "elasticsearch-net"
+    let Repository = sprintf "https://github.com/%s/%s" OwnerName RepositoryName
 
     let BuildFolder = "build"
     let BuildOutput = sprintf "%s/output" BuildFolder
 
     let ProjectOutputFolder (project:DotNetProject) (framework:DotNetFramework) = 
-        sprintf "%s/%s/%s" BuildOutput framework.Identifier.MSBuild project.Name
-
-    let IncrementalOutputFolder (project:DotNetProject) (framework:DotNetFramework) = 
-        sprintf "src/%s/bin/Release/%s" project.Name framework.Identifier.Nuget
-            
-    let IncrementalOutputFolderWithPrefix prefix (project:DotNetProject) (framework:DotNetFramework) = 
-        sprintf "src/%s/%s/bin/Release/%s" prefix project.Name framework.Identifier.Nuget
-
+        sprintf "%s/%s/%s" BuildOutput project.Name framework.Identifier.Nuget
+  
     let Tool tool = sprintf "packages/build/%s" tool
     let CheckedInToolsFolder = "build/Tools"
     let KeysFolder = sprintf "%s/keys" BuildFolder
@@ -40,10 +36,20 @@ module Paths =
     let Output(folder) = sprintf "%s/%s" BuildOutput folder
     let Source(folder) = sprintf "%s/%s" SourceFolder folder
     let Build(folder) = sprintf "%s/%s" BuildFolder folder
+    
+    let ProjFile(project:DotNetProject) =
+        match project with 
+        | Project p -> 
+            match p with 
+            | ElasticsearchNetHttpWebRequestConnection -> sprintf "%s/Connections/%s/%s.csproj" SourceFolder project.Name project.Name
+            | NestJsonNetSerializer -> sprintf "%s/Serializers/%s/%s.csproj" SourceFolder project.Name project.Name
+            | _ -> sprintf "%s/%s/%s.csproj" SourceFolder project.Name project.Name
+        | PrivateProject p ->
+            match p with
+            | Tests -> sprintf "%s/%s/%s.csproj" SourceFolder project.Name project.Name
+            | DocGenerator -> sprintf "%s/CodeGeneration/%s/%s.csproj" SourceFolder project.Name project.Name
+            
 
     let BinFolder(folder) = 
         let f = replace @"\" "/" folder
         sprintf "%s/%s/bin/Release" SourceFolder f
-
-    let ProjectJson(projectName) =
-        Source(sprintf "%s/project.json" projectName)

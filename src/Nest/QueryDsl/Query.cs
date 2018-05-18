@@ -41,38 +41,11 @@ namespace Nest
 		public static QueryContainer GeoDistance(Func<GeoDistanceQueryDescriptor<T>, IGeoDistanceQuery> selector) =>
 			new QueryContainerDescriptor<T>().GeoDistance(selector);
 
-		public static QueryContainer GeoHashCell(Func<GeoHashCellQueryDescriptor<T>, IGeoHashCellQuery> selector) =>
-			new QueryContainerDescriptor<T>().GeoHashCell(selector);
-
 		public static QueryContainer GeoPolygon(Func<GeoPolygonQueryDescriptor<T>, IGeoPolygonQuery> selector) =>
 			new QueryContainerDescriptor<T>().GeoPolygon(selector);
 
-		public static QueryContainer GeoShapeCircle(Func<GeoShapeCircleQueryDescriptor<T>, IGeoShapeCircleQuery> selector) =>
-			new QueryContainerDescriptor<T>().GeoShapeCircle(selector);
-
-		public static QueryContainer GeoShapeEnvelope(Func<GeoShapeEnvelopeQueryDescriptor<T>, IGeoShapeEnvelopeQuery> selector) =>
-			new QueryContainerDescriptor<T>().GeoShapeEnvelope(selector);
-
-		public static QueryContainer GeoShapeLineString(Func<GeoShapeLineStringQueryDescriptor<T>, IGeoShapeLineStringQuery> selector) =>
-			new QueryContainerDescriptor<T>().GeoShapeLineString(selector);
-
-		public static QueryContainer GeoShapeMultiLineString(Func<GeoShapeMultiLineStringQueryDescriptor<T>, IGeoShapeMultiLineStringQuery> selector) =>
-			new QueryContainerDescriptor<T>().GeoShapeMultiLineString(selector);
-
-		public static QueryContainer GeoShapeMultiPoint(Func<GeoShapeMultiPointQueryDescriptor<T>, IGeoShapeMultiPointQuery> selector) =>
-			new QueryContainerDescriptor<T>().GeoShapeMultiPoint(selector);
-
-		public static QueryContainer GeoShapeMultiPolygon(Func<GeoShapeMultiPolygonQueryDescriptor<T>, IGeoShapeMultiPolygonQuery> selector) =>
-			new QueryContainerDescriptor<T>().GeoShapeMultiPolygon(selector);
-
-		public static QueryContainer GeoShapePoint(Func<GeoShapePointQueryDescriptor<T>, IGeoShapePointQuery> selector) =>
-			new QueryContainerDescriptor<T>().GeoShapePoint(selector);
-
-		public static QueryContainer GeoShapePolygon(Func<GeoShapePolygonQueryDescriptor<T>, IGeoShapePolygonQuery> selector) =>
-			new QueryContainerDescriptor<T>().GeoShapePolygon(selector);
-
-		public static QueryContainer GeoShapeGeometryCollection(Func<GeoShapeGeometryCollectionQueryDescriptor<T>, IGeoShapeGeometryCollectionQuery> selector) =>
-			new QueryContainerDescriptor<T>().GeoShapeGeometryCollection(selector);
+		public static QueryContainer GeoShape(Func<GeoShapeQueryDescriptor<T>, IGeoShapeQuery> selector) =>
+			new QueryContainerDescriptor<T>().GeoShape(selector);
 
 		public static QueryContainer HasChild<TChild>(Func<HasChildQueryDescriptor<TChild>, IHasChildQuery> selector) where TChild : class =>
 			new QueryContainerDescriptor<T>().HasChild<TChild>(selector);
@@ -82,10 +55,6 @@ namespace Nest
 
 		public static QueryContainer Ids(Func<IdsQueryDescriptor, IIdsQuery> selector) =>
 			new QueryContainerDescriptor<T>().Ids(selector);
-
-		[Obsolete("Deprecated. You can specify _index on the query to target specific indices")]
-		public static QueryContainer Indices(Func<IndicesQueryDescriptor<T>, IIndicesQuery> selector) =>
-			new QueryContainerDescriptor<T>().Indices(selector);
 
 		public static QueryContainer Match(Func<MatchQueryDescriptor<T>, IMatchQuery> selector) =>
 			new QueryContainerDescriptor<T>().Match(selector);
@@ -168,10 +137,6 @@ namespace Nest
 		public static QueryContainer SpanFieldMasking(Func<SpanFieldMaskingQueryDescriptor<T>, ISpanFieldMaskingQuery> selector) =>
 			new QueryContainerDescriptor<T>().SpanFieldMasking(selector);
 
-		[Obsolete("Deprecated in 5.0.0. Use Search Template API instead")]
-		public static QueryContainer Template(Func<TemplateQueryDescriptor<T>, ITemplateQuery> selector) =>
-			new QueryContainerDescriptor<T>().Template(selector);
-
 		public static QueryContainer Term(Expression<Func<T, object>> fieldDescriptor, object value, double? boost = null, string name = null) =>
 			new QueryContainerDescriptor<T>().Term(fieldDescriptor, value, boost, name);
 
@@ -186,6 +151,9 @@ namespace Nest
 
 		public static QueryContainer Terms(Func<TermsQueryDescriptor<T>, ITermsQuery> selector) =>
 			new QueryContainerDescriptor<T>().Terms(selector);
+
+		public static QueryContainer TermsSet(Func<TermsSetQueryDescriptor<T>, ITermsSetQuery> selector) =>
+			new QueryContainerDescriptor<T>().TermsSet(selector);
 
 		public static QueryContainer Type(Func<TypeQueryDescriptor, ITypeQuery> selector) =>
 			new QueryContainerDescriptor<T>().Type(selector);

@@ -33,6 +33,7 @@ namespace Nest
 			public const string DocCountErrorUpperBound = "doc_count_error_upper_bound";
 			public const string Count = "count";
 			public const string DocCount = "doc_count";
+			public const string BgCount = "bg_count";
 			public const string Bounds = "bounds";
 			public const string Hits = "hits";
 			public const string Location = "location";
@@ -67,19 +68,15 @@ namespace Nest
 			public const string Meta = "meta";
 		}
 
-		public static string[] AllReservedAggregationNames { get; private set; }
-		public static string UsingReservedAggNameFormat { get; private set; }
+		public static string[] AllReservedAggregationNames { get; }
+		public static string UsingReservedAggNameFormat { get; }
 
 		static AggregateJsonConverter()
 		{
 			AllReservedAggregationNames = typeof(Parser)
 				.GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
 				.Where(f => f.IsLiteral && !f.IsInitOnly)
-#if DOTNETCORE
 				.Select(f => (string)f.GetValue(null))
-#else
-				.Select(f => (string) f.GetRawConstantValue())
-#endif
 				.ToArray();
 
 			var allKeys = string.Join(", ", AllReservedAggregationNames);
@@ -107,7 +104,7 @@ namespace Nest
 				aggregate = GetPercentilesAggregate(reader, serializer, oldFormat: true);
 
 			var meta = propertyName == Parser.Meta
-				? GetMetadata(reader)
+				? GetMetadata(serializer, reader)
 				: null;
 
 			if (aggregate != null)
@@ -188,27 +185,20 @@ namespace Nest
 			return item;
 		}
 
-		private Dictionary<string, object> GetMetadata(JsonReader reader)
+		private Dictionary<string, object> GetMetadata(JsonSerializer serializer, JsonReader reader)
 		{
-			var meta = new Dictionary<string, object>();
+			// read past "meta" property name to start of object
 			reader.Read();
-			reader.Read();
-			while (reader.TokenType != JsonToken.EndObject)
-			{
-				var key = (string) reader.Value;
-				reader.Read();
-				var value = reader.Value;
-				meta.Add(key, value);
-				reader.Read();
-			}
+			var meta = serializer.Deserialize<Dictionary<string, object>>(reader);
+			// read past the closing end object of "meta" object
 			reader.Read();
 			return meta;
 		}
 
-		private IAggregate GetMatrixStatsAggregate(JsonReader reader, JsonSerializer serializer)
+		private IAggregate GetMatrixStatsAggregate(JsonReader reader, JsonSerializer serializer, long? docCount = null)
 		{
 			reader.Read();
-			var matrixStats = new MatrixStatsAggregate();
+			var matrixStats = new MatrixStatsAggregate {DocCount = docCount};
 			var array = JArray.Load(reader);
 			matrixStats.Fields = array.ToObject<List<MatrixStatsField>>();
 			return matrixStats;
@@ -225,17 +215,27 @@ namespace Nest
 			var maxScore = o[Parser.MaxScore].ToObject<double?>();
 			var hits = o[Parser.Hits].Children().OfType<JObject>();
 			reader.Read();
-			return new TopHitsAggregate(hits, serializer) {Total = total, MaxScore = maxScore};
+			//using request/response serializer here because doc is wrapped in NEST's Hit<T>
+			var s = serializer.GetConnectionSettings().RequestResponseSerializer;
+			var lazyHits = hits.Select(h => new LazyDocument(h,s)).ToList();
+			return new TopHitsAggregate(lazyHits)
+			{
+				Total = total,
+				MaxScore = maxScore
+			};
 		}
 
 		private IAggregate GetGeoCentroidAggregate(JsonReader reader, JsonSerializer serializer)
 		{
 			reader.Read();
 			var geoCentroid = new GeoCentroidAggregate {Location = serializer.Deserialize<GeoLocation>(reader)};
-			reader.Read(); //count property
 			reader.Read();
-			geoCentroid.Count = (long)reader.Value;
-			reader.Read(); //trailing }
+			if (reader.TokenType == JsonToken.PropertyName && (string) reader.Value == Parser.Count)
+			{
+				reader.Read();
+				geoCentroid.Count = (long) reader.Value;
+				reader.Read();
+			}
 			return geoCentroid;
 		}
 
@@ -302,19 +302,34 @@ namespace Nest
 		{
 			reader.Read();
 			var docCount = (reader.Value as long?).GetValueOrDefault(0);
-			var bucket = new SingleBucketAggregate {DocCount = docCount};
 			reader.Read();
+			long bgCount = 0;
+			if ((string)reader.Value == Parser.BgCount)
+			{
+				reader.Read();
+				bgCount = (reader.Value as long?).GetValueOrDefault(0);
+				reader.Read();
+
+			}
+			if ((string)reader.Value == Parser.Fields)
+				return GetMatrixStatsAggregate(reader, serializer, docCount);
+
 			if (reader.TokenType == JsonToken.PropertyName && (string) reader.Value == Parser.Buckets)
 			{
 				var b = this.GetMultiBucketAggregate(reader, serializer) as BucketAggregate;
 				return new BucketAggregate
 				{
+					BgCount = bgCount,
 					DocCount = docCount,
-					Items = b.Items
+					Items = b?.Items ?? EmptyReadOnly<IBucket>.Collection
 				};
 			}
 
-			bucket.Aggregations = this.GetSubAggregates(reader, serializer);
+			var nestedAggregations = this.GetSubAggregates(reader, serializer);
+			var bucket = new SingleBucketAggregate(nestedAggregations)
+			{
+				DocCount = docCount
+			};
 
 			return bucket;
 		}
@@ -428,7 +443,7 @@ namespace Nest
 			return extendedStatsMetric;
 		}
 
-		private IReadOnlyDictionary<string, IAggregate> GetSubAggregates(JsonReader reader, JsonSerializer serializer)
+		private Dictionary<string, IAggregate> GetSubAggregates(JsonReader reader, JsonSerializer serializer)
 		{
 			if (reader.TokenType != JsonToken.PropertyName)
 				return null;
@@ -472,14 +487,14 @@ namespace Nest
 			{
 				reader.Read();
 				var aggs = new Dictionary<string, IAggregate>();
-				do
+				while (reader.TokenType != JsonToken.EndObject)
 				{
 					var name = reader.Value.ToString();
 					reader.Read();
 					var innerAgg = this.ReadAggregate(reader, serializer);
 					aggs.Add(name, innerAgg);
 					reader.Read();
-				} while (reader.TokenType != JsonToken.EndObject);
+				}
 
 				reader.Read();
 				return new FiltersAggregate(aggs);
@@ -562,12 +577,16 @@ namespace Nest
 				return valueMetric;
 			}
 
-			var scriptedMetric = serializer.Deserialize(reader);
 
+			//var scriptedMetric = serializer.Deserialize(reader);
+			var scriptedMetric = JToken.ReadFrom(reader);
 
 			reader.Read();
 			if (scriptedMetric != null)
-				return new ScriptedMetricAggregate {_Value = scriptedMetric};
+			{
+				var s = serializer.GetConnectionSettings().SourceSerializer;
+				return new ScriptedMetricAggregate(new LazyDocument(scriptedMetric, s));
+			}
 
 			return valueMetric;
 		}
@@ -618,7 +637,9 @@ namespace Nest
 				}
 			}
 
-			var bucket = new RangeBucket
+			var nestedAggregations = this.GetSubAggregates(reader, serializer);
+
+			var bucket = new RangeBucket(nestedAggregations)
 			{
 				Key = key,
 				From = fromDouble,
@@ -626,7 +647,6 @@ namespace Nest
 				DocCount = docCount.GetValueOrDefault(),
 				FromAsString = fromAsString,
 				ToAsString = toAsString,
-				Aggregations = this.GetSubAggregates(reader, serializer)
 			};
 
 			return bucket;
@@ -643,12 +663,13 @@ namespace Nest
 			var docCount = (reader.Value as long?).GetValueOrDefault(0);
 			reader.Read();
 
-			var dateHistogram = new DateHistogramBucket
+			var nestedAggregations = this.GetSubAggregates(reader, serializer);
+
+			var dateHistogram = new DateHistogramBucket(nestedAggregations)
 			{
 				Key = key,
 				KeyAsString = keyAsString,
 				DocCount = docCount,
-				Aggregations = this.GetSubAggregates(reader, serializer)
 			};
 
 			return dateHistogram;
@@ -663,61 +684,69 @@ namespace Nest
 			if (propertyName == Parser.From || propertyName == Parser.To)
 				return GetRangeBucket(reader, serializer, key as string);
 
-			var bucket = new KeyedBucket<object> {Key = key};
+			string keyAsString = null;
 
 			if (propertyName == Parser.KeyAsString)
 			{
-				bucket.KeyAsString = reader.ReadAsString();
+				keyAsString = reader.ReadAsString();
 				reader.Read();
 			}
 
 			reader.Read(); //doc_count;
 			var docCount = reader.Value as long?;
-			bucket.DocCount = docCount.GetValueOrDefault(0);
 			reader.Read();
 
 			var nextProperty = (string) reader.Value;
 			if (nextProperty == Parser.Score)
-				return GetSignificantTermsBucket(reader, serializer, bucket);
+				return GetSignificantTermsBucket(reader, serializer, key, keyAsString, docCount);
 
+			long? docCountErrorUpperBound = null;
 			if (nextProperty == Parser.DocCountErrorUpperBound)
 			{
 				reader.Read();
-				bucket.DocCountErrorUpperBound = reader.Value as long?;
+				docCountErrorUpperBound = reader.Value as long?;
 				reader.Read();
 			}
-			bucket.Aggregations = this.GetSubAggregates(reader, serializer);
+			var nestedAgregates = this.GetSubAggregates(reader, serializer);
+			var bucket = new KeyedBucket<object>(nestedAgregates)
+			{
+				Key = key,
+				KeyAsString = keyAsString,
+				DocCount = docCount.GetValueOrDefault(0),
+				DocCountErrorUpperBound = docCountErrorUpperBound
+			};
 			return bucket;
 		}
 
-		private IBucket GetSignificantTermsBucket(JsonReader reader, JsonSerializer serializer, KeyedBucket<object> keyItem)
+		private IBucket GetSignificantTermsBucket(JsonReader reader, JsonSerializer serializer, object key, string keyAsString, long? docCount)
 		{
 			reader.Read();
 			var score = reader.Value as double?;
 			reader.Read();
 			reader.Read();
 			var bgCount = reader.Value as long?;
-			var significantTermItem = new SignificantTermsBucket()
+			reader.Read();
+			var nestedAggregations = this.GetSubAggregates(reader, serializer);
+			var significantTermItem = new SignificantTermsBucket(nestedAggregations)
 			{
-				Key = keyItem.Key as string,
-				DocCount = keyItem.DocCount.GetValueOrDefault(0),
+				Key = key as string,
+				DocCount = docCount.GetValueOrDefault(0),
 				BgCount = bgCount.GetValueOrDefault(0),
 				Score = score.GetValueOrDefault(0)
 			};
-			reader.Read();
-			significantTermItem.Aggregations = this.GetSubAggregates(reader, serializer);
 			return significantTermItem;
 		}
 
 		private IBucket GetFiltersBucket(JsonReader reader, JsonSerializer serializer)
 		{
 			reader.Read();
-			var filtersBucketItem = new FiltersBucketItem
-			{
-				DocCount = (reader.Value as long?).GetValueOrDefault(0)
-			};
+			var docCount = (reader.Value as long?).GetValueOrDefault(0);
 			reader.Read();
-			filtersBucketItem.Aggregations = this.GetSubAggregates(reader, serializer);
+			var nestedAggregations = this.GetSubAggregates(reader, serializer);
+			var filtersBucketItem = new FiltersBucketItem(nestedAggregations)
+			{
+				DocCount = docCount
+			};
 			return filtersBucketItem;
 		}
 	}

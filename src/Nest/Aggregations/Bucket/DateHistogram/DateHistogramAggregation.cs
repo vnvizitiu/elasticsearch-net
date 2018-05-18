@@ -37,7 +37,7 @@ namespace Nest
 		HistogramOrder Order { get; set; }
 
 		[JsonProperty("extended_bounds")]
-		ExtendedBounds<DateTime> ExtendedBounds { get; set; }
+		ExtendedBounds<DateMath> ExtendedBounds { get; set; }
 
 		[JsonProperty("missing")]
 		DateTime? Missing { get; set; }
@@ -53,22 +53,19 @@ namespace Nest
 
 		public string Format
 		{
-			get
-			{
-				return !string.IsNullOrEmpty(_format) &&
-					!_format.Contains("date_optional_time") &&
-					ExtendedBounds != null
-					? _format + "||date_optional_time"
-					: _format;
-			}
-			set { _format = value; }
+			get => !string.IsNullOrEmpty(_format) &&
+			       !_format.Contains("date_optional_time") &&
+			       (ExtendedBounds != null || Missing.HasValue)
+				? _format + "||date_optional_time"
+				: _format;
+			set => _format = value;
 		}
 
 		public int? MinimumDocumentCount { get; set; }
 		public string TimeZone { get; set; }
 		public string Offset { get; set; }
 		public HistogramOrder Order { get; set; }
-		public ExtendedBounds<DateTime> ExtendedBounds { get; set; }
+		public ExtendedBounds<DateMath> ExtendedBounds { get; set; }
 		public DateTime? Missing { get; set; }
 
 		internal DateHistogramAggregation() { }
@@ -94,15 +91,12 @@ namespace Nest
 
 		string IDateHistogramAggregation.Format
 		{
-			get
-			{
-				return !string.IsNullOrEmpty(_format) &&
-					!_format.Contains("date_optional_time") &&
-					Self.ExtendedBounds != null
-					? _format + "||date_optional_time"
-					: _format;
-			}
-			set { _format = value; }
+			get => !string.IsNullOrEmpty(_format) &&
+			       !_format.Contains("date_optional_time") &&
+			       (Self.ExtendedBounds != null || Self.Missing.HasValue)
+				? _format + "||date_optional_time"
+				: _format;
+			set => _format = value;
 		}
 
 		int? IDateHistogramAggregation.MinimumDocumentCount { get; set; }
@@ -113,7 +107,7 @@ namespace Nest
 
 		HistogramOrder IDateHistogramAggregation.Order { get; set; }
 
-		ExtendedBounds<DateTime> IDateHistogramAggregation.ExtendedBounds { get; set; }
+		ExtendedBounds<DateMath> IDateHistogramAggregation.ExtendedBounds { get; set; }
 
 		DateTime? IDateHistogramAggregation.Missing { get; set; }
 
@@ -133,7 +127,7 @@ namespace Nest
 
 		public DateHistogramAggregationDescriptor<T> Format(string format) => Assign(a => a.Format = format);
 
-		public DateHistogramAggregationDescriptor<T> MinimumDocumentCount(int minimumDocumentCount) =>
+		public DateHistogramAggregationDescriptor<T> MinimumDocumentCount(int? minimumDocumentCount) =>
 			Assign(a => a.MinimumDocumentCount = minimumDocumentCount);
 
 		public DateHistogramAggregationDescriptor<T> TimeZone(string timeZone) => Assign(a => a.TimeZone = timeZone);
@@ -148,9 +142,9 @@ namespace Nest
 		public DateHistogramAggregationDescriptor<T> OrderDescending(string key) =>
 			Assign(a => a.Order = new HistogramOrder { Key = key, Order = SortOrder.Descending });
 
-		public DateHistogramAggregationDescriptor<T> ExtendedBounds(DateTime min, DateTime max) =>
-			Assign(a=>a.ExtendedBounds = new ExtendedBounds<DateTime> { Minimum = min, Maximum = max });
+		public DateHistogramAggregationDescriptor<T> ExtendedBounds(DateMath min, DateMath max) =>
+			Assign(a=>a.ExtendedBounds = new ExtendedBounds<DateMath> { Minimum = min, Maximum = max });
 
-		public DateHistogramAggregationDescriptor<T> Missing(DateTime missing) => Assign(a => a.Missing = missing);
+		public DateHistogramAggregationDescriptor<T> Missing(DateTime? missing) => Assign(a => a.Missing = missing);
 	}
 }

@@ -21,13 +21,12 @@ namespace Tests.Reproduce
 		public void DeleteNonExistentDocumentReturnsNotFound()
 		{
 			var client = _cluster.Client;
-			var response = client.Delete<Project>("non-existent-id");
+			var response = client.Delete<Project>("non-existent-id", d => d.Routing("routing"));
 
-			response.ShouldBeValid();
-			response.Found.Should().BeFalse();
+			response.ShouldNotBeValid();
 			response.Result.Should().Be(Result.NotFound);
 			response.Index.Should().Be("project");
-			response.Type.Should().Be("project");
+			response.Type.Should().Be("doc");
 			response.Id.Should().Be("non-existent-id");
 		}
 	}

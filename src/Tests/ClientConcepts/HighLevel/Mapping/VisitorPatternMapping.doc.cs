@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using Nest;
 using Newtonsoft.Json;
 using Tests.Framework;
@@ -12,24 +13,20 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
      * === Applying conventions through the Visitor pattern
      * It is also possible to apply a transformation on all or specific properties.
      *
-     * `.AutoMap()` internally implements the https://en.wikipedia.org/wiki/Visitor_pattern[visitor pattern]. 
-     * The default visitor, `NoopPropertyVisitor`, does nothing and acts as a blank canvas for you 
+     * `.AutoMap()` internally implements the https://en.wikipedia.org/wiki/Visitor_pattern[visitor pattern].
+     * The default visitor, `NoopPropertyVisitor`, does nothing and acts as a blank canvas for you
      * to implement your own visiting methods.
      *
-     * For instance, let's create a custom visitor that disables doc values for numeric and boolean types
-     * (Not really a good idea in practice, but let's do it anyway for the sake of a clear example.)
+     * For instance, let's create a custom visitor that disables doc values for numeric and boolean types -
+     * __This is not really a good idea in practice, but let's do it anyway for the sake of a clear example.__
      */
     public class VisitorPattern
 	{
-        /**
-		* Using the following two POCOs as in previous examples,
-		*/
-        public class Company
-		{
-			public string Name { get; set; }
-			public List<Employee> Employees { get; set; }
-		}
+		private IElasticClient client = TestClient.GetInMemoryClient(c => c.DisableDirectStreaming());
 
+        /**
+		* Using the following POCO
+		*/
 		public class Employee
 		{
 			public string FirstName { get; set; }
@@ -68,15 +65,17 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 		public void UsingACustomPropertyVisitor()
 		{
 			/** Now we can pass an instance of our custom visitor to `.AutoMap()` */
-			var descriptor = new CreateIndexDescriptor("myindex")
+			var createIndexResponse = client.CreateIndex("myindex", c => c
 				.Mappings(ms => ms
 					.Map<Employee>(m => m.AutoMap(new DisableDocValuesPropertyVisitor()))
-				);
+				)
+			);
 
 			/** and any time the client maps a property of the POCO (Employee in this example) as a number (INumberProperty) or boolean (IBooleanProperty),
 			 * it will apply the transformation defined in each `Visit()` call respectively, which in this example
 			 * disables {ref_current}/doc-values.html[doc_values].
 			 */
+			// json
 			var expected = new
 			{
 				mappings = new
@@ -96,7 +95,15 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 							},
 							firstName = new
 							{
-								type = "string"
+								type = "text",
+								fields = new
+								{
+									keyword = new
+									{
+										type = "keyword",
+										ignore_above = 256
+									}
+								}
 							},
 							isManager = new
 							{
@@ -105,24 +112,40 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 							},
 							lastName = new
 							{
-								type = "string"
+								type = "text",
+								fields = new
+								{
+									keyword = new
+									{
+										type = "keyword",
+										ignore_above = 256
+									}
+								}
 							},
 							salary = new
 							{
 								doc_values = false,
 								type = "integer"
+							},
+							hours = new
+							{
+								doc_values = false,
+								type = "long"
 							}
 						}
 					}
 				}
 			};
+
+			// hide
+			Expect(expected).NoRoundTrip().WhenSerializing(Encoding.UTF8.GetString(createIndexResponse.ApiCall.RequestBodyInBytes));
 		}
 
         /**
 		 * ==== Visiting on PropertyInfo
 		 * You can even take the visitor approach a step further, and instead of visiting on `IProperty` types, visit
-		 * directly on your POCO reflected `PropertyInfo` properties. 
-         * 
+		 * directly on your POCO reflected `PropertyInfo` properties.
+         *
          * As an example, let's create a visitor that maps all CLR types to an Elasticsearch text datatype (`ITextProperty`).
 		 */
         public class EverythingIsATextPropertyVisitor : NoopPropertyVisitor
@@ -133,10 +156,11 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 		[U]
 		public void UsingACustomPropertyVisitorOnPropertyInfo()
 		{
-			var descriptor = new CreateIndexDescriptor("myindex")
+			var createIndexResponse = client.CreateIndex("myindex", c => c
 				.Mappings(ms => ms
 					.Map<Employee>(m => m.AutoMap(new EverythingIsATextPropertyVisitor()))
-				);
+				)
+			);
 
             /**
              */
@@ -172,7 +196,7 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 							salary = new
 							{
 								type = "text"
-							},							
+							},
                             hours = new
 							{
 								type = "text"
@@ -182,8 +206,60 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 				}
 			};
 
-            // hide
-		    Expect(expected).WhenSerializing((ICreateIndexRequest) descriptor);
+			// hide
+			Expect(expected).NoRoundTrip().WhenSerializing(Encoding.UTF8.GetString(createIndexResponse.ApiCall.RequestBodyInBytes));
+		}
+        /**
+		 * ==== Skip properties
+         *
+         * Through implementing `SkipProperty` on the visitor, you can prevent certain properties from being mapped.
+         *
+         * In this example, we skip the inherited properties of the type from which `DictionaryDocument` is derived
+         *
+		 */
+		public class DictionaryDocument : SortedDictionary<string, dynamic>
+		{
+			public int Id { get; set; }
+		}
+
+        public class IgnoreInheritedPropertiesVisitor<T>  : NoopPropertyVisitor
+		{
+			public override bool SkipProperty(PropertyInfo propertyInfo, ElasticsearchPropertyAttributeBase attribute)
+			{
+				return propertyInfo?.DeclaringType != typeof(T);
+			}
+		}
+
+		[U] public void HidesInheritedMembers()
+		{
+			var createIndexResponse = client.CreateIndex("myindex", c => c
+				.Mappings(ms => ms
+					.Map<DictionaryDocument>(m => m.AutoMap(new IgnoreInheritedPropertiesVisitor<DictionaryDocument>()))
+				)
+			);
+
+            /**
+             */
+            // json
+			var expected = new
+			{
+				mappings = new
+				{
+					dictionarydocument = new
+					{
+						properties = new
+						{
+							id = new
+							{
+								type = "integer"
+							}
+						}
+					}
+				}
+			};
+
+			// hide
+			Expect(expected).NoRoundTrip().WhenSerializing(Encoding.UTF8.GetString(createIndexResponse.ApiCall.RequestBodyInBytes));
 		}
 	}
 }

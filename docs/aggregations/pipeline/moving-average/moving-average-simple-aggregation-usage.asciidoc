@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,23 +19,20 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Size(0)
-.Aggregations(a => a
-    .DateHistogram("projects_started_per_month", dh => dh
-        .Field(p => p.StartedOn)
-        .Interval(DateInterval.Month)
-        .Aggregations(aa => aa
-            .Sum("commits", sm => sm
-                .Field(p => p.NumberOfCommits)
-            )
-            .MovingAverage("commits_moving_avg", mv => mv
-                .BucketsPath("commits")
-                .Window(30)
-                .Predict(10)
-                .Model(m => m
-                    .Simple()
-                )
+a => a
+.DateHistogram("projects_started_per_month", dh => dh
+    .Field(p => p.StartedOn)
+    .Interval(DateInterval.Month)
+    .Aggregations(aa => aa
+        .Sum("commits", sm => sm
+            .Field(p => p.NumberOfCommits)
+        )
+        .MovingAverage("commits_moving_avg", mv => mv
+            .BucketsPath("commits")
+            .Window(30)
+            .Predict(10)
+            .Model(m => m
+                .Simple()
             )
         )
     )
@@ -46,22 +43,18 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>()
+new DateHistogramAggregation("projects_started_per_month")
 {
-    Size = 0,
-    Aggregations = new DateHistogramAggregation("projects_started_per_month")
-    {
-        Field = "startedOn",
-        Interval = DateInterval.Month,
-        Aggregations =
-            new SumAggregation("commits", "numberOfCommits") &&
-            new MovingAverageAggregation("commits_moving_avg", "commits")
-            {
-                Window = 30,
-                Predict = 10,
-                Model = new SimpleModel()
-            }
-    }
+    Field = "startedOn",
+    Interval = DateInterval.Month,
+    Aggregations =
+        new SumAggregation("commits", "numberOfCommits")
+        && new MovingAverageAggregation("commits_moving_avg", "commits")
+        {
+            Window = 30,
+            Predict = 10,
+            Model = new SimpleModel()
+        }
 }
 ----
 
@@ -69,27 +62,24 @@ new SearchRequest<Project>()
 .Example json output
 ----
 {
-  "size": 0,
-  "aggs": {
-    "projects_started_per_month": {
-      "date_histogram": {
-        "field": "startedOn",
-        "interval": "month"
+  "projects_started_per_month": {
+    "date_histogram": {
+      "field": "startedOn",
+      "interval": "month"
+    },
+    "aggs": {
+      "commits": {
+        "sum": {
+          "field": "numberOfCommits"
+        }
       },
-      "aggs": {
-        "commits": {
-          "sum": {
-            "field": "numberOfCommits"
-          }
-        },
-        "commits_moving_avg": {
-          "moving_avg": {
-            "buckets_path": "commits",
-            "model": "simple",
-            "window": 30,
-            "predict": 10,
-            "settings": {}
-          }
+      "commits_moving_avg": {
+        "moving_avg": {
+          "buckets_path": "commits",
+          "model": "simple",
+          "window": 30,
+          "predict": 10,
+          "settings": {}
         }
       }
     }
@@ -103,7 +93,7 @@ new SearchRequest<Project>()
 ----
 response.ShouldBeValid();
 
-var projectsPerMonth = response.Aggs.DateHistogram("projects_started_per_month");
+var projectsPerMonth = response.Aggregations.DateHistogram("projects_started_per_month");
 projectsPerMonth.Should().NotBeNull();
 projectsPerMonth.Buckets.Should().NotBeNull();
 projectsPerMonth.Buckets.Count.Should().BeGreaterThan(0);

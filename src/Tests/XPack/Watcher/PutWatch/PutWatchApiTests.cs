@@ -179,19 +179,19 @@ namespace Tests.XPack.Watcher.PutWatch
 						{
 							script = new
 							{
-								inline = "return [ 'time' : ctx.trigger.scheduled_time ]",
+								source = "return [ 'time' : ctx.trigger.scheduled_time ]",
 							}
 						}
 					}
 				},
 				condition = new
 				{
-					array_compare = new JObject
+					array_compare = new Dictionary<string, object>
 					{
-						{ "ctx.payload.search.aggregations.top_project_tags.buckets", new JObject
+						{ "ctx.payload.search.aggregations.top_project_tags.buckets", new Dictionary<string, object>
 							{
 								{ "path", "doc_count" },
-								{ "gte", new JObject { { "value", 1 } } }
+								{ "gte", new Dictionary<string, object> { { "value", 1 } } }
 							}
 						}
 					}
@@ -226,7 +226,7 @@ namespace Tests.XPack.Watcher.PutWatch
 									http = new
 									{
 										inline = true,
-										content_type = "application/json",
+										content_type = RequestData.MimeType,
 										request = new
 										{
 											url = "http://localhost:8080/http_attachment"
@@ -403,7 +403,7 @@ namespace Tests.XPack.Watcher.PutWatch
 					)
 					.Transform(ctt => ctt
 						.Script(st => st
-							.Inline("return [ 'time' : ctx.trigger.scheduled_time ]")
+							.Source("return [ 'time' : ctx.trigger.scheduled_time ]")
 						)
 					)
 				)
@@ -437,7 +437,7 @@ namespace Tests.XPack.Watcher.PutWatch
 					.Attachments(ea => ea
 						.HttpAttachment("http_attachment", ha => ha
 							.Inline()
-							.ContentType("application/json")
+							.ContentType(RequestData.MimeType)
 							.Request(r => r
 								.Url("http://localhost:8080/http_attachment")
 							)
@@ -622,7 +622,7 @@ namespace Tests.XPack.Watcher.PutWatch
 								"http_attachment", new HttpAttachment
 								{
 									Inline = true,
-									ContentType = "application/json",
+									ContentType = RequestData.MimeType,
 									Request = new HttpInputRequest
 									{
 										Url = "http://localhost:8080/http_attachment"

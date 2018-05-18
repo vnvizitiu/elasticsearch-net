@@ -176,7 +176,15 @@ namespace Tests.Ingest.PutPipeline
 				{
 					script = new
 					{
-						inline = "ctx.numberOfCommits++"
+						source = "ctx.numberOfCommits++"
+					}
+				},
+				new
+				{
+					urldecode = new
+					{
+						field = "description",
+						ignore_missing = true
 					}
 				}
 			}
@@ -258,7 +266,11 @@ namespace Tests.Ingest.PutPipeline
 					.Field("field.withDots")
 				)
 				.Script(s => s
-					.Inline("ctx.numberOfCommits++")
+					.Source("ctx.numberOfCommits++")
+				)
+				.UrlDecode<Project>(ud => ud
+					.Field(p => p.Description)
+					.IgnoreMissing()
 				)
 			);
 
@@ -355,7 +367,12 @@ namespace Tests.Ingest.PutPipeline
 				},
 				new ScriptProcessor
 				{
-					Inline = "ctx.numberOfCommits++"
+					Source = "ctx.numberOfCommits++"
+				},
+				new UrlDecodeProcessor
+				{
+					Field = "description",
+					IgnoreMissing = true
 				}
 			}
 		};

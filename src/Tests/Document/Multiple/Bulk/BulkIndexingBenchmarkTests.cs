@@ -13,7 +13,7 @@ using Tests.Framework.Profiling.Performance;
 
 namespace Tests.Document.Multiple.Bulk
 {
-	[Config(typeof(FastRunConfig))]
+	[BenchmarkConfig]
 	public class BulkIndexingBenchmarkTests : IDisposable
 	{
 		private List<IEnumerable<Message>> _messages;
@@ -30,8 +30,6 @@ namespace Tests.Document.Multiple.Bulk
 					.NumberOfReplicas(0)
 					.RefreshInterval("30s")
 					.Setting("index.store.type", "mmapfs")
-					.Setting("index.store.throttle.type", "none")
-					.Setting("indices.store.throttle.type", "none")
 					.Setting("indices.memory.index_buffer_size", "10%")
 					.Setting("index.translog.flush_threshold_size", "4g")
 					.Setting("index.translog.flush_threshold_ops", 500000)
@@ -42,7 +40,9 @@ namespace Tests.Document.Multiple.Bulk
 			);
 		}
 
+#pragma warning disable 618
 		[Setup]
+#pragma warning restore 618
 		[ProfilingSetup]
 		public void Setup()
 		{

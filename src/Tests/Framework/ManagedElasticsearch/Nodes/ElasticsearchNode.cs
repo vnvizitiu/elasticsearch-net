@@ -1,18 +1,15 @@
 using System;
 using System.Collections.Specialized;
+using System.IO;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Elasticsearch.Net;
 using Nest;
-using Tests.Framework.Configuration;
 using Tests.Framework.Integration;
 using Tests.Framework.ManagedElasticsearch.Process;
+using Tests.Framework.ManagedElasticsearch.SourceSerializers;
 using Tests.Framework.Versions;
-#if !DOTNETCORE
-using XplatManualResetEvent = System.Threading.ManualResetEvent;
-
-#endif
 
 namespace Tests.Framework.ManagedElasticsearch.Nodes
 {
@@ -35,24 +32,25 @@ namespace Tests.Framework.ManagedElasticsearch.Nodes
 
 		private bool RunningOnCI { get; }
 
+		public bool UsingSourceSerializer { get; }
+
 		public ElasticsearchNode(NodeConfiguration config)
 		{
 			this._config = config;
 			this.FileSystem = config.FileSystem;
 			this.RunningOnCI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TEAMCITY_VERSION"));
 			this.Port = config.DesiredPort;
-			if (this._config.RunIntegrationTests && !this._config.TestAgainstAlreadyRunningElasticsearch) return;
+			this.UsingSourceSerializer = config.Random.SourceSerializer ;
 		}
 
 		private readonly object _lockGetClient = new object { };
-		private IElasticClient _client;
+		private volatile IElasticClient _client;
 
 		public IElasticClient Client
 		{
 			get
 			{
-				if (!this.Started && TestClient.Configuration.RunIntegrationTests)
-					throw new Exception("can not request a client from an ElasticsearchNode if that node hasn't started yet");
+				ThrowIfNotStarted();
 
 				if (this._client != null) return this._client;
 
@@ -61,13 +59,31 @@ namespace Tests.Framework.ManagedElasticsearch.Nodes
 					if (this._client != null) return this._client;
 
 					var port = this.Started ? this.Port : 9200;
-					this._client = TestClient.GetClient(ComposeSettings, port, forceSsl: this._config.EnableSsl);
-					return this.Client;
+
+					this._client = TestClient.GetClient(
+						ComposeSettings,
+						port,
+						forceSsl: this._config.EnableSsl,
+						sourceSerializerFactory: (builtin, settings) =>
+						{
+							var customSourceSerializer = new TestSourceSerializerBase(builtin, settings);
+							return this.UsingSourceSerializer ? customSourceSerializer : null;
+						}
+					);
 				}
+				return this._client;
 			}
 		}
 
-		public void Start(string[] settings)
+		private void ThrowIfNotStarted()
+		{
+			if (this.Started || !TestClient.Configuration.RunIntegrationTests) return;
+			var logFile = Path.Combine(this.FileSystem.LogsPath, $"{this._config.ClusterName}.log");
+			throw new Exception($"cannot request a client from an ElasticsearchNode that hasn't started yet. " +
+			                    $"Check the log at {logFile} to see if there was an issue starting");
+		}
+
+		public void Start(string[] settings, TimeSpan startTimeout)
 		{
 			if (!this._config.RunIntegrationTests || this.Started) return;
 			lock (_lock)
@@ -82,7 +98,6 @@ namespace Tests.Framework.ManagedElasticsearch.Nodes
 					return;
 				}
 
-				var timeout = TimeSpan.FromMinutes(1);
 				var handle = new XplatManualResetEvent(false);
 				var booted = false;
 				var process = new ObservableProcess(this.FileSystem.Binary, settings);
@@ -95,8 +110,8 @@ namespace Tests.Framework.ManagedElasticsearch.Nodes
 						.Subscribe(s => this.HandleConsoleMessage(s, handle), e => throw e, () => handle.Set());
 					this._composite.Add(subscription);
 
-					if (!handle.WaitOne(timeout, true))
-						throw new Exception($"Could not start elasticsearch within {timeout}");
+					if (!handle.WaitOne(startTimeout, true))
+						throw new Exception($"Could not start elasticsearch within {startTimeout}");
 
 					booted = true;
 				}
@@ -133,7 +148,7 @@ namespace Tests.Framework.ManagedElasticsearch.Nodes
 
 			if (this.ProcessId == null && consoleOut.TryParseNodeInfo(out version, out pid))
 			{
-				var startedVersion = ElasticsearchVersion.GetOrAdd(version);
+				var startedVersion = ElasticsearchVersion.Create(version);
 				this.ProcessId = pid;
 				if (this.Version != startedVersion)
 					throw new Exception($"Booted elasticsearch is version {startedVersion} but the test config dictates {this.Version}");

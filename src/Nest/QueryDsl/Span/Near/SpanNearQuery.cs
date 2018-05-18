@@ -9,20 +9,14 @@ namespace Nest
 	[JsonConverter(typeof(ReadAsTypeJsonConverter<SpanNearQueryDescriptor<object>>))]
 	public interface ISpanNearQuery : ISpanSubQuery
 	{
-		[JsonProperty(PropertyName = "clauses")]
+		[JsonProperty("clauses")]
 		IEnumerable<ISpanQuery> Clauses { get; set; }
 
-		[JsonProperty(PropertyName = "slop")]
+		[JsonProperty("slop")]
 		int? Slop { get; set; }
 
-		[JsonProperty(PropertyName = "in_order")]
+		[JsonProperty("in_order")]
 		bool? InOrder { get; set; }
-
-#pragma warning disable 618
-		[JsonProperty(PropertyName = "collect_payloads")]
-		[Obsolete("Payloads will be loaded when needed")]
-		bool? CollectPayloads { get; set; }
-#pragma warning restore 618
 	}
 
 	public class SpanNearQuery : QueryBase, ISpanNearQuery
@@ -31,11 +25,6 @@ namespace Nest
 		public IEnumerable<ISpanQuery> Clauses { get; set; }
 		public int? Slop { get; set; }
 		public bool? InOrder { get; set; }
-
-#pragma warning disable 618
-		[Obsolete("Payloads will be loaded when needed")]
-		public bool? CollectPayloads { get; set; }
-#pragma warning restore 618
 
 		internal override void InternalWrapInContainer(IQueryContainer c) => c.SpanNear = this;
 		internal static bool IsConditionless(ISpanNearQuery q) => !q.Clauses.HasAny() || q.Clauses.Cast<IQuery>().All(qq => qq.Conditionless);
@@ -50,11 +39,6 @@ namespace Nest
 		int? ISpanNearQuery.Slop { get; set; }
 		bool? ISpanNearQuery.InOrder { get; set; }
 
-#pragma warning disable 618
-		[Obsolete("Payloads will be loaded when needed")]
-		bool? ISpanNearQuery.CollectPayloads { get; set; }
-#pragma warning restore 618
-
 		public SpanNearQueryDescriptor<T> Clauses(params Func<SpanQueryDescriptor<T>, SpanQueryDescriptor<T>>[] selectors) => Clauses(selectors.ToList());
 
 		public SpanNearQueryDescriptor<T> Clauses(IEnumerable<Func<SpanQueryDescriptor<T>, SpanQueryDescriptor<T>>> selectors) => Assign(a =>
@@ -65,11 +49,7 @@ namespace Nest
 
 		public SpanNearQueryDescriptor<T> Slop(int? slop) => Assign(a => a.Slop = slop);
 
-		public SpanNearQueryDescriptor<T> InOrder(bool? inOrder = false) => Assign(a => a.InOrder = inOrder);
+		public SpanNearQueryDescriptor<T> InOrder(bool? inOrder = true) => Assign(a => a.InOrder = inOrder);
 
-#pragma warning disable 618
-		[Obsolete("Payloads will be loaded when needed")]
-		public SpanNearQueryDescriptor<T> CollectPayloads(bool? collectPayloads = false) => Assign(a => a.CollectPayloads = collectPayloads);
-#pragma warning restore 618
 	}
 }

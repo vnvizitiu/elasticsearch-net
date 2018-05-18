@@ -25,6 +25,8 @@ namespace Nest
 		/// </summary>
 		[Browsable(false)]
 		[EditorBrowsable(EditorBrowsableState.Never)]
+		// ReSharper disable once BaseObjectEqualsIsObjectEquals
+		//only used to hide by default
 		public override bool Equals(object obj) => base.Equals(obj);
 
 		/// <summary>
@@ -32,6 +34,8 @@ namespace Nest
 		/// </summary>
 		[Browsable(false)]
 		[EditorBrowsable(EditorBrowsableState.Never)]
+		// ReSharper disable once BaseObjectGetHashCodeCallInGetHashCode
+		//only used to hide by default
 		public override int GetHashCode() => base.GetHashCode();
 
 		/// <summary>

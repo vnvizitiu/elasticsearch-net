@@ -22,17 +22,16 @@ namespace Nest
 		/// <summary>
 		/// The version of the deleted document.
 		/// </summary>
-		string Version { get; }
-
-		/// <summary>
-		/// Whether or not the document was found and deleted from the index.
-		/// </summary>
-		bool Found { get; }
+		long Version { get; }
 
 		/// <summary>
 		/// The operation that was performed on the document.
 		/// </summary>
 		Result Result { get; }
+
+		ShardStatistics Shards { get; }
+		long SequenceNumber { get; }
+		long PrimaryTerm { get; }
 	}
 
 
@@ -49,12 +48,18 @@ namespace Nest
 		public string Id { get; internal set; }
 
 		[JsonProperty("_version")]
-		public string Version { get; internal set; }
-
-		[JsonProperty("found")]
-		public bool Found { get; internal set; }
+		public long Version { get; internal set; }
 
 		[JsonProperty("result")]
 		public Result Result { get; internal set; }
+
+		[JsonProperty("_shards")]
+		public ShardStatistics Shards { get; internal set; }
+
+		[JsonProperty("_seq_no")]
+		public long SequenceNumber { get; internal set; }
+
+		[JsonProperty("_primary_term")]
+		public long PrimaryTerm { get; internal set; }
 	}
 }

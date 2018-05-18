@@ -98,7 +98,7 @@ namespace Nest
 			if (att != null && !att.Name.IsNullOrEmpty())
 				return att.Name;
 
-			return _settings.Serializer?.CreatePropertyMapping(info)?.Name ?? _settings.DefaultFieldNameInferrer(name);
+			return _settings.PropertyMappingProvider?.CreatePropertyMapping(info)?.Name ?? _settings.DefaultFieldNameInferrer(name);
 		}
 
 		protected override Expression VisitMember(MemberExpression expression)
@@ -151,8 +151,7 @@ namespace Nest
 		private static void VisitConstantOrVariable(MethodCallExpression methodCall, Stack<string> stack)
 		{
 			var lastArg = methodCall.Arguments.Last();
-			var constantExpression = lastArg as ConstantExpression;
-			var value = constantExpression != null
+			var value = lastArg is ConstantExpression constantExpression
 				? constantExpression.Value.ToString()
 				: Expression.Lambda(lastArg).Compile().DynamicInvoke().ToString();
 			stack.Push(value);

@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using Nest;
 using Newtonsoft.Json.Linq;
 using Tests.Framework.Integration;
@@ -27,12 +28,12 @@ namespace Tests.QueryDsl.Joining.Nested
 				boost = 1.1,
 				query = new
 				{
-					terms = new JObject
+					terms = new Dictionary<string, object>
 					{
-						{ "curatedTags.name", new JArray("lorem", "ipsum") }
+						{ "curatedTags.name", new [] {"lorem", "ipsum"} }
 					}
 				},
-				ignore_unmapped = false,
+				ignore_unmapped = true,
 				path = "curatedTags",
 				inner_hits = new
 				{
@@ -52,7 +53,7 @@ namespace Tests.QueryDsl.Joining.Nested
 				Field = Field<Project>(p => p.CuratedTags.First().Name),
 				Terms = new[] { "lorem", "ipsum" }
 			},
-			IgnoreUnmapped = false
+			IgnoreUnmapped = true
 		};
 
 		protected override QueryContainer QueryFluent(QueryContainerDescriptor<Project> q) => q

@@ -5,11 +5,29 @@ using System.Text.RegularExpressions;
 using DiffPlex;
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
+using Newtonsoft.Json.Linq;
 
 namespace Tests.Framework
 {
 	public static class DiffExtensions
 	{
+		public static void DeepSort(this JObject jObj)
+		{
+			if (jObj == null) return;
+
+			var props = jObj.Properties().ToList();
+			foreach (var prop in props)
+			{
+				prop.Remove();
+			}
+
+			foreach (var prop in props.OrderBy(p => p.Name))
+			{
+				jObj.Add(prop);
+				var o = prop.Value as JObject;
+				o?.DeepSort();
+			}
+		}
 
 		public static void Diff(this byte[] expected, byte[] actual, string message = null)
 		{
@@ -60,7 +78,7 @@ namespace Tests.Framework
 			diff += approx + ";";
 
 
-			throw new Exception(diff);
+			throw new Exception(diff.Substring(0, diff.Length > 4896 ? 4896 : diff.Length));
 		}
 
 	}

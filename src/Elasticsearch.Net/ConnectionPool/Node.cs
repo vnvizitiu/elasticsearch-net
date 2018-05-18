@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Purify;
 
 namespace Elasticsearch.Net
 {
@@ -13,7 +12,7 @@ namespace Elasticsearch.Net
 			//http://my-saas-provider.com/instance
 			if (!uri.OriginalString.EndsWith("/", StringComparison.Ordinal))
 				uri = new Uri(uri.OriginalString + "/");
-			this.Uri = uri.Purify();
+			this.Uri = uri;
 			this.IsAlive = true;
 			this.HoldsData = true;
 			this.MasterEligible = true;
@@ -47,8 +46,8 @@ namespace Elasticsearch.Net
 		/// <summary>The name of the node, defaults to null when unknown/unspecified</summary>
 		public string Name { get; set; }
 
-		private static readonly IReadOnlyDictionary<string, string> EmptySettings = new ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
-		public IReadOnlyDictionary<string, string> Settings { get; set; } = EmptySettings;
+		private static readonly IReadOnlyDictionary<string, object> EmptySettings = new ReadOnlyDictionary<string, object>(new Dictionary<string, object>());
+		public IReadOnlyDictionary<string, object> Settings { get; set; } = EmptySettings;
 
 		/// <summary> The number of failed attempts trying to use this node, resets when a node is marked alive</summary>
 		public int FailedAttempts { get; private set; }
@@ -74,7 +73,7 @@ namespace Elasticsearch.Net
 			this.DeadUntil = default(DateTime);
 		}
 
-		public Uri CreatePath(string path) => new Uri(this.Uri, path).Purify();
+		public Uri CreatePath(string path) => new Uri(this.Uri, path);
 
 		public Node Clone() =>
 			new Node(this.Uri)

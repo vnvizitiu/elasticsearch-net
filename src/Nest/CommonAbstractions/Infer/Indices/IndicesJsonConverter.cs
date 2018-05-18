@@ -8,12 +8,11 @@ namespace Nest
 {
 	internal class IndicesJsonConverter : JsonConverter
 	{
-		public override bool CanConvert(Type objectType) => typeof(Types) == objectType;
+		public override bool CanConvert(Type objectType) => typeof(Indices) == objectType;
 
 		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
 		{
-			var marker = value as Indices;
-			if (marker == null)
+			if (!(value is Indices marker))
 			{
 				writer.WriteNull();
 				return;
@@ -38,9 +37,8 @@ namespace Nest
 
 		public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
 		{
-
 			if (reader.TokenType != JsonToken.StartArray) return null;
-			var indices = new List<IndexName> { };
+			var indices = new List<IndexName>();
 			while (reader.TokenType != JsonToken.EndArray)
 			{
 				var index = reader.ReadAsString();

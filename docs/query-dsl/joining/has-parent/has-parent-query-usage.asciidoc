@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -38,7 +38,7 @@ new HasParentQuery
 {
     Name = "named_query",
     Boost = 1.1,
-    Type = Infer.Type<Developer>(),
+    ParentType = Infer.Type<Developer>(),
     InnerHits = new InnerHits { Explain = true },
     Query = new MatchAllQuery(),
     Score = true,
@@ -53,7 +53,7 @@ new HasParentQuery
   "has_parent": {
     "_name": "named_query",
     "boost": 1.1,
-    "type": "developer",
+    "parent_type": "developer",
     "score": true,
     "ignore_unmapped": true,
     "query": {

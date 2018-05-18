@@ -45,7 +45,7 @@ namespace Tests.XPack.Watcher.ExecuteWatch
 					)
 					.Condition(c => c
 						.Script(ss => ss
-							.Inline("ctx.payload.hits.total > 1")
+							.Source("ctx.payload.hits.total > 1")
 						)
 					)
 					.Trigger(t => t
@@ -316,7 +316,7 @@ namespace Tests.XPack.Watcher.ExecuteWatch
 					)
 					.Condition(c => c
 						.Script(ss => ss
-							.Inline("ctx.payload.hits.total > 1")
+							.Source("ctx.payload.hits.total > 1")
 						)
 					)
 					.Trigger(t => t
@@ -423,7 +423,7 @@ namespace Tests.XPack.Watcher.ExecuteWatch
 				{
 					script = new
 					{
-						inline = "ctx.payload.hits.total > 1"
+						source = "ctx.payload.hits.total > 1"
 					}
 				},
 				input = new
@@ -442,10 +442,10 @@ namespace Tests.XPack.Watcher.ExecuteWatch
 										{
 											new
 											{
-												range = new JObject
+												range = new Dictionary<string, object>
 												{
 													{
-														"@timestamp", new JObject
+														"@timestamp", new Dictionary<string, object>
 														{
 															{ "gte", "{{ctx.trigger.scheduled_time}}||-5m" },
 															{ "lte", "{{ctx.trigger.triggered_time}}" }
@@ -518,7 +518,7 @@ namespace Tests.XPack.Watcher.ExecuteWatch
 				)
 				.Condition(c => c
 					.Script(ss => ss
-						.Inline("ctx.payload.hits.total > 1")
+						.Source("ctx.payload.hits.total > 1")
 					)
 				)
 				.Trigger(t => t

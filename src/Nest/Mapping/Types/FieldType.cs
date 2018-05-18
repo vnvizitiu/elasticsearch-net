@@ -29,8 +29,6 @@ namespace Nest
 		/// </summary>
 		[EnumMember(Value = "binary")]
 		Binary,
-		[EnumMember(Value = "string")]
-		String,
 		[EnumMember(Value = "keyword")]
 		Keyword,
 		[EnumMember(Value = "text")]
@@ -86,5 +84,9 @@ namespace Nest
 		DoubleRange,
 		[EnumMember(Value = "date_range")]
 		DateRange,
+		[EnumMember(Value = "ip_range")]
+		IpRange,
+		[EnumMember(Value = "join")]
+		Join,
 	}
 }

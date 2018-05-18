@@ -10,12 +10,9 @@ namespace Nest
 		public Id Id { get; set; }
 		public long? Version { get; set; }
 		public VersionType? VersionType { get; set; }
-		public string Routing { get; set; }
+		public Routing Routing { get; set; }
+		[Obsolete("This property is no longer available in indices created in Elasticsearch 6.x and up")]
 		public Id Parent { get; set; }
-		[Obsolete("This property is no longer returned on indices created in Elasticsearch 5.x and up")]
-		public long? Timestamp { get; set; }
-		[Obsolete("This property is no longer returned on indices created in Elasticsearch 5.x and up")]
-		public Time Ttl { get; set; }
 		public int? RetriesOnConflict { get; set; }
 
 		string IBulkOperation.Operation => this.Operation;
@@ -28,7 +25,10 @@ namespace Nest
 		protected abstract object GetBody();
 
 		Id IBulkOperation.GetIdForOperation(Inferrer inferrer) => this.GetIdForOperation(inferrer);
+		Routing IBulkOperation.GetRoutingForOperation(Inferrer inferrer) => this.GetRoutingForOperation(inferrer);
+
 		protected virtual Id GetIdForOperation(Inferrer inferrer) => this.Id ?? new Id(this.GetBody());
+		protected virtual Routing GetRoutingForOperation(Inferrer inferrer) => this.Routing ?? new Routing(this.GetBody());
 	}
 
 	public abstract class BulkOperationDescriptorBase<TDescriptor, TInterface>
@@ -51,20 +51,19 @@ namespace Nest
 		object IBulkOperation.GetBody() => this.GetBulkOperationBody();
 
 		Id IBulkOperation.GetIdForOperation(Inferrer inferrer) => this.GetIdForOperation(inferrer);
+		Routing IBulkOperation.GetRoutingForOperation(Inferrer inferrer) => this.GetRoutingForOperation(inferrer);
 
 		protected virtual Id GetIdForOperation(Inferrer inferrer) => Self.Id ?? new Id(this.GetBulkOperationBody());
+		protected virtual Routing GetRoutingForOperation(Inferrer inferrer) => Self.Routing ?? new Routing(this.GetBulkOperationBody());
 
 		IndexName IBulkOperation.Index { get; set; }
 		TypeName IBulkOperation.Type { get; set; }
 		Id IBulkOperation.Id { get; set; }
 		long? IBulkOperation.Version { get; set; }
 		VersionType? IBulkOperation.VersionType { get; set; }
-		string IBulkOperation.Routing { get; set; }
+		Routing IBulkOperation.Routing { get; set; }
+		[Obsolete("This feature is no longer supported on indices created in Elasticsearch 6.x and up")]
 		Id IBulkOperation.Parent { get; set; }
-		[Obsolete("This property is no longer returned on indices created in Elasticsearch 5.x and up")]
-		long? IBulkOperation.Timestamp { get; set; }
-		[Obsolete("This property is no longer returned on indices created in Elasticsearch 5.x and up")]
-		Time IBulkOperation.Ttl { get; set; }
 		int? IBulkOperation.RetriesOnConflict { get; set; }
 
 		/// <summary>
@@ -87,16 +86,11 @@ namespace Nest
 
 		public TDescriptor Version(long? version) => Assign(a => a.Version = version);
 
-		public TDescriptor VersionType(VersionType versionType) => Assign(a => a.VersionType = versionType);
+		public TDescriptor VersionType(VersionType? versionType) => Assign(a => a.VersionType = versionType);
 
-		public TDescriptor Routing(string routing) => Assign(a => a.Routing = routing);
+		public TDescriptor Routing(Routing routing) => Assign(a => a.Routing = routing);
 
+		[Obsolete("This feature is no longer supported on indices created in Elasticsearch 6.x and up")]
 		public TDescriptor Parent(Id parent) => Assign(a => a.Parent = parent);
-
-		[Obsolete("This feature is no longer supported on indices created in Elasticsearch 5.x and up")]
-		public TDescriptor Timestamp(long? timestamp) => Assign(a => a.Timestamp = timestamp);
-
-		[Obsolete("This feature is no longer supported on indices created in Elasticsearch 5.x and up")]
-		public TDescriptor Ttl(Time ttl) => Assign(a => a.Ttl = ttl);
 	}
 }

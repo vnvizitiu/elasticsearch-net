@@ -1,5 +1,6 @@
 ﻿using System;
 using Elasticsearch.Net;
+using FluentAssertions;
 using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
@@ -24,13 +25,14 @@ namespace Tests.Search.Explain
 		protected override int ExpectStatusCode => 200;
 		protected override bool ExpectIsValid => true;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
-		protected override string UrlPath => $"/project/project/{UrlEncode(Project.Instance.Name)}/_explain";
+		protected override string UrlPath =>
+			$"/project/doc/{U(Project.Instance.Name)}/_explain?_source=true&routing={U(Project.Instance.Name)}";
 
 		protected override bool SupportsDeserialization => false;
 
 		protected override ExplainDescriptor<Project> NewDescriptor() => new ExplainDescriptor<Project>(_project);
 
-		private Project _project = new Project { Name = Project.Instance.Name };
+		private readonly Project _project = new Project { Name = Project.Instance.Name };
 
 		protected override object ExpectJson => new
 		{
@@ -47,6 +49,7 @@ namespace Tests.Search.Explain
 		};
 
 		protected override Func<ExplainDescriptor<Project>, IExplainRequest<Project>> Fluent => e => e
+			.SourceEnabled()
 			.Query(q => q
 				.Match(m => m
 					.Field(p => p.Name)
@@ -56,11 +59,20 @@ namespace Tests.Search.Explain
 
 		protected override ExplainRequest<Project> Initializer => new ExplainRequest<Project>(_project)
 		{
+			SourceEnabled = true,
 			Query = new QueryContainer(new MatchQuery
 			{
 				Field = "name",
 				Query = Project.Instance.Name
 			})
 		};
+
+		protected override void ExpectResponse(IExplainResponse<Project> response)
+		{
+			response.IsValid.Should().BeTrue();
+			response.Matched.Should().BeTrue();
+			response.Get.Should().NotBeNull();
+			response.Get.Source.ShouldAdhereToSourceSerializerWhenSet();
+		}
 	}
 }

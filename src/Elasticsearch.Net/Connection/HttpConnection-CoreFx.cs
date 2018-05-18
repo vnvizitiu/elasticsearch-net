@@ -1,5 +1,4 @@
-﻿#if DOTNETCORE
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -7,8 +6,6 @@ using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,15 +32,10 @@ namespace Elasticsearch.Net
 
 		protected readonly ConcurrentDictionary<int, HttpClient> Clients = new ConcurrentDictionary<int, HttpClient>();
 
-		private static readonly string CanNotUseStreamResponsesWithCurlHandler =
-				"Using Stream as TReturn does not work as expected on .NET core linux, because we can no longer guarantee this works it will be removed from the client in our 6.0 release"
-			;
-
 		private HttpClient GetClient(RequestData requestData)
 		{
 			var key = GetClientKey(requestData);
-			HttpClient client;
-			if (this.Clients.TryGetValue(key, out client)) return client;
+			if (this.Clients.TryGetValue(key, out var client)) return client;
 			lock (_lock)
 			{
 				client = this.Clients.GetOrAdd(key, h =>
@@ -62,87 +54,90 @@ namespace Elasticsearch.Net
 			return client;
 		}
 
-		public virtual ElasticsearchResponse<TReturn> Request<TReturn>(RequestData requestData) where TReturn : class
+		public virtual TResponse Request<TResponse>(RequestData requestData)
+			where TResponse : class, IElasticsearchResponse, new()
 		{
-			//TODO remove Stream response support in 6.0, closing the stream is sufficient on desktop/mono
-			//but not on .NET core on linux HttpClient which proxies to curl.
-			if (typeof(TReturn) == typeof(Stream) && ConnectionConfiguration.IsCurlHandler)
-				throw new Exception(CanNotUseStreamResponsesWithCurlHandler);
-
 			var client = this.GetClient(requestData);
-			var builder = new ResponseBuilder<TReturn>(requestData);
 			HttpResponseMessage responseMessage = null;
+			int? statusCode = null;
+			IEnumerable<string> warnings = null;
+			Stream responseStream = null;
+			Exception ex = null;
+			string mimeType = null;
 			try
 			{
 				var requestMessage = CreateHttpRequestMessage(requestData);
 				responseMessage = client.SendAsync(requestMessage).GetAwaiter().GetResult();
 				requestData.MadeItToResponse = true;
-				builder.StatusCode = (int) responseMessage.StatusCode;
-				IEnumerable<string> warnings;
-				if (responseMessage.Headers.TryGetValues("Warning", out warnings))
-					builder.DeprecationWarnings = warnings;
+				statusCode = (int) responseMessage.StatusCode;
+
+				responseMessage.Headers.TryGetValues("Warning", out warnings);
+				mimeType = responseMessage.Content.Headers.ContentType?.MediaType;
 
 				if (responseMessage.Content != null)
-					builder.Stream = responseMessage.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
+					responseStream = responseMessage.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
 				// https://github.com/elastic/elasticsearch-net/issues/2311
 				// if stream is null call dispose on response instead.
-				if (builder.Stream == null || builder.Stream == Stream.Null) responseMessage.Dispose();
+				if (responseStream == null || responseStream == Stream.Null) responseMessage.Dispose();
 			}
 			catch (TaskCanceledException e)
 			{
-				builder.Exception = e;
+				ex = e;
 			}
 			catch (HttpRequestException e)
 			{
-				builder.Exception = e;
+				ex = e;
 			}
-			var response = builder.ToResponse();
+			responseStream = responseStream ?? Stream.Null;
+			var response = ResponseBuilder.ToResponse<TResponse>(requestData, ex, statusCode, warnings, responseStream, mimeType);
+			//var response = builder.ToResponse();
 			//explicit dispose of response not needed (as documented on MSDN) on desktop CLR
 			//but we can not guarantee this is true for all HttpMessageHandler implementations
-			if (typeof(TReturn) != typeof(Stream)) responseMessage?.Dispose();
+			if (typeof(TResponse) != typeof(ElasticsearchResponse<Stream>)) responseMessage?.Dispose();
 			return response;
 		}
 
 
-		public virtual async Task<ElasticsearchResponse<TReturn>> RequestAsync<TReturn>(RequestData requestData,
-			CancellationToken cancellationToken) where TReturn : class
+		public virtual async Task<TResponse> RequestAsync<TResponse>(RequestData requestData, CancellationToken cancellationToken)
+			where TResponse : class, IElasticsearchResponse, new()
 		{
-			//TODO remove Stream response support in 6.0, closing the stream is sufficient on desktop/mono
-			//but not on .NET core on linux HttpClient which proxies to curl.
-			if (typeof(TReturn) == typeof(Stream) && ConnectionConfiguration.IsCurlHandler)
-				throw new Exception(CanNotUseStreamResponsesWithCurlHandler);
-
 			var client = this.GetClient(requestData);
-			var builder = new ResponseBuilder<TReturn>(requestData, cancellationToken);
 			HttpResponseMessage responseMessage = null;
+			int? statusCode = null;
+			IEnumerable<string> warnings = null;
+			Stream responseStream = null;
+			Exception ex = null;
+			string mimeType = null;
 			try
 			{
 				var requestMessage = CreateHttpRequestMessage(requestData);
 				responseMessage = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
 				requestData.MadeItToResponse = true;
-				builder.StatusCode = (int) responseMessage.StatusCode;
-				IEnumerable<string> warnings;
-				if (responseMessage.Headers.TryGetValues("Warning", out warnings))
-					builder.DeprecationWarnings = warnings;
+				mimeType = responseMessage.Content.Headers.ContentType?.MediaType;
+				statusCode = (int) responseMessage.StatusCode;
+				responseMessage.Headers.TryGetValues("Warning", out warnings);
 
 				if (responseMessage.Content != null)
-					builder.Stream = await responseMessage.Content.ReadAsStreamAsync().ConfigureAwait(false);
+					responseStream = await responseMessage.Content.ReadAsStreamAsync().ConfigureAwait(false);
 				// https://github.com/elastic/elasticsearch-net/issues/2311
 				// if stream is null call dispose on response instead.
-				if (builder.Stream == null || builder.Stream == Stream.Null) responseMessage.Dispose();
+				if (responseStream == null || responseStream == Stream.Null) responseMessage.Dispose();
 			}
 			catch (TaskCanceledException e)
 			{
-				builder.Exception = e;
+				ex = e;
 			}
 			catch (HttpRequestException e)
 			{
-				builder.Exception = e;
+				ex = e;
 			}
-			var response = await builder.ToResponseAsync().ConfigureAwait(false);
+			responseStream = responseStream ?? Stream.Null;
+			var response = await ResponseBuilder.ToResponseAsync<TResponse>
+					(requestData, ex, statusCode, warnings, responseStream, mimeType, cancellationToken)
+					.ConfigureAwait(false);
 			//explicit dispose of response not needed (as documented on MSDN) on desktop CLR
 			//but we can not guarantee this is true for all HttpMessageHandler implementations
-			if (typeof(TReturn) != typeof(Stream)) responseMessage?.Dispose();
+			if (typeof(TResponse) != typeof(ElasticsearchResponse<Stream>)) responseMessage?.Dispose();
 			return response;
 		}
 
@@ -186,9 +181,10 @@ namespace Elasticsearch.Net
 				}
 				handler.Proxy = proxy;
 			}
-
-			if (requestData.DisableAutomaticProxyDetection)
-				handler.Proxy = null;
+			else if (requestData.DisableAutomaticProxyDetection)
+			{
+				handler.UseProxy = false;
+			}
 
 			var callback = requestData?.ConnectionSettings?.ServerCertificateValidationCallback;
 			if (callback != null && handler.ServerCertificateCustomValidationCallback == null)
@@ -222,9 +218,6 @@ namespace Elasticsearch.Net
 			}
 			requestMessage.Headers.Connection.Clear();
 			requestMessage.Headers.ConnectionClose = false;
-			requestMessage.Headers.Connection.Add("Keep-Alive");
-			//requestMessage.Headers.Connection;
-
 			requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(requestData.Accept));
 
 			if (!requestData.RunAs.IsNullOrEmpty())
@@ -236,6 +229,7 @@ namespace Elasticsearch.Net
 			{
 				var stream = requestData.MemoryStreamFactory.Create();
 				requestMessage.Content = new StreamContent(stream);
+				requestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue(requestData.RequestMimeType);
 				if (requestData.HttpCompression)
 				{
 					requestMessage.Content.Headers.Add("Content-Encoding", "gzip");
@@ -248,14 +242,6 @@ namespace Elasticsearch.Net
 					data.Write(stream, requestData.ConnectionSettings);
 				stream.Position = 0;
 			}
-			else
-			{
-				// Set content in order to set a Content-Type header.
-				// Content gets diposed so can't be shared instance
-				requestMessage.Content = new ByteArrayContent(new byte[0]);
-			}
-
-			requestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue(requestData.ContentType);
 
 			return requestMessage;
 		}
@@ -311,4 +297,3 @@ namespace Elasticsearch.Net
 		}
 	}
 }
-#endif

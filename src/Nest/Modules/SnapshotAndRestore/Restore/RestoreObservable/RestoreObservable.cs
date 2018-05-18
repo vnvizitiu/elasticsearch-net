@@ -47,7 +47,7 @@ namespace Nest
 
 			try
 			{
-				_restoreRequest.RequestParameters.WaitForCompletion(false);
+				_restoreRequest.RequestParameters.WaitForCompletion = false;
 				var restoreResponse = this._elasticClient.Restore(_restoreRequest);
 
 				if (!restoreResponse.IsValid)
@@ -189,11 +189,10 @@ namespace Nest
 			{
 				var indices =
 					_restoreRequest.Indices.Item2.Indices.Select(
-						x => new IndexName
-						{
-							Name = Regex.Replace(x.Name, _renamePattern, _renameReplacement),
-							Type = x.Type
-						})
+						x => IndexName.Rebuild(
+							Regex.Replace(x.Name, _renamePattern, _renameReplacement),
+							x.Type
+						))
 						.ToArray();
 
 				var recoveryStatus = _elasticClient.RecoveryStatus(new RecoveryStatusRequest(indices)

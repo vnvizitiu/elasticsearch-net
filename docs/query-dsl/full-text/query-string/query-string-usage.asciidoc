@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -30,12 +30,8 @@ q
     .Analyzer("standard")
     .QuoteAnalyzer("quote-an")
     .AllowLeadingWildcard()
-    .AutoGeneratePhraseQueries()
     .MaximumDeterminizedStates(2)
-    .LowercaseExpendedTerms()
-    .EnablePositionIncrements()
     .Escape()
-    .UseDisMax()
     .FuzzyPrefixLength(2)
     .FuzzyMaxExpansions(3)
     .FuzzyRewrite(MultiTermQueryRewrite.ConstantScore)
@@ -46,8 +42,7 @@ q
     .MinimumShouldMatch(2)
     .QuoteFieldSuffix("'")
     .Lenient()
-    .Locale("en_US")
-    .Timezone("root")
+    .AutoGenerateSynonymsPhraseQuery(false)
 )
 ----
 
@@ -66,12 +61,8 @@ new QueryStringQuery
     Analyzer = "standard",
     QuoteAnalyzer = "quote-an",
     AllowLeadingWildcard = true,
-    AutoGeneratePhraseQueries = true,
     MaximumDeterminizedStates = 2,
-    LowercaseExpendedTerms = true,
-    EnablePositionIncrements = true,
     Escape = true,
-    UseDisMax = true,
     FuzzyPrefixLength = 2,
     FuzzyMaxExpansions = 3,
     FuzzyRewrite = MultiTermQueryRewrite.ConstantScore,
@@ -82,8 +73,7 @@ new QueryStringQuery
     MinimumShouldMatch = 2,
     QuoteFieldSuffix = "'",
     Lenient = true,
-    Locale = "en_US",
-    Timezone = "root"
+    AutoGenerateSynonymsPhraseQuery = false
 }
 ----
 
@@ -100,28 +90,23 @@ new QueryStringQuery
     "analyzer": "standard",
     "quote_analyzer": "quote-an",
     "allow_leading_wildcard": true,
-    "lowercase_expanded_terms": true,
-    "enable_position_increments": true,
     "fuzzy_max_expansions": 3,
     "fuzziness": "AUTO",
     "fuzzy_prefix_length": 2,
     "analyze_wildcard": true,
-    "auto_generate_phrase_queries": true,
     "max_determinized_states": 2,
     "minimum_should_match": 2,
     "lenient": true,
-    "locale": "en_US",
-    "time_zone": "root",
     "fields": [
       "description",
       "myOtherField"
     ],
-    "use_dis_max": true,
     "tie_breaker": 1.2,
     "rewrite": "constant_score",
     "fuzzy_rewrite": "constant_score",
     "quote_field_suffix": "'",
-    "escape": true
+    "escape": true,
+    "auto_generate_synonyms_phrase_query": false
   }
 }
 ----

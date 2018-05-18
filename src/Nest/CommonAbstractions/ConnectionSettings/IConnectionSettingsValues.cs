@@ -11,14 +11,18 @@ namespace Nest
 		Inferrer Inferrer { get; }
 		FluentDictionary<Type, string> DefaultIndices { get; }
 		FluentDictionary<Type, string> DefaultTypeNames { get; }
+		FluentDictionary<Type, string> DefaultRelationNames { get; }
 		FluentDictionary<Type, string> IdProperties { get; }
+		FluentDictionary<Type, string> RouteProperties { get; }
 		FluentDictionary<MemberInfo, IPropertyMapping> PropertyMappings { get; }
+
 		string DefaultIndex { get; }
-		Func<string, string> DefaultFieldNameInferrer { get; }
+		string DefaultTypeName { get; }
+
 		Func<Type, string> DefaultTypeNameInferrer { get; }
+		Func<string, string> DefaultFieldNameInferrer { get; }
 
-		ISerializerFactory SerializerFactory { get; }
-
-		IElasticsearchSerializer StatefulSerializer(JsonConverter converter);
+		IElasticsearchSerializer SourceSerializer { get; }
+		IPropertyMappingProvider PropertyMappingProvider { get; }
 	}
 }

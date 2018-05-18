@@ -215,7 +215,7 @@ namespace Tests.ClientConcepts.ConnectionPooling.Sniffing
 					.DisablePing() // <1> for testing simplicity, disable pings
 					.NodePredicate(node => // <2> We only want to execute API calls to nodes in rack_one
 						node.Settings.ContainsKey(setting) &&
-						node.Settings[setting] == value
+						node.Settings[setting].ToString() == value
 					)
 				)
 			)
@@ -355,7 +355,7 @@ namespace Tests.ClientConcepts.ConnectionPooling.Sniffing
 		{
 			get
 			{
-				var es = this.Node.Version > ElasticsearchVersion.GetOrAdd("5.0.0-alpha2") ? "" : "es.";
+				var es = this.Node.Version > ElasticsearchVersion.Create("5.0.0-alpha2") ? "" : "es.";
 
 				return new[]
 				{

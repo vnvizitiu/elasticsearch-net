@@ -7,6 +7,7 @@ using Tests.Framework.MockData;
 using static Nest.Infer;
 using FluentAssertions;
 using System.Linq;
+using Tests.Framework;
 using Tests.Framework.ManagedElasticsearch.Clusters;
 
 namespace Tests.Search.Request
@@ -41,6 +42,7 @@ namespace Tests.Search.Request
 						  unicode_aware = false
 						},
 						size = 8,
+						skip_duplicates = true
 					  },
 					  prefix = Project.Instance.Name
 					} },
@@ -48,10 +50,10 @@ namespace Tests.Search.Request
 					  phrase = new {
 						collate = new {
 						  query = new {
-							inline = "{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}",
-							@params = new {
-						      field_name = "title"
-							}
+							source = "{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}",
+						  },
+						  @params = new {
+					        field_name = "title"
 						  },
 						  prune = true,
 						},
@@ -61,7 +63,9 @@ namespace Tests.Search.Request
 						},
 						field = "name",
 						gram_size = 1,
-						real_word_error_likelihood = 0.5
+						real_word_error_likelihood = 0.5,
+						token_limit = 5,
+						force_unigrams = false
 					  },
 					  text = "hello world"
 					} },
@@ -80,7 +84,8 @@ namespace Tests.Search.Request
 						suggest_mode = "always"
 					  },
 					  text = "hello world"
-					} }
+					  }
+					}
 				  }
 			};
 
@@ -117,13 +122,14 @@ namespace Tests.Search.Request
 					.Field(p => p.Suggest)
 					.Size(8)
 					.Prefix(Project.Instance.Name)
+					.SkipDuplicates()
 				)
 				.Phrase("my-phrase-suggest", ph => ph
 					.Collate(c => c
 						.Query(q => q
-							.Inline("{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}")
-							.Params(p => p.Add("field_name", "title"))
+							.Source("{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}")
 						)
+						.Params(p => p.Add("field_name", "title"))
 						.Prune()
 					)
 					.Confidence(10.1)
@@ -134,6 +140,8 @@ namespace Tests.Search.Request
 					.Field(p => p.Name)
 					.Text("hello world")
 					.RealWordErrorLikelihood(0.5)
+					.TokenLimit(5)
+					.ForceUnigrams(false)
 				)
 			);
 
@@ -180,6 +188,7 @@ namespace Tests.Search.Request
 							Analyzer = "simple",
 							Field = Field<Project>(p=>p.Suggest),
 							Size = 8,
+							SkipDuplicates = true
 						}
 					} },
 					{ "my-phrase-suggest", new SuggestBucket
@@ -189,13 +198,13 @@ namespace Tests.Search.Request
 						{
 							Collate = new PhraseSuggestCollate
 							{
-								Query = new TemplateQuery
+								Query = new PhraseSuggestCollateQuery
 								{
-									Inline = "{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}",
-									Params = new Dictionary<string, object>
-									{
-										{ "field_name", "title" }
-									}
+									Source = "{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}",
+								},
+								Params = new Dictionary<string, object>
+								{
+									{ "field_name", "title" }
 								},
 								Prune = true
 							},
@@ -206,7 +215,9 @@ namespace Tests.Search.Request
 							},
 							GramSize = 1,
 							Field = "name",
-							RealWordErrorLikelihood = 0.5
+							RealWordErrorLikelihood = 0.5,
+							TokenLimit = 5,
+							ForceUnigrams = false
 						}
 					} },
 				}
@@ -223,10 +234,11 @@ namespace Tests.Search.Request
 			var option = suggest.Options.First();
 			option.Text.Should().NotBeNullOrEmpty();
 			option.Index.Should().Be("project");
-			option.Type.Should().Be("project");
+			option.Type.Should().Be("doc");
 			option.Id.Should().NotBeNull();
 			option.Source.Should().NotBeNull();
 			option.Source.Name.Should().NotBeNullOrWhiteSpace();
+			option.Source.ShouldAdhereToSourceSerializerWhenSet();
 			option.Score.Should().BeGreaterThan(0);
 			option.Contexts.Should().NotBeNull().And.NotBeEmpty();
 			option.Contexts.Should().ContainKey("color");

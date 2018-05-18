@@ -22,25 +22,20 @@ namespace Tests.QueryDsl.FullText.QueryString
 				analyzer = "standard",
 				quote_analyzer = "quote-an",
 				allow_leading_wildcard = true,
-				lowercase_expanded_terms = true,
-				enable_position_increments = true,
 				fuzzy_max_expansions = 3,
 				fuzziness = "AUTO",
 				fuzzy_prefix_length = 2,
 				analyze_wildcard = true,
-				auto_generate_phrase_queries = true,
 				max_determinized_states = 2,
 				minimum_should_match = 2,
 				lenient = true,
-				locale = "en_US",
-				time_zone = "root",
 				fields = new[] { "description", "myOtherField" },
-				use_dis_max = true,
 				tie_breaker = 1.2,
 				rewrite = "constant_score",
 				fuzzy_rewrite = "constant_score",
 				quote_field_suffix = "'",
-				escape = true
+				escape = true,
+				auto_generate_synonyms_phrase_query = false
 			}
 		};
 
@@ -55,15 +50,8 @@ namespace Tests.QueryDsl.FullText.QueryString
 			Analyzer = "standard",
 			QuoteAnalyzer = "quote-an",
 			AllowLeadingWildcard = true,
-			AutoGeneratePhraseQueries = true,
 			MaximumDeterminizedStates = 2,
-#pragma warning disable 618 // usage of lowercase_expanded_terms and locale
-			LowercaseExpandedTerms = true,
-			Locale = "en_US",
-#pragma warning restore 618 // usage of lowercase_expanded_terms and locale
-			EnablePositionIncrements = true,
 			Escape = true,
-			UseDisMax = true,
 			FuzzyPrefixLength = 2,
 			FuzzyMaxExpansions = 3,
 			FuzzyRewrite = MultiTermQueryRewrite.ConstantScore,
@@ -73,12 +61,11 @@ namespace Tests.QueryDsl.FullText.QueryString
 			AnalyzeWildcard = true,
 			MinimumShouldMatch = 2,
 			QuoteFieldSuffix = "'",
-			Lenient = true,			
-			Timezone = "root"
+			Lenient = true,
+			AutoGenerateSynonymsPhraseQuery = false
 		};
 
 		protected override QueryContainer QueryFluent(QueryContainerDescriptor<Project> q) => q
-#pragma warning disable 618 // usage of lowercase_expanded_terms and locale
 			.QueryString(c => c
 				.Name("named_query")
 				.Boost(1.1)
@@ -89,12 +76,8 @@ namespace Tests.QueryDsl.FullText.QueryString
 				.Analyzer("standard")
 				.QuoteAnalyzer("quote-an")
 				.AllowLeadingWildcard()
-				.AutoGeneratePhraseQueries()
 				.MaximumDeterminizedStates(2)
-				.LowercaseExpandedTerms()
-				.EnablePositionIncrements()
 				.Escape()
-				.UseDisMax()
 				.FuzzyPrefixLength(2)
 				.FuzzyMaxExpansions(3)
 				.FuzzyRewrite(MultiTermQueryRewrite.ConstantScore)
@@ -105,8 +88,7 @@ namespace Tests.QueryDsl.FullText.QueryString
 				.MinimumShouldMatch(2)
 				.QuoteFieldSuffix("'")
 				.Lenient()
-				.Locale("en_US")
-				.Timezone("root")
+				.AutoGenerateSynonymsPhraseQuery(false)
 			);
 #pragma warning restore 618 // usage of lowercase_expanded_terms and locale
 

@@ -72,7 +72,7 @@ namespace Tests.Document.Multiple.ReindexOnServer
 				.VersionType(VersionType.Internal)
 				.Routing(ReindexRouting.Discard)
 			)
-			.Script(ss => ss.Inline(PainlessScript))
+			.Script(ss => ss.Source(PainlessScript))
 			.Conflicts(Conflicts.Proceed)
 			.Refresh();
 
@@ -100,7 +100,6 @@ namespace Tests.Document.Multiple.ReindexOnServer
 			Refresh = true,
 		};
 
-
 		protected override void ExpectResponse(IReindexOnServerResponse response)
 		{
 			response.Task.Should().BeNull();
@@ -117,7 +116,6 @@ namespace Tests.Document.Multiple.ReindexOnServer
 			search.Documents.Should().OnlyContain(t => string.IsNullOrWhiteSpace(t.Flag));
 		}
 
-
 		protected override object ExpectJson =>
 			new
 			{
@@ -131,7 +129,7 @@ namespace Tests.Document.Multiple.ReindexOnServer
 				},
 				script = new
 				{
-					inline = this.PainlessScript,
+					source = this.PainlessScript,
 				},
 				source = new
 				{

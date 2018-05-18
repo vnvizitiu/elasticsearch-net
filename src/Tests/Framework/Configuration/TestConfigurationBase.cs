@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Tests.Framework.Versions;
+﻿using Tests.Framework.Versions;
 
 namespace Tests.Framework.Configuration
 {
@@ -16,7 +11,11 @@ namespace Tests.Framework.Configuration
 		public abstract string ClusterFilter { get; protected set; }
 		public abstract string TestFilter { get; protected set; }
 
+
 		public virtual bool RunIntegrationTests => Mode == TestMode.Mixed || Mode == TestMode.Integration;
 		public virtual bool RunUnitTests => Mode == TestMode.Mixed || Mode == TestMode.Unit;
+
+		public abstract int Seed { get; protected set; }
+		public RandomConfiguration Random { get; protected set; }
 	}
 }

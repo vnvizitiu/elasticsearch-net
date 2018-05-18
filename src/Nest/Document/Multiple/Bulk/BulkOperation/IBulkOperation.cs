@@ -20,32 +20,25 @@ namespace Nest
 		[JsonProperty("_id")]
 		Id Id { get; set; }
 
-		[JsonProperty("_version")]
+		[JsonProperty("version")]
 		long? Version { get; set; }
 
-		[JsonProperty("_version_type")]
+		[JsonProperty("version_type")]
 		[JsonConverter(typeof(StringEnumConverter))]
 		VersionType? VersionType { get; set; }
 
-		[JsonProperty("_routing")]
-		string Routing { get; set; }
+		[JsonProperty("routing")]
+		Routing Routing { get; set; }
 
-		[JsonProperty("_parent")]
+		[JsonProperty("parent")]
 		Id Parent { get; set; }
 
-		[JsonProperty("_timestamp")]
-		[Obsolete("This feature is no longer supported on indices created in Elasticsearch 5.0.0 and up")]
-		long? Timestamp { get; set; }
-
-		[JsonProperty("_ttl")]
-		[Obsolete("This feature is no longer supported on indices created in Elasticsearch 5.0.0 and up")]
-		Time Ttl { get; set; }
-
-		[JsonProperty("_retry_on_conflict")]
+		[JsonProperty("retry_on_conflict")]
 		int? RetriesOnConflict { get; set; }
 
 		object GetBody();
 
 		Id GetIdForOperation(Inferrer inferrer);
+		Routing GetRoutingForOperation(Inferrer settingsInferrer);
 	}
 }

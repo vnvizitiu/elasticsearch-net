@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -57,13 +57,14 @@ s => s
         .Field(p => p.Suggest)
         .Size(8)
         .Prefix(Project.Instance.Name)
+        .SkipDuplicates()
     )
     .Phrase("my-phrase-suggest", ph => ph
         .Collate(c => c
             .Query(q => q
-                .Inline("{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}")
-                .Params(p => p.Add("field_name", "title"))
+                .Source("{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}")
             )
+            .Params(p => p.Add("field_name", "title"))
             .Prune()
         )
         .Confidence(10.1)
@@ -74,6 +75,8 @@ s => s
         .Field(p => p.Name)
         .Text("hello world")
         .RealWordErrorLikelihood(0.5)
+        .TokenLimit(5)
+        .ForceUnigrams(false)
     )
 )
 ----
@@ -125,6 +128,7 @@ new SearchRequest<Project>
                 Analyzer = "simple",
                 Field = Field<Project>(p=>p.Suggest),
                 Size = 8,
+                SkipDuplicates = true
             }
         } },
         { "my-phrase-suggest", new SuggestBucket
@@ -134,13 +138,13 @@ new SearchRequest<Project>
             {
                 Collate = new PhraseSuggestCollate
                 {
-                    Query = new TemplateQuery
+                    Query = new PhraseSuggestCollateQuery
                     {
-                        Inline = "{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}",
-                        Params = new Dictionary<string, object>
-                        {
-                            { "field_name", "title" }
-                        }
+                        Source = "{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}",
+                    },
+                    Params = new Dictionary<string, object>
+                    {
+                        { "field_name", "title" }
                     },
                     Prune = true
                 },
@@ -151,7 +155,9 @@ new SearchRequest<Project>
                 },
                 GramSize = 1,
                 Field = "name",
-                RealWordErrorLikelihood = 0.5
+                RealWordErrorLikelihood = 0.5,
+                TokenLimit = 5,
+                ForceUnigrams = false
             }
         } },
     }
@@ -181,7 +187,8 @@ new SearchRequest<Project>
           "transpositions": true,
           "unicode_aware": false
         },
-        "size": 8
+        "size": 8,
+        "skip_duplicates": true
       },
       "prefix": "Durgan LLC"
     },
@@ -189,10 +196,10 @@ new SearchRequest<Project>
       "phrase": {
         "collate": {
           "query": {
-            "inline": "{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}",
-            "params": {
-              "field_name": "title"
-            }
+            "source": "{ \"match\": { \"{{field_name}}\": \"{{suggestion}}\" }}"
+          },
+          "params": {
+            "field_name": "title"
           },
           "prune": true
         },
@@ -204,7 +211,9 @@ new SearchRequest<Project>
         ],
         "field": "name",
         "gram_size": 1,
-        "real_word_error_likelihood": 0.5
+        "real_word_error_likelihood": 0.5,
+        "token_limit": 5,
+        "force_unigrams": false
       },
       "text": "hello world"
     },
@@ -242,10 +251,11 @@ suggest.Length.Should().BeGreaterThan(0);
 var option = suggest.Options.First();
 option.Text.Should().NotBeNullOrEmpty();
 option.Index.Should().Be("project");
-option.Type.Should().Be("project");
+option.Type.Should().Be("doc");
 option.Id.Should().NotBeNull();
 option.Source.Should().NotBeNull();
 option.Source.Name.Should().NotBeNullOrWhiteSpace();
+option.Source.ShouldAdhereToSourceSerializerWhenSet();
 option.Score.Should().BeGreaterThan(0);
 option.Contexts.Should().NotBeNull().And.NotBeEmpty();
 option.Contexts.Should().ContainKey("color");

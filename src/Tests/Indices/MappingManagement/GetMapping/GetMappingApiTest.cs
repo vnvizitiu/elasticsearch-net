@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using Elasticsearch.Net;
 using FluentAssertions;
 using Nest;
@@ -27,7 +29,7 @@ namespace Tests.Indices.MappingManagement.GetMapping
 		protected override bool ExpectIsValid => true;
 		protected override int ExpectStatusCode => 200;
 		protected override HttpMethod HttpMethod => HttpMethod.GET;
-		protected override string UrlPath => "/project/_mapping/project?ignore_unavailable=true";
+		protected override string UrlPath => "/project/_mapping/doc?ignore_unavailable=true";
 
 		protected override Func<GetMappingDescriptor<Project>, IGetMappingRequest> Fluent => d => d
 			.IgnoreUnavailable();
@@ -41,24 +43,64 @@ namespace Tests.Indices.MappingManagement.GetMapping
 		{
 			response.ShouldBeValid();
 
-			var visitor = new TestVisitor();
-			response.Accept(visitor);
+			response.Indices["project"]["doc"].Properties.Should().NotBeEmpty();
+			response.Indices[Index<Project>()].Mappings[Type<Project>()].Properties.Should().NotBeEmpty();
+			response.Indices[Index<Project>()][Type<Project>()].Properties.Should().NotBeEmpty();
+			var properties = response.Indices[Index<Project>()][Type<Project>()].Properties;
 
+			var leadDev = properties[Property<Project>(p => p.LeadDeveloper)];
+			leadDev.Should().NotBeNull();
+
+			var props = response.Indices["x"]?["y"].Properties;
+			props.Should().BeNull();
+
+			//hide
+			AssertExtensionMethods(response);
+
+			//hide
+			AssertVisitedProperies(response);
+		}
+
+		//hide
+		private static void AssertExtensionMethods(IGetMappingResponse response)
+		{
+			/** The `GetMappingFor` extension method can be used to get a type mapping easily and safely */
+			response.GetMappingFor<Project>().Should().NotBeNull();
+			response.GetMappingFor(typeof(Project), typeof(Project)).Should().NotBeNull();
+			response.GetMappingFor(typeof(Project)).Should().NotBeNull();
+
+			/** The following should all return a `null` because we had asked for the mapping of type `doc` in index `project` */
+			response.GetMappingFor<Developer>().Should().BeNull();
+			response.GetMappingFor("dev", "dev").Should().BeNull();
+			response.GetMappingFor(typeof(Project), "x").Should().BeNull();
+			response.GetMappingFor("dev").Should().BeNull();
+
+
+
+		}
+		//hide
+		private static void AssertVisitedProperies(IGetMappingResponse response)
+		{
+			var visitor = new TestVisitor();
+			var b = TestClient.Configuration.Random.SourceSerializer;
+			response.Accept(visitor);
 			visitor.CountsShouldContainKeyAndCountBe("type", 1);
-			visitor.CountsShouldContainKeyAndCountBe("object", 5);
+			visitor.CountsShouldContainKeyAndCountBe("text", b ? 19 : 18);
+			visitor.CountsShouldContainKeyAndCountBe("keyword", b ? 19 : 18);
+			visitor.CountsShouldContainKeyAndCountBe("object", 8);
+			visitor.CountsShouldContainKeyAndCountBe("number", 8);
+			visitor.CountsShouldContainKeyAndCountBe("ip", 2);
+			visitor.CountsShouldContainKeyAndCountBe("geo_point", 3);
 			visitor.CountsShouldContainKeyAndCountBe("date", 4);
-			visitor.CountsShouldContainKeyAndCountBe("text", 11);
-			visitor.CountsShouldContainKeyAndCountBe("keyword", 10);
-			visitor.CountsShouldContainKeyAndCountBe("ip", 1);
-			visitor.CountsShouldContainKeyAndCountBe("number", 3);
-			visitor.CountsShouldContainKeyAndCountBe("geo_point", 2);
+			visitor.CountsShouldContainKeyAndCountBe("join", 1);
 			visitor.CountsShouldContainKeyAndCountBe("completion", 2);
-			visitor.CountsShouldContainKeyAndCountBe("nested", 1);
 			visitor.CountsShouldContainKeyAndCountBe("date_range", 1);
+			visitor.CountsShouldContainKeyAndCountBe("double_range", 1);
 			visitor.CountsShouldContainKeyAndCountBe("float_range", 1);
 			visitor.CountsShouldContainKeyAndCountBe("integer_range", 1);
-			visitor.CountsShouldContainKeyAndCountBe("double_range", 1);
 			visitor.CountsShouldContainKeyAndCountBe("long_range", 1);
+			visitor.CountsShouldContainKeyAndCountBe("ip_range", 1);
+			visitor.CountsShouldContainKeyAndCountBe("nested", 1);
 		}
 	}
 
@@ -67,9 +109,7 @@ namespace Tests.Indices.MappingManagement.GetMapping
 	{
 		private string _nonExistentIndex = "non-existent-index";
 
-		public GetMappingNonExistentIndexApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage)
-		{
-		}
+		public GetMappingNonExistentIndexApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override LazyResponses ClientUsage() => Calls(
 			fluent: (client, f) => client.GetMapping<Project>(f),
@@ -78,8 +118,8 @@ namespace Tests.Indices.MappingManagement.GetMapping
 			requestAsync: (client, r) => client.GetMappingAsync(r)
 		);
 
-		protected override bool ExpectIsValid => true;
-		protected override int ExpectStatusCode => 200;
+		protected override bool ExpectIsValid => false;
+		protected override int ExpectStatusCode => 404;
 		protected override HttpMethod HttpMethod => HttpMethod.GET;
 		protected override string UrlPath => $"/{_nonExistentIndex}/_mapping?ignore_unavailable=true";
 
@@ -95,8 +135,8 @@ namespace Tests.Indices.MappingManagement.GetMapping
 
 		protected override void ExpectResponse(IGetMappingResponse response)
 		{
-			response.Mappings.Should().BeEmpty();
-			response.Mapping.Should().BeNull();
+			response.Indices.Should().BeEmpty();
+			response.ServerError.Should().NotBeNull();
 		}
 	}
 
@@ -122,18 +162,12 @@ namespace Tests.Indices.MappingManagement.GetMapping
 
 		public void CountsShouldContainKeyAndCountBe(string key, int count)
 		{
-			this.Counts.ContainsKey(key).Should().BeTrue();
-			this.Counts[key].Should().Be(count, $"because there should be {count} {key} properties");
+			this.Counts.ContainsKey(key).Should().BeTrue($"did not see {key}");
+			var sb = new StringBuilder()
+				.AppendLine($"because there should be {count} {key} properties");
+			var because = this.Counts.Aggregate(sb, (s, kv) => s.AppendLine($"{kv.Key} = {kv.Value}"), s=>s.ToString());
+			this.Counts[key].Should().Be(count, because);
 		}
-
-#pragma warning disable 618
-
-		public void Visit(IStringProperty mapping)
-		{
-			Increment("string");
-		}
-
-#pragma warning restore 618
 
 		public void Visit(IDateProperty mapping)
 		{
@@ -193,6 +227,16 @@ namespace Tests.Indices.MappingManagement.GetMapping
 		public void Visit(IDateRangeProperty property)
 		{
 			Increment("date_range");
+		}
+
+		public void Visit(IIpRangeProperty property)
+		{
+			Increment("ip_range");
+		}
+
+		public void Visit(IJoinProperty property)
+		{
+			Increment("join");
 		}
 
 		public void Visit(IMurmur3HashProperty mapping)

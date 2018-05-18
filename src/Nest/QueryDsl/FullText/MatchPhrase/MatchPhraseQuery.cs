@@ -7,13 +7,13 @@ namespace Nest
 	[JsonConverter(typeof(FieldNameQueryJsonConverter<MatchPhraseQuery>))]
 	public interface IMatchPhraseQuery : IFieldNameQuery
 	{
-		[JsonProperty(PropertyName = "query")]
+		[JsonProperty("query")]
 		string Query { get; set; }
 
-		[JsonProperty(PropertyName = "analyzer")]
+		[JsonProperty("analyzer")]
 		string Analyzer { get; set; }
 
-		[JsonProperty(PropertyName = "slop")]
+		[JsonProperty("slop")]
 		int? Slop { get; set; }
 	}
 
@@ -44,6 +44,6 @@ namespace Nest
 
 		public MatchPhraseQueryDescriptor<T> Analyzer(string analyzer) => Assign(a => a.Analyzer = analyzer);
 
-		public MatchPhraseQueryDescriptor<T> Slop(int slop) => Assign(a => a.Slop = slop);
+		public MatchPhraseQueryDescriptor<T> Slop(int? slop) => Assign(a => a.Slop = slop);
 	}
 }

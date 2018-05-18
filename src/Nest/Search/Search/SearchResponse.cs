@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Elasticsearch.Net;
 using Newtonsoft.Json;
 
 namespace Nest
@@ -11,17 +10,20 @@ namespace Nest
 		/// <summary>
 		/// Gets the meta data about the shards on which the search query was executed.
 		/// </summary>
-		ShardsMetaData Shards { get; }
+		ShardStatistics Shards { get; }
 
 		/// <summary>
 		/// Gets the meta data about the hits that match the search query criteria.
 		/// </summary>
-		HitsMetaData<T> HitsMetaData { get; }
+		HitsMetadata<T> HitsMetadata { get; }
 
 		/// <summary>
 		/// Gets the collection of aggregations
 		/// </summary>
-		IReadOnlyDictionary<string, IAggregate> Aggregations { get; }
+		AggregateDictionary Aggregations { get; }
+
+		[Obsolete("Aggs has been renamed to Aggregations and will be removed in NEST 7.x")]
+		AggregateDictionary Aggs { get; }
 
 		/// <summary>
 		/// Gets the results of profiling the search query. Has a value only when
@@ -30,15 +32,9 @@ namespace Nest
 		Profile Profile { get; }
 
 		/// <summary>
-		/// Gets the aggregations helper that can be used to more easily handle aggregation
-		/// results.
-		/// </summary>
-		AggregationsHelper Aggs { get; }
-
-		/// <summary>
 		/// Gets the suggester results.
 		/// </summary>
-		IReadOnlyDictionary<string, Suggest<T>[]> Suggest { get; }
+		SuggestDictionary<T> Suggest { get; }
 
 		/// <summary>
 		/// Time in milliseconds for Elasticsearch to execute the search
@@ -106,29 +102,22 @@ namespace Nest
 	[JsonObject]
 	public class SearchResponse<T> : ResponseBase, ISearchResponse<T> where T : class
 	{
-		internal ServerError MultiSearchError { get; set; }
-		protected override IApiCallDetails ApiCall => MultiSearchError != null ? new ApiCallDetailsOverride(base.ApiCall, MultiSearchError) : base.ApiCall;
+		[JsonProperty("_shards")]
+		public ShardStatistics Shards { get; internal set; }
 
-		[JsonProperty(PropertyName = "_shards")]
-		public ShardsMetaData Shards { get; internal set; }
-
-		[JsonProperty(PropertyName = "aggregations")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, IAggregate>))]
-		public IReadOnlyDictionary<string, IAggregate> Aggregations { get; internal set; } = EmptyReadOnly<string, IAggregate>.Dictionary;
-
-		[JsonProperty(PropertyName = "profile")]
-		public Profile Profile { get; internal set; }
-
-		private AggregationsHelper _agg;
+		[JsonProperty("aggregations")]
+		public AggregateDictionary Aggregations { get; internal set; } = AggregateDictionary.Default;
 
 		[JsonIgnore]
-		public AggregationsHelper Aggs => _agg ?? (_agg = new AggregationsHelper(this.Aggregations));
+		public AggregateDictionary Aggs => this.Aggregations;
 
-		[JsonProperty(PropertyName = "suggest")]
-		public IReadOnlyDictionary<string, Suggest<T>[]> Suggest { get; internal set; } =
-			EmptyReadOnly<string, Suggest<T>[]>.Dictionary;
+		[JsonProperty("profile")]
+		public Profile Profile { get; internal set; }
 
-		[JsonProperty(PropertyName = "took")]
+		[JsonProperty("suggest")]
+		public SuggestDictionary<T> Suggest { get; internal set; } = SuggestDictionary<T>.Default;
+
+		[JsonProperty("took")]
 		public long Took { get; internal set; }
 
 		[JsonProperty("timed_out")]
@@ -140,20 +129,20 @@ namespace Nest
 		/// <summary>
 		/// Only set when search type = scan and scroll specified
 		/// </summary>
-		[JsonProperty(PropertyName = "_scroll_id")]
+		[JsonProperty("_scroll_id")]
 		public string ScrollId { get; internal set; }
 
-		[JsonProperty(PropertyName = "hits")]
-		public HitsMetaData<T> HitsMetaData { get; internal set; }
+		[JsonProperty("hits")]
+		public HitsMetadata<T> HitsMetadata { get; internal set; }
 
-		[JsonProperty(PropertyName = "num_reduce_phases")]
+		[JsonProperty("num_reduce_phases")]
 		public long NumberOfReducePhases { get; internal set; }
 
 		[JsonIgnore]
-		public long Total => this.HitsMetaData?.Total ?? 0;
+		public long Total => this.HitsMetadata?.Total ?? 0;
 
 		[JsonIgnore]
-		public double MaxScore => this.HitsMetaData?.MaxScore ?? 0;
+		public double MaxScore => this.HitsMetadata?.MaxScore ?? 0;
 
 		private IReadOnlyCollection<T> _documents;
 
@@ -168,7 +157,7 @@ namespace Nest
 
 		[JsonIgnore]
 		public IReadOnlyCollection<IHit<T>> Hits =>
-			this._hits ?? (this._hits = this.HitsMetaData?.Hits ?? EmptyReadOnly<IHit<T>>.Collection);
+			this._hits ?? (this._hits = this.HitsMetadata?.Hits ?? EmptyReadOnly<IHit<T>>.Collection);
 
 		private IReadOnlyCollection<FieldValues> _fields;
 

@@ -12,88 +12,95 @@ namespace Tests.Aggregations.Pipeline.SerialDifferencing
 	{
 		public SerialDifferencingAggregationUsageTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
-		protected override object ExpectJson => new
+		protected override object AggregationJson => new
 		{
-			size = 0,
-			aggs = new
+			projects_started_per_month = new
 			{
-				projects_started_per_month = new
+				date_histogram = new
 				{
-					date_histogram = new
+					field = "startedOn",
+					interval = "month"
+				},
+				aggs = new
+				{
+					commits = new
 					{
-						field = "startedOn",
-						interval = "month",
+						sum = new
+						{
+							field = "numberOfCommits"
+						}
 					},
-					aggs = new
+					second_difference = new
 					{
-						commits = new
+						serial_diff = new
 						{
-							sum = new
-							{
-								field = "numberOfCommits"
-							}
-						},
-						thirtieth_difference = new
-						{
-							serial_diff = new
-							{
-								buckets_path = "commits",
-								lag = 30
-							}
+							buckets_path = "commits",
+							lag = 2
 						}
 					}
 				}
 			}
 		};
 
-		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
-			.Size(0)
-			.Aggregations(a => a
-				.DateHistogram("projects_started_per_month", dh => dh
-					.Field(p => p.StartedOn)
-					.Interval(DateInterval.Month)
-					.Aggregations(aa => aa
-						.Sum("commits", sm => sm
-							.Field(p => p.NumberOfCommits)
-						)
-						.SerialDifferencing("thirtieth_difference", d => d
-							.BucketsPath("commits")
-							.Lag(30)
-						)
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.DateHistogram("projects_started_per_month", dh => dh
+				.Field(p => p.StartedOn)
+				.Interval(DateInterval.Month)
+				.Aggregations(aa => aa
+					.Sum("commits", sm => sm
+						.Field(p => p.NumberOfCommits)
+					)
+					.SerialDifferencing("second_difference", d => d
+						.BucketsPath("commits")
+						.Lag(2)
 					)
 				)
 			);
 
-		protected override SearchRequest<Project> Initializer => new SearchRequest<Project>
-		{
-			Size = 0,
-			Aggregations = new DateHistogramAggregation("projects_started_per_month")
+		protected override AggregationDictionary InitializerAggs =>
+			new DateHistogramAggregation("projects_started_per_month")
 			{
 				Field = "startedOn",
 				Interval = DateInterval.Month,
 				Aggregations =
-					new SumAggregation("commits", "numberOfCommits") &&
-					new SerialDifferencingAggregation("thirtieth_difference", "commits")
+					new SumAggregation("commits", "numberOfCommits")
+					&& new SerialDifferencingAggregation("second_difference", "commits")
 					{
-						Lag = 30
+						Lag = 2
 					}
-			}
-		};
+			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
 
-			var projectsPerMonth = response.Aggs.DateHistogram("projects_started_per_month");
+			var projectsPerMonth = response.Aggregations.DateHistogram("projects_started_per_month");
 			projectsPerMonth.Should().NotBeNull();
 			projectsPerMonth.Buckets.Should().NotBeNull();
 			projectsPerMonth.Buckets.Count.Should().BeGreaterThan(0);
 
+			var differenceCount = 0;
+
 			foreach (var item in projectsPerMonth.Buckets)
 			{
+				differenceCount++;
 				var commits = item.Sum("commits");
 				commits.Should().NotBeNull();
 				commits.Value.Should().NotBe(null);
+
+				var secondDifference = item.SerialDifferencing("second_difference");
+
+				// serial differencing specified a lag of 2, so
+				// only expect values from the 3rd bucket onwards
+				if (differenceCount <= 2)
+				{
+					secondDifference.Should().BeNull();
+				}
+				else
+				{
+					secondDifference.Should().NotBeNull();
+					secondDifference.Value.Should().NotBe(null);
+				}
 			}
 		}
 	}

@@ -16,6 +16,8 @@ namespace Tests.Document.Single.Index
 	public class IndexIngestGeoIpApiTests :
 		ApiIntegrationTestBase<IntrusiveOperationCluster, IIndexResponse, IIndexRequest<Project>, IndexDescriptor<Project>, IndexRequest<Project>>
 	{
+		protected override bool IncludeNullInExpected => false;
+
 		private static string PipelineId { get; } = "pipeline-" + Guid.NewGuid().ToString("N").Substring(0, 8);
 
 		public IndexIngestGeoIpApiTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage)
@@ -36,7 +38,7 @@ namespace Tests.Document.Single.Index
 					},
 					new GeoIpProcessor
 					{
-						Field = "leadDeveloper.iPAddress",
+						Field = "leadDeveloper.ipAddress",
 						TargetField = "leadDeveloper.geoIp"
 					},
 					new RenameProcessor
@@ -67,10 +69,11 @@ namespace Tests.Document.Single.Index
 		{
 			State = StateOfBeing.Stable,
 			Name = CallIsolatedValue,
-			LeadDeveloper = new Developer { Gender = Gender.Male, Id  = 1, IPAddress = "193.4.250.122" },
+			LeadDeveloper = new Developer { Gender = Gender.Male, Id  = 1, IpAddress = "193.4.250.122" },
 			StartedOn = FixedDate,
 			LastActivity = FixedDate,
 			CuratedTags = new List<Tag> {new Tag {Name = "x", Added = FixedDate}},
+			SourceOnly = TestClient.Configuration.Random.SourceSerializer ? new SourceOnlyObject() : null
 		};
 
 		protected override LazyResponses ClientUsage() => Calls(
@@ -85,7 +88,7 @@ namespace Tests.Document.Single.Index
 		protected override HttpMethod HttpMethod => HttpMethod.PUT;
 
 		protected override string UrlPath
-			=> $"/project/project/{CallIsolatedValue}?refresh=true&pipeline={PipelineId}";
+			=> $"/project/doc/{CallIsolatedValue}?refresh=true&pipeline={PipelineId}&routing={CallIsolatedValue}";
 
 		protected override bool SupportsDeserialization => false;
 
@@ -93,11 +96,15 @@ namespace Tests.Document.Single.Index
 			new
 			{
 				name = CallIsolatedValue,
-				leadDeveloper = new { iPAddress = "193.4.250.122", gender = "Male", id = 1 },
+				join = Document.Join.ToAnonymousObject(),
+				leadDeveloper = new { ipAddress = "193.4.250.122", gender = "Male", id = 1 },
 				state = "Stable",
+				visibility = "Public",
 				startedOn = FixedDate,
 				lastActivity = FixedDate,
+				numberOfContributors = 0,
 				curatedTags = new[] {new {name = "x", added = FixedDate}},
+				sourceOnly = Dependant(null, new { notWrittenByDefaultSerializer = "written" }),
 			};
 
 		protected override IndexDescriptor<Project> NewDescriptor() => new IndexDescriptor<Project>(this.Document);
@@ -117,7 +124,7 @@ namespace Tests.Document.Single.Index
 		{
 			response.ShouldBeValid();
 
-			var getResponse = this.Client.Get<Project>(response.Id);
+			var getResponse = this.Client.Get<Project>(response.Id, g=>g.Routing(CallIsolatedValue));
 
 			getResponse.ShouldBeValid();
 			getResponse.Source.Should().NotBeNull();

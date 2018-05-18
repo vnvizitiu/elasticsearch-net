@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Elasticsearch.Net;
 using FluentAssertions;
 using Nest;
@@ -24,7 +25,7 @@ namespace Tests.Document.Single.TermVectors
 		protected override bool ExpectIsValid => true;
 		protected override int ExpectStatusCode => 200;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
-		protected override string UrlPath => $"/project/project/{UrlEncode(Project.Instance.Name)}/_termvectors?offsets=true";
+		protected override string UrlPath => $"/project/doc/{U(Project.Instance.Name)}/_termvectors?offsets=true&routing={U(Project.Routing)}";
 
 		protected override bool SupportsDeserialization => false;
 
@@ -46,6 +47,7 @@ namespace Tests.Document.Single.TermVectors
 
 		protected override Func<TermVectorsDescriptor<Project>, ITermVectorsRequest<Project>> Fluent => d=>d
 			.Id(Id(Project.Instance))
+			.Routing(Project.Routing)
 			.Offsets()
 			.Filter(f => f
 				.MaximimumNumberOfTerms(3)
@@ -60,6 +62,7 @@ namespace Tests.Document.Single.TermVectors
 
 		protected override TermVectorsRequest<Project> Initializer => new TermVectorsRequest<Project>(Project.Instance.Name)
 		{
+			Routing = Project.Routing,
 			Offsets = true,
 			Filter = new TermVectorFilter
 			{
@@ -86,10 +89,25 @@ namespace Tests.Document.Single.TermVectors
 
 			foreach (var termVector in response.TermVectors)
 			{
-				termVector.Key.Should().NotBeNullOrEmpty();
+				termVector.Key.Should().NotBeNull();
 				termVector.Value.FieldStatistics.Should().NotBeNull();
 				termVector.Value.Terms.Should().NotBeEmpty();
 			}
+
+			var termvector = response.TermVectors[Field<Project>(p => p.LeadDeveloper.FirstName)];
+			AssertTermVector(termvector);
+			termvector = response.TermVectors["leadDeveloper.firstName"];
+			AssertTermVector(termvector);
+		}
+
+		private static void AssertTermVector(TermVector termvector)
+		{
+			termvector.Should().NotBeNull();
+			termvector.FieldStatistics.Should().NotBeNull();
+			termvector.FieldStatistics.DocumentCount.Should().BeGreaterThan(0);
+			termvector.FieldStatistics.SumOfDocumentFrequencies.Should().BeGreaterThan(0);
+			termvector.FieldStatistics.SumOfTotalTermFrequencies.Should().BeGreaterThan(0);
+			termvector.Terms.Should().NotBeNull();
 		}
 	}
 }

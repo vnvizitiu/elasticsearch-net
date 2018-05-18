@@ -1,9 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Nest
 {
@@ -20,6 +17,7 @@ namespace Nest
 		Id Id { get; set; }
 
 		[JsonProperty("_source")]
+		[JsonConverter(typeof(SourceConverter))]
 		object Source { get; set; }
 	}
 
@@ -34,7 +32,7 @@ namespace Nest
 		private object _source;
 		public object Source
 		{
-			get { return _source; }
+			get => _source;
 			set
 			{
 				_source = value;

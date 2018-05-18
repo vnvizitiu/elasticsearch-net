@@ -31,9 +31,9 @@ namespace Tests.Document.Multiple.Bulk
 
 		protected override object ExpectJson { get; } = new object[]
 		{
-			new Dictionary<string, object>{ { "update", new { _type="project", _id = Project.Instance.Name } } },
+			new Dictionary<string, object>{ { "update", new { _type="doc", _id = Project.Instance.Name } } },
 			new { doc = new { leadDeveloper = new { firstName = "martijn" } } },
-			new Dictionary<string, object>{ { "delete", new { _type="project", _id = Project.Instance.Name + "1" } } },
+			new Dictionary<string, object>{ { "delete", new { _type="doc", _id = Project.Instance.Name + "1" } } },
 		};
 
 		protected override void ExpectResponse(IBulkResponse response)
@@ -55,7 +55,6 @@ namespace Tests.Document.Multiple.Bulk
 			failedUpdate.IsValid.Should().BeFalse();
 
 			var failedDelete = response.Items.Last() as BulkDeleteResponseItem;
-			failedDelete.Found.Should().BeFalse();
 			failedDelete.IsValid.Should().BeTrue();
 		}
 
@@ -69,7 +68,7 @@ namespace Tests.Document.Multiple.Bulk
 		{
 			Operations = new List<IBulkOperation>
 			{
-				new BulkUpdateOperation<Project, object>(Project.Instance)
+				new BulkUpdateOperation<Project, object>(Project.Instance.Name)
 				{
 					Doc = new { leadDeveloper = new { firstName = "martijn" } }
 				},

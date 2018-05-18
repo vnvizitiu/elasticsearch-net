@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,14 +19,12 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Aggregations(a => a
-    .IpRange("ip_ranges", ip => ip
-        .Field(p => p.LeadDeveloper.IPAddress)
-        .Ranges(
-            r => r.To("10.0.0.5"),
-            r => r.From("10.0.0.5")
-        )
+a => a
+.IpRange("ip_ranges", ip => ip
+    .Field(p => p.LeadDeveloper.IpAddress)
+    .Ranges(
+        r => r.To("127.0.0.1"),
+        r => r.From("127.0.0.1")
     )
 )
 ----
@@ -35,16 +33,13 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new IpRangeAggregation("ip_ranges")
 {
-    Aggregations = new IpRangeAggregation("ip_ranges")
+    Field = Field((Project p) => p.LeadDeveloper.IpAddress),
+    Ranges = new List<Nest.IpRangeAggregationRange>
     {
-        Field = Field((Project p) => p.LeadDeveloper.IPAddress),
-        Ranges = new List<Nest.IpRange>
-        {
-            new Nest.IpRange { To = "10.0.0.5" },
-            new Nest.IpRange { From = "10.0.0.5" }
-        }
+        new Nest.IpRangeAggregationRange {To = "127.0.0.1"},
+        new Nest.IpRangeAggregationRange {From = "127.0.0.1"}
     }
 }
 ----
@@ -53,19 +48,17 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "ip_ranges": {
-      "ip_range": {
-        "field": "leadDeveloper.iPAddress",
-        "ranges": [
-          {
-            "to": "10.0.0.5"
-          },
-          {
-            "from": "10.0.0.5"
-          }
-        ]
-      }
+  "ip_ranges": {
+    "ip_range": {
+      "field": "leadDeveloper.ipAddress",
+      "ranges": [
+        {
+          "to": "127.0.0.1"
+        },
+        {
+          "from": "127.0.0.1"
+        }
+      ]
     }
   }
 }
@@ -76,7 +69,7 @@ new SearchRequest<Project>
 [source,csharp]
 ----
 response.ShouldBeValid();
-var ipRanges = response.Aggs.IpRange("ip_ranges");
+var ipRanges = response.Aggregations.IpRange("ip_ranges");
 ipRanges.Should().NotBeNull();
 ipRanges.Buckets.Should().NotBeNull();
 ipRanges.Buckets.Count.Should().BeGreaterThan(0);

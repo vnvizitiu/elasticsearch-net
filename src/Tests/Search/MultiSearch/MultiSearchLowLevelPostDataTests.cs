@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Elasticsearch.Net;
 using FluentAssertions;
 using Nest;
@@ -10,21 +8,20 @@ using Newtonsoft.Json.Linq;
 using Tests.Framework;
 using Tests.Framework.Integration;
 using Tests.Framework.ManagedElasticsearch.Clusters;
-using Tests.Framework.MockData;
 using Xunit;
 
 namespace Tests.Search.MultiSearch
 {
 	public class MultiSearchLowLevelPostDataTests : IClusterFixture<ReadOnlyCluster>
 	{
-		private IElasticClient _client;
+		private readonly IElasticClient _client;
 
 		public MultiSearchLowLevelPostDataTests(ReadOnlyCluster cluster, EndpointUsage usage)
 		{
 			_client = cluster.Client;
 		}
 
-		protected List<object> Search => new object[]
+		protected static List<object> Search => new object[]
 		{
 			new {},
 			new { from = 0, size = 10, query = new { match_all = new {} } },
@@ -39,61 +36,66 @@ namespace Tests.Search.MultiSearch
 
 		[I] public void PostEnumerableOfObjects()
 		{
-			var response = this._client.LowLevel.Msearch<dynamic>("project", "project", this.Search);
-			AssertResponse(response);
-			response = this._client.LowLevel.Msearch<dynamic>("project", "project", (object)this.Search);
+			var response = this._client.LowLevel.Msearch<DynamicResponse>("project", "project", PostData.MultiJson(Search));
 			AssertResponse(response);
 		}
 
 		[I] public void PostEnumerableOfStrings()
 		{
 			var listOfStrings = Search
-				.Select(s => this._client.Serializer.SerializeToString(s, SerializationFormatting.None))
+				.Select(s => this._client.RequestResponseSerializer.SerializeToString(s, SerializationFormatting.None))
 				.ToList();
 
-			var response = this._client.LowLevel.Msearch<dynamic>("project", "project", listOfStrings);
-			AssertResponse(response);
-			response = this._client.LowLevel.Msearch<dynamic>("project", "project", (object)listOfStrings);
+			var response = this._client.LowLevel.Msearch<DynamicResponse>("project", "project", PostData.MultiJson(listOfStrings));
 			AssertResponse(response);
 		}
 
 		[I] public void PostString()
 		{
 			var str = Search
-				.Select(s => this._client.Serializer.SerializeToString(s, SerializationFormatting.None))
+				.Select(s => this._client.RequestResponseSerializer.SerializeToString(s, SerializationFormatting.None))
 				.ToList()
 				.Aggregate(new StringBuilder(), (sb, s) => sb.Append(s + "\n"), sb => sb.ToString());
 
-			var response = this._client.LowLevel.Msearch<dynamic>("project", "project", str);
-			AssertResponse(response);
-			response = this._client.LowLevel.Msearch<dynamic>("project", "project", (object)str);
+			var response = this._client.LowLevel.Msearch<DynamicResponse>("project", "project", str);
 			AssertResponse(response);
 		}
 
 		[I] public void PostByteArray()
 		{
 			var str = Search
-				.Select(s => this._client.Serializer.SerializeToString(s, SerializationFormatting.None))
+				.Select(s => this._client.RequestResponseSerializer.SerializeToString(s, SerializationFormatting.None))
 				.ToList()
 				.Aggregate(new StringBuilder(), (sb, s) => sb.Append(s + "\n"), sb => sb.ToString());
 
 			var bytes = Encoding.UTF8.GetBytes(str);
 
-			var response = this._client.LowLevel.Msearch<dynamic>("project", "project", bytes);
-			AssertResponse(response);
-			response = this._client.LowLevel.Msearch<dynamic>("project", "project", (object)bytes);
+			var response = this._client.LowLevel.Msearch<DynamicResponse>("project", "project", bytes);
 			AssertResponse(response);
 		}
 
-		public void AssertResponse(ElasticsearchResponse<dynamic> response)
+		private static void AssertResponse(DynamicResponse response)
 		{
 			response.Success.Should().BeTrue();
+			object o = response.Body;
+			o.Should().NotBeNull();
 
-			var r = response.Body;
-
-			JArray responses = r.responses;
-
+			var b = response.Body;
+			object[] responses = b.responses;
 			responses.Count().Should().Be(4);
+
+			object r = b.responses[0];
+			r.Should().NotBeNull();
+
+			object shards = b.responses[0]._shards;
+			shards.Should().NotBeNull();
+
+			int totalShards = b.responses[0]._shards.total;
+			totalShards.Should().BeGreaterThan(0);
+//			JArray responses = r.responses;
+//
+//			responses.Count().Should().Be(4);
+
 		}
 	}
 }

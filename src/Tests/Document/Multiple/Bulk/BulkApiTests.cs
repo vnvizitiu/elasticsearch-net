@@ -53,19 +53,19 @@ namespace Tests.Document.Multiple.Bulk
 
 		protected override object ExpectJson => new object[]
 		{
-			new Dictionary<string, object>{ { "index", new {  _type = "project", _id = Project.Instance.Name, pipeline="pipeline" } } },
+			new Dictionary<string, object>{ { "index", new {  _type = "doc", _id = Project.Instance.Name, pipeline="pipeline", routing = Project.Instance.Name } } },
 			Project.InstanceAnonymous,
-			new Dictionary<string, object>{ { "update", new { _type="project", _id = Project.Instance.Name } } },
+			new Dictionary<string, object>{ { "update", new { _type="doc", _id = Project.Instance.Name } } },
 			new { doc = new { leadDeveloper = new { firstName = "martijn" } } } ,
-			new Dictionary<string, object>{ { "create", new { _type="project", _id = Project.Instance.Name + "1" } } },
+			new Dictionary<string, object>{ { "create", new { _type="doc", _id = Project.Instance.Name + "1", routing = Project.Instance.Name } } },
 			Project.InstanceAnonymous,
-			new Dictionary<string, object>{ { "delete", new { _type="project", _id = Project.Instance.Name + "1" } } },
-			new Dictionary<string, object>{ { "create", new { _type="project", _id = Project.Instance.Name + "2" } } },
+			new Dictionary<string, object>{ { "delete", new { _type="doc", _id = Project.Instance.Name + "1", routing = Project.Instance.Name  } } },
+			new Dictionary<string, object>{ { "create", new { _type="doc", _id = Project.Instance.Name + "2", routing = Project.Instance.Name } } },
 			Project.InstanceAnonymous,
-			new Dictionary<string, object>{ { "update", new { _type="project", _id = Project.Instance.Name + "2" } } },
+			new Dictionary<string, object>{ { "update", new { _type="doc", _id = Project.Instance.Name + "2", routing = Project.Instance.Name } } },
 			new Dictionary<string, object>{ { "script", new
 			{
-				inline= "ctx._source.numberOfCommits = params.commits",
+				source = "ctx._source.numberOfCommits = params.commits",
 				@params = new { commits = 30 },
 				lang = "painless"
 			} } },
@@ -77,12 +77,13 @@ namespace Tests.Document.Multiple.Bulk
 			.Index<Project>(b => b.Document(Project.Instance).Pipeline("pipeline"))
 			.Update<Project, object>(b => b.Doc(new { leadDeveloper = new { firstName = "martijn" } }).Id(Project.Instance.Name))
 			.Create<Project>(b => b.Document(Project.Instance).Id(Project.Instance.Name + "1"))
-			.Delete<Project>(b=>b.Id(Project.Instance.Name + "1"))
+			.Delete<Project>(b=>b.Id(Project.Instance.Name + "1").Routing(Project.Instance.Name))
 			.Create<Project>(b => b.Document(Project.Instance).Id(Project.Instance.Name + "2"))
 			.Update<Project>(b => b
 				.Id(Project.Instance.Name + "2")
+				.Routing(Project.Instance.Name)
 				.Script(s => s
-					.Inline("ctx._source.numberOfCommits = params.commits")
+					.Source("ctx._source.numberOfCommits = params.commits")
 					.Params(p => p.Add("commits", 30))
 					.Lang("painless")
 				)
@@ -95,7 +96,7 @@ namespace Tests.Document.Multiple.Bulk
 				Operations = new List<IBulkOperation>
 				{
 					new BulkIndexOperation<Project>(Project.Instance) { Pipeline = "pipeline" },
-					new BulkUpdateOperation<Project, object>(Project.Instance)
+					new BulkUpdateOperation<Project, object>(Project.Instance.Name)
 					{
 						Doc = new { leadDeveloper = new { firstName = "martijn" } }
 					},
@@ -103,13 +104,17 @@ namespace Tests.Document.Multiple.Bulk
 					{
 						Id = Project.Instance.Name + "1",
 					},
-					new BulkDeleteOperation<Project>(Project.Instance.Name + "1"),
-						new BulkCreateOperation<Project>(Project.Instance)
+					new BulkDeleteOperation<Project>(Project.Instance.Name + "1")
+					{
+						Routing = Project.Instance.Name
+					},
+					new BulkCreateOperation<Project>(Project.Instance)
 					{
 						Id = Project.Instance.Name + "2",
 					},
 					new BulkUpdateOperation<Project, object>(Project.Instance.Name + "2")
 					{
+						Routing = Project.Instance.Name,
 						Script = new InlineScript("ctx._source.numberOfCommits = params.commits")
 						{
 							Params = new Dictionary<string, object> { { "commits", 30 } },
@@ -128,7 +133,7 @@ namespace Tests.Document.Multiple.Bulk
 			foreach (var item in response.Items)
 			{
 				item.Index.Should().Be(CallIsolatedValue);
-				item.Type.Should().Be("project");
+				item.Type.Should().Be("doc");
 				item.Status.Should().BeGreaterThan(100);
 				item.Version.Should().BeGreaterThan(0);
 				item.Id.Should().NotBeNullOrWhiteSpace();
@@ -136,13 +141,18 @@ namespace Tests.Document.Multiple.Bulk
 				item.Shards.Should().NotBeNull();
 				item.Shards.Total.Should().BeGreaterThan(0);
 				item.Shards.Successful.Should().BeGreaterThan(0);
+				item.SequenceNumber.Should().BeGreaterOrEqualTo(0);
+				item.PrimaryTerm.Should().BeGreaterThan(0);
 			}
 
 			var project1 = this.Client.Source<Project>(Project.Instance.Name, p => p.Index(CallIsolatedValue));
 			project1.LeadDeveloper.FirstName.Should().Be("martijn");
 			project1.Description.Should().Be("Overridden");
 
-			var project2 = this.Client.Source<Project>(Project.Instance.Name + "2", p => p.Index(CallIsolatedValue));
+			var project2 = this.Client.Source<Project>(Project.Instance.Name + "2", p => p
+				.Index(CallIsolatedValue)
+				.Routing(Project.Instance.Name)
+			);
 			project2.Description.Should().Be("Default");
 			project2.NumberOfCommits.Should().Be(30);
 		}

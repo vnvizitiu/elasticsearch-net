@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,12 +19,10 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Aggregations(a => a
-    .Cardinality("state_count", c => c
-        .Field(p => p.State)
-        .PrecisionThreshold(100)
-    )
+a => a
+.Cardinality("state_count", c => c
+    .Field(p => p.State)
+    .PrecisionThreshold(100)
 )
 ----
 
@@ -32,12 +30,9 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new CardinalityAggregation("state_count", Field<Project>(p => p.State))
 {
-    Aggregations = new CardinalityAggregation("state_count", Field<Project>(p => p.State))
-    {
-        PrecisionThreshold = 100
-    }
+    PrecisionThreshold = 100
 }
 ----
 
@@ -45,12 +40,10 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "state_count": {
-      "cardinality": {
-        "field": "state",
-        "precision_threshold": 100
-      }
+  "state_count": {
+    "cardinality": {
+      "field": "state",
+      "precision_threshold": 100
     }
   }
 }
@@ -61,7 +54,7 @@ new SearchRequest<Project>
 [source,csharp]
 ----
 response.ShouldBeValid();
-var projectCount = response.Aggs.Cardinality("state_count");
+var projectCount = response.Aggregations.Cardinality("state_count");
 projectCount.Should().NotBeNull();
 projectCount.Value.Should().Be(3);
 ----

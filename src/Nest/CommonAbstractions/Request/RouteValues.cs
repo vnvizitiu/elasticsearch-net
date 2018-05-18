@@ -4,7 +4,6 @@ using Elasticsearch.Net;
 
 namespace Nest
 {
-	//TODO INTERNAL ?
 	public class RouteValues
 	{
 		private readonly Dictionary<string, IUrlParameter> _routeValues = new Dictionary<string, IUrlParameter>();
@@ -33,14 +32,16 @@ namespace Nest
 		public string WatchId => GetResolved("watch_id");
 		public string ThreadPoolPatterns => GetResolved("thread_pool_patterns");
 		public string ActionId => GetResolved("action_id");
+		public string JobId => GetResolved("job_id");
+		public string DatafeedId => GetResolved("datafeed_id");
+		public string FilterId => GetResolved("filter_id");
+		public string SnapshotId => GetResolved("snapshot_id");
+		public string CategoryId => GetResolved("category_id");
+		public string Timestamp => GetResolved("timestamp");
+		public string Context => GetResolved("context");
 		public WatcherStatsMetric? WatcherStatsMetric => GetResolved("watcher_stats_metric").ToEnum<WatcherStatsMetric>();
 
-		private string GetResolved(string route)
-		{
-			string resolved;
-			if (this._resolved.TryGetValue(route, out resolved)) return resolved;
-			return null;
-		}
+		private string GetResolved(string route) => this._resolved.TryGetValue(route, out var resolved) ? resolved : null;
 
 		private RouteValues Route(string name, IUrlParameter routeValue, bool required = true)
 		{
@@ -50,7 +51,7 @@ namespace Nest
 					this._routeValues.Remove(name);
 				return this;
 			}
-			else if (routeValue == null) return this;
+			if (routeValue == null) return this;
 
 			this._routeValues[name] = routeValue;
 			return this;

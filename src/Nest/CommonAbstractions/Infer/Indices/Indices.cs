@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Nest
 {
-	[JsonConverter(typeof(IndicesMultiSyntaxJsonConverter))]
+	[ContractJsonConverter(typeof(IndicesMultiSyntaxJsonConverter))]
 	[DebuggerDisplay("{DebugDisplay,nq}")]
 	public class Indices : Union<Indices.AllIndicesMarker, Indices.ManyIndices>, IUrlParameter
 	{
@@ -50,18 +50,16 @@ namespace Nest
 
 		public static Indices Parse(string indicesString)
 		{
-			if (indicesString.IsNullOrEmpty()) throw new Exception("can not parse an empty string to Indices");
-			var indices = indicesString.Split(new[] { "," }, StringSplitOptions.RemoveEmptyEntries);
-			if (indices.Contains("_all")) return Indices.All;
-			return Index(indices.Select(i => (IndexName)i));
+			if (indicesString.IsNullOrEmptyCommaSeparatedList(out var indices)) return null;
+			return indices.Contains("_all") ? All : Index(indices.Select(i => (IndexName)i));
 		}
 
 		public static implicit operator Indices(string indicesString) => Parse(indicesString);
-		public static implicit operator Indices(ManyIndices many) => new Indices(many);
-		public static implicit operator Indices(string[] many) => new ManyIndices(many);
-		public static implicit operator Indices(IndexName[] many) => new ManyIndices(many);
-		public static implicit operator Indices(IndexName index) => new ManyIndices(new[] { index });
-		public static implicit operator Indices(Type type) => new ManyIndices(new IndexName[] { type });
+		public static implicit operator Indices(ManyIndices many) => many == null ? null : new Indices(many);
+		public static implicit operator Indices(string[] many) => many.IsEmpty() ? null : new ManyIndices(many);
+		public static implicit operator Indices(IndexName[] many) => many.IsEmpty()? null : new ManyIndices(many);
+		public static implicit operator Indices(IndexName index) => index == null ? null : new ManyIndices(new[] { index });
+		public static implicit operator Indices(Type type) => type == null ? null : new ManyIndices(new IndexName[] { type });
 
 		private string DebugDisplay => this.Match(
 			all => "_all",
@@ -74,8 +72,7 @@ namespace Nest
 				all => "_all",
 				many =>
 				{
-					var nestSettings = settings as IConnectionSettingsValues;
-					if (nestSettings == null)
+					if (!(settings is IConnectionSettingsValues nestSettings))
 						throw new Exception("Tried to pass index names on querysting but it could not be resolved because no nest settings are available");
 
 					var infer = nestSettings.Inferrer;
@@ -85,17 +82,27 @@ namespace Nest
 			);
 		}
 
+		public static bool operator ==(Indices left, Indices right) => Equals(left, right);
+
+		public static bool operator !=(Indices left, Indices right) => !Equals(left, right);
+
 		public override bool Equals(object obj)
 		{
-			var other = obj as Indices;
-			if (other == null) return false;
+			if (!(obj is Indices other)) return false;
 			return this.Match(
 				all => other.Match(a => true, m => false),
 				many => other.Match(
 					a => false,
-					m => this.GetHashCode().Equals(other.GetHashCode())
+					m => EqualsAllIndices(m.Indices, many.Indices)
 				)
 			);
+		}
+
+		private static bool EqualsAllIndices(IReadOnlyList<IndexName> thisIndices, IReadOnlyList<IndexName> otherIndices)
+		{
+			if (thisIndices == null && otherIndices == null) return true;
+			if (thisIndices == null || otherIndices == null) return false;
+			return thisIndices.Count == otherIndices.Count && !thisIndices.Except(otherIndices).Any();
 		}
 
 		public override int GetHashCode()

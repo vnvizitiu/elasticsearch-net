@@ -39,13 +39,13 @@ namespace Tests.Document.Multiple.MultiGet
 
 		protected override void ExpectResponse(IMultiGetResponse response)
 		{
-			response.Documents.Should().NotBeEmpty().And.HaveCount(10);
-			foreach (var hit in response.Documents)
+			response.Hits.Should().NotBeEmpty().And.HaveCount(10);
+			foreach (var document in response.Hits)
 			{
-				hit.Index.Should().NotBeNullOrWhiteSpace();
-				hit.Type.Should().NotBeNullOrWhiteSpace();
-				hit.Id.Should().NotBeNullOrWhiteSpace();
-				hit.Found.Should().BeTrue();
+				document.Index.Should().NotBeNullOrWhiteSpace();
+				document.Type.Should().NotBeNullOrWhiteSpace();
+				document.Id.Should().NotBeNullOrWhiteSpace();
+				document.Found.Should().BeTrue();
 			}
 		}
 
@@ -83,7 +83,7 @@ namespace Tests.Document.Multiple.MultiGet
 
 		protected override object ExpectJson { get; } = new
 		{
-			docs = Developer.Developers.Select(p => new { _type = "developer", _id = p.Id, _routing = p.Id.ToString(), _source = false }).Take(10)
+			docs = Developer.Developers.Select(p => new { _type = "developer", _id = p.Id, routing = p.Id.ToString(), _source = false }).Take(10)
 		};
 
 		protected override Func<MultiGetDescriptor, IMultiGetRequest> Fluent => d => d
@@ -98,13 +98,17 @@ namespace Tests.Document.Multiple.MultiGet
 
 		protected override void ExpectResponse(IMultiGetResponse response)
 		{
-			response.Documents.Should().NotBeEmpty().And.HaveCount(10);
-			foreach (var hit in response.Documents)
+			response.Hits.Should().NotBeEmpty().And.HaveCount(10);
+			foreach (var hit in response.Hits)
 			{
 				hit.Index.Should().NotBeNullOrWhiteSpace();
 				hit.Type.Should().NotBeNullOrWhiteSpace();
 				hit.Id.Should().NotBeNullOrWhiteSpace();
 				hit.Found.Should().BeTrue();
+			}
+			foreach (var document in response.SourceMany<Project>(this._ids))
+			{
+				document.ShouldAdhereToSourceSerializerWhenSet();
 			}
 		}
 	}
@@ -125,28 +129,31 @@ namespace Tests.Document.Multiple.MultiGet
 		protected override bool ExpectIsValid => true;
 		protected override int ExpectStatusCode => 200;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
-		protected override string UrlPath => $"/project/project/_mget";
+		protected override string UrlPath => $"/project/doc/_mget";
 
 		protected override bool SupportsDeserialization => false;
 
 		protected override object ExpectJson => new
 		{
-			ids = this._ids
+			docs = this._ids.Select(i=> new
+			{
+				_id = i, routing = i
+			})
 		};
 
 		protected override Func<MultiGetDescriptor, IMultiGetRequest> Fluent => d => d
 			.Index<Project>()
 			.Type<Project>()
-			.GetMany<Project>(this._ids);
+			.GetMany<Project>(this._ids, (op, id) =>op.Routing(id));
 
 		protected override MultiGetRequest Initializer => new MultiGetRequest(Index<Project>(), Type<Project>())
 		{
-			Documents = this._ids.Select(n => new MultiGetOperation<Project>(n))
+			Documents = this._ids.Select(n => new MultiGetOperation<Project>(n) { Routing = n })
 		};
 
 		protected override void ExpectResponse(IMultiGetResponse response)
 		{
-			response.Documents.Should().NotBeEmpty().And.HaveCount(10);
+			response.Hits.Should().NotBeEmpty().And.HaveCount(10);
 
 			foreach (var hit in response.GetMany<Project>(_ids))
 			{
@@ -155,6 +162,7 @@ namespace Tests.Document.Multiple.MultiGet
 				hit.Id.Should().NotBeNullOrWhiteSpace();
 				hit.Found.Should().BeTrue();
 				hit.Version.Should().Be(1);
+				hit.Source.ShouldAdhereToSourceSerializerWhenSet();
 			}
 		}
 	}
@@ -174,13 +182,13 @@ namespace Tests.Document.Multiple.MultiGet
 		protected override bool ExpectIsValid => true;
 		protected override int ExpectStatusCode => 200;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
-		protected override string UrlPath => $"/project/commits/_mget";
+		protected override string UrlPath => $"/project/doc/_mget";
 
 		protected override bool SupportsDeserialization => false;
 
 		protected override object ExpectJson => new
 		{
-			docs = _activities.Select(p => new { _id = p.Id, _routing = p.ProjectName })
+			docs = _activities.Select(p => new { _id = p.Id, routing = p.ProjectName })
 		};
 
 		protected override Func<MultiGetDescriptor, IMultiGetRequest> Fluent => d => d
@@ -195,7 +203,7 @@ namespace Tests.Document.Multiple.MultiGet
 
 		protected override void ExpectResponse(IMultiGetResponse response)
 		{
-			response.Documents.Should().NotBeEmpty().And.HaveCount(10);
+			response.Hits.Should().NotBeEmpty().And.HaveCount(10);
 
 			foreach (var hit in response.GetMany<CommitActivity>(_activities.Select(c => c.Id)))
 			{
@@ -204,7 +212,9 @@ namespace Tests.Document.Multiple.MultiGet
 				hit.Id.Should().NotBeNullOrWhiteSpace();
 				hit.Found.Should().BeTrue();
 				hit.Version.Should().Be(1);
-				hit.Parent.Should().NotBeNullOrEmpty();
+#pragma warning disable 618
+				hit.Parent.Should().BeNull();
+#pragma warning restore 618
 				hit.Routing.Should().NotBeNullOrEmpty();
 			}
 		}

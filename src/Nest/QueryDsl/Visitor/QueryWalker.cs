@@ -28,20 +28,7 @@ namespace Nest
 				VisitQuery(d as INumericRangeQuery, visitor, (vv, dd) => v.Visit(dd));
 				VisitQuery(d as ITermRangeQuery, visitor, (vv, dd) => v.Visit(dd));
 			});
-			VisitQuery(qd.GeoShape, visitor, (v, d) =>
-			{
-				v.Visit(d);
-				VisitQuery(d as IGeoIndexedShapeQuery, visitor, (vv, dd) => v.Visit(dd));
-				VisitQuery(d as IGeoShapeMultiPointQuery, visitor, (vv, dd) => v.Visit(dd));
-				VisitQuery(d as IGeoShapeMultiPolygonQuery, visitor, (vv, dd) => v.Visit(dd));
-				VisitQuery(d as IGeoShapePolygonQuery, visitor, (vv, dd) => v.Visit(dd));
-				VisitQuery(d as IGeoShapePointQuery, visitor, (vv, dd) => v.Visit(dd));
-				VisitQuery(d as IGeoShapeMultiLineStringQuery, visitor, (vv, dd) => v.Visit(dd));
-				VisitQuery(d as IGeoShapeLineStringQuery, visitor, (vv, dd) => v.Visit(dd));
-				VisitQuery(d as IGeoShapeEnvelopeQuery, visitor, (vv, dd) => v.Visit(dd));
-				VisitQuery(d as IGeoShapeCircleQuery, visitor, (vv, dd) => v.Visit(dd));
-				VisitQuery(d as IGeoShapeGeometryCollectionQuery, visitor, (vv, dd) => v.Visit(dd));
-			});
+			VisitQuery(qd.GeoShape, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Ids, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Prefix, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.QueryString, visitor, (v, d) => v.Visit(d));
@@ -60,15 +47,15 @@ namespace Nest
 			VisitQuery(qd.GeoPolygon, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.GeoDistance, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.GeoBoundingBox, visitor, (v, d) => v.Visit(d));
-			VisitQuery(qd.GeoHashCell, visitor, (v, d) => v.Visit(d));
-			VisitQuery(qd.Template, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.RawQuery, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.Percolate, visitor, (v, d) => v.Visit(d));
 			VisitQuery(qd.ParentId, visitor, (v, d) => v.Visit(d));
+			VisitQuery(qd.TermsSet, visitor, (v, d) => v.Visit(d));
 
 			VisitQuery(qd.Bool, visitor, (v, d) =>
 			{
 				v.Visit(d);
+				Accept(v, d.Filter, VisitorScope.Filter);
 				Accept(v, d.Must, VisitorScope.Must);
 				Accept(v, d.MustNot, VisitorScope.MustNot);
 				Accept(v, d.Should, VisitorScope.Should);
@@ -107,14 +94,6 @@ namespace Nest
 				v.Visit(d);
 				Accept(v, d.Query);
 			});
-#pragma warning disable 618
-			VisitQuery(qd.Indices, visitor, (v, d) =>
-			{
-				v.Visit(d);
-				Accept(v, d.Query);
-				Accept(v, d.NoMatchQuery, VisitorScope.NoMatchQuery);
-			});
-#pragma warning restore 618
 			VisitQuery(qd.Nested, visitor, (v, d) =>
 			{
 				v.Visit(d);

@@ -1,35 +1,20 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\Clients.Common.targets" />
   <PropertyGroup>
-    <TargetFrameworks Condition="'$(DotNetCoreOnly)'==''">net45;net46;netstandard1.3</TargetFrameworks>
-    <TargetFrameworks Condition="'$(DotNetCoreOnly)'=='1'">netstandard1.3</TargetFrameworks>
+    <TargetFrameworks>netstandard1.3</TargetFrameworks>
+    <!-- we need to referenced assemblies during the command line build so that ILRepack can pick them up -->
+    <CopyLocalLockFileAssemblies Condition="'$(FakeBuild)'=='1'">true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Elasticsearch.Net\Elasticsearch.Net.csproj" />
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.1" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)'!='netstandard1.3'">
-    <Reference Include="System.ServiceModel" />
-    <Reference Include="Microsoft.CSharp" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)'=='netstandard1.3'">
+  <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.3.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
     <PackageReference Include="System.Collections.Specialized" Version="4.3.0" />
     <PackageReference Include="System.Reflection.TypeExtensions" Version="4.3.0" />
     <PackageReference Include="System.Linq.Queryable" Version="4.0.1" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Cluster\RemoteInfo" />
-    <Folder Include="Cluster\RemoteInfo" />
-    <Folder Include="Document\Single\SourceExists" />
-    <Folder Include="Mapping\Types\Specialized\Attachment" />
-    <Folder Include="QueryDsl\FullText\MatchPhrase" />
-    <Folder Include="QueryDsl\FullText\MatchPhrasePrefix" />
-    <Folder Include="Search\FieldCapabilities" />
-    <Folder Include="XPack\Info\XPackInfo" />
-    <Folder Include="XPack\Info\XPackInfo" />
-    <Folder Include="XPack\Info\XPackUsage" />
-  </ItemGroup>
-  <!--<Import Project="..\..\.paket\Paket.Restore.targets" />-->
-  <Import Project="..\..\.paket\Paket.Restore.targets" />
+  <Import Project="..\outputpath.props" />
 </Project>

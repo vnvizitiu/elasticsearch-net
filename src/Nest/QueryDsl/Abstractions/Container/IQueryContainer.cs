@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 namespace Nest
 {
 	[JsonObject(MemberSerialization = MemberSerialization.OptIn)]
-	[JsonConverter(typeof(QueryContainerJsonConverter))]
+	[ContractJsonConverter(typeof(QueryContainerJsonConverter))]
 	public interface IQueryContainer
 	{
 		[JsonIgnore]
@@ -130,15 +130,8 @@ namespace Nest
 		[JsonProperty("nested")]
 		INestedQuery Nested { get; set; }
 
-		[Obsolete("Deprecated. You can specify _index on the query to target specific indices")]
-		[JsonProperty("indices")]
-		IIndicesQuery Indices { get; set; }
-
 		[JsonProperty("function_score")]
 		IFunctionScoreQuery FunctionScore { get; set; }
-
-		[JsonProperty("template")]
-		ITemplateQuery Template { get; set; }
 
 		[JsonProperty("geo_bounding_box")]
 		IGeoBoundingBoxQuery GeoBoundingBox { get; set; }
@@ -148,9 +141,6 @@ namespace Nest
 
 		[JsonProperty("geo_polygon")]
 		IGeoPolygonQuery GeoPolygon { get; set; }
-
-		[JsonProperty("geohash_cell")]
-		IGeoHashCellQuery GeoHashCell { get; set; }
 
 		[JsonProperty("script")]
 		IScriptQuery Script { get; set; }
@@ -163,6 +153,9 @@ namespace Nest
 
 		[JsonProperty("percolate")]
 		IPercolateQuery Percolate { get; set; }
+
+		[JsonProperty("terms_set")]
+		ITermsSetQuery TermsSet { get; set; }
 
 		void Accept(IQueryVisitor visitor);
 	}

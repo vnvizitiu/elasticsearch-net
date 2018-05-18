@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Elasticsearch.Net;
 using Newtonsoft.Json;
 
 namespace Nest
@@ -9,49 +10,63 @@ namespace Nest
 	[JsonConverter(typeof(ReadAsTypeJsonConverter<MoreLikeThisQueryDescriptor<object>>))]
 	public interface IMoreLikeThisQuery : IQuery
 	{
-		[JsonProperty(PropertyName = "fields")]
+		[JsonProperty("fields")]
 		Fields Fields { get; set; }
 
-		[JsonProperty(PropertyName = "like")]
+		[JsonProperty("like")]
 		IEnumerable<Like> Like { get; set; }
 
-		[JsonProperty(PropertyName = "unlike")]
+		[JsonProperty("unlike")]
 		IEnumerable<Like> Unlike { get; set; }
 
-		[JsonProperty(PropertyName = "max_query_terms")]
+		[JsonProperty("max_query_terms")]
 		int? MaxQueryTerms { get; set; }
 
-		[JsonProperty(PropertyName = "min_term_freq")]
+		[JsonProperty("min_term_freq")]
 		int? MinTermFrequency { get; set; }
 
-		[JsonProperty(PropertyName = "min_doc_freq")]
+		[JsonProperty("min_doc_freq")]
 		int? MinDocumentFrequency { get; set; }
 
-		[JsonProperty(PropertyName = "max_doc_freq")]
+		[JsonProperty("max_doc_freq")]
 		int? MaxDocumentFrequency { get; set; }
 
-		[JsonProperty(PropertyName = "min_word_len")]
+		[JsonProperty("min_word_length")]
 		int? MinWordLength { get; set; }
 
-		[JsonProperty(PropertyName = "max_word_len")]
+		[JsonProperty("max_word_length")]
 		int? MaxWordLength { get; set; }
 
-		[JsonProperty(PropertyName = "stop_words")]
+		[JsonProperty("stop_words")]
 		StopWords StopWords { get; set; }
 
-		[JsonProperty(PropertyName = "analyzer")]
+		[JsonProperty("analyzer")]
 		string Analyzer { get; set; }
 
-		[JsonProperty(PropertyName = "minimum_should_match")]
+		[JsonProperty("minimum_should_match")]
 		MinimumShouldMatch MinimumShouldMatch { get; set; }
 
-		[JsonProperty(PropertyName = "boost_terms")]
+		[JsonProperty("boost_terms")]
 		double? BoostTerms { get; set; }
 
-		[JsonProperty(PropertyName = "include")]
+		[JsonProperty("include")]
 		bool? Include { get; set; }
 
+		/// <summary>
+		/// Provide a different analyzer than the one at the field.
+		/// This is useful in order to generate term vectors in any fashion, especially when using artificial documents.
+		/// </summary>
+		[JsonProperty("per_field_analyzer")]
+		IPerFieldAnalyzer PerFieldAnalyzer { get; set; }
 
+		[JsonProperty("version")]
+		long? Version { get; set; }
+
+		[JsonProperty("version_type")]
+		VersionType? VersionType { get; set; }
+
+		[JsonProperty("routing")]
+		Routing Routing { get; set; }
 	}
 
 	public class MoreLikeThisQuery : QueryBase, IMoreLikeThisQuery
@@ -72,6 +87,12 @@ namespace Nest
 		public bool? Include { get; set; }
 		public IEnumerable<Like> Like { get; set; }
 		public IEnumerable<Like> Unlike { get; set; }
+		/// <inheritdoc/>
+		public IPerFieldAnalyzer PerFieldAnalyzer { get; set; }
+
+		public long? Version { get; set; }
+		public VersionType? VersionType { get; set; }
+		public Routing Routing { get; set; }
 
 		internal override void InternalWrapInContainer(IQueryContainer c) => c.MoreLikeThis = this;
 		internal static bool IsConditionless(IMoreLikeThisQuery q) => q.Fields.IsConditionless() || (!q.Like.HasAny() || q.Like.All(Nest.Like.IsConditionless));
@@ -94,6 +115,10 @@ namespace Nest
 		double? IMoreLikeThisQuery.BoostTerms { get; set; }
 		string IMoreLikeThisQuery.Analyzer { get; set; }
 		bool? IMoreLikeThisQuery.Include { get; set; }
+		IPerFieldAnalyzer IMoreLikeThisQuery.PerFieldAnalyzer { get; set; }
+		long? IMoreLikeThisQuery.Version { get; set; }
+		VersionType? IMoreLikeThisQuery.VersionType { get; set; }
+		Routing IMoreLikeThisQuery.Routing { get; set; }
 		IEnumerable<Like> IMoreLikeThisQuery.Like { get; set; }
 		IEnumerable<Like> IMoreLikeThisQuery.Unlike { get; set; }
 
@@ -137,5 +162,13 @@ namespace Nest
 		public MoreLikeThisQueryDescriptor<T> Unlike(Func<LikeDescriptor<T>, IPromise<List<Like>>> selector) =>
 			Assign(a => a.Unlike = selector?.Invoke(new LikeDescriptor<T>())?.Value);
 
+		public MoreLikeThisQueryDescriptor<T> PerFieldAnalyzer(Func<PerFieldAnalyzerDescriptor<T>, IPromise<IPerFieldAnalyzer>> analyzerSelector) =>
+			Assign(a => a.PerFieldAnalyzer = analyzerSelector?.Invoke(new PerFieldAnalyzerDescriptor<T>())?.Value);
+
+		public MoreLikeThisQueryDescriptor<T> Version(long? version) => Assign(a => a.Version = version);
+
+		public MoreLikeThisQueryDescriptor<T> VersionType(VersionType? versionType) => Assign(a => a.VersionType = versionType);
+
+		public MoreLikeThisQueryDescriptor<T> Routing(Routing routing) => Assign(a => a.Routing = routing);
 	}
 }

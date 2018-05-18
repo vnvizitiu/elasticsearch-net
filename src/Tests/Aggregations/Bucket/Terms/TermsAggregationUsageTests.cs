@@ -5,6 +5,7 @@ using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
 using Tests.Framework.ManagedElasticsearch.Clusters;
+using Tests.Framework.ManagedElasticsearch.NodeSeeders;
 using Tests.Framework.MockData;
 using static Nest.Infer;
 
@@ -19,87 +20,79 @@ namespace Tests.Aggregations.Bucket.Terms
 	{
 		public TermsAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
-		protected override object ExpectJson => new
+		protected override object AggregationJson => new
 		{
-			size = 0,
-			aggs = new
+			states = new
 			{
-				states = new
+				meta = new
 				{
-					meta = new
+					foo = "bar"
+				},
+				terms = new
+				{
+					field = "state",
+					min_doc_count = 2,
+					size = 5,
+					shard_size = 100,
+					execution_hint = "map",
+					missing = "n/a",
+					script = new
 					{
-						foo = "bar"
+						source = "'State of Being: '+_value",
 					},
-					terms = new
+					order = new object[]
 					{
-						field = "state",
-						min_doc_count = 2,
-						size = 5,
-						shard_size = 100,
-						execution_hint = "map",
-						missing = "n/a",
-						script = new
-						{
-							inline = "'State of Being: '+_value",
-						},
-						order = new object[]
-						{
-							new {_term = "asc"},
-							new {_count = "desc"}
-						}
+						new {_key = "asc"},
+						new {_count = "desc"}
 					}
 				}
 			}
 		};
 
-		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
-			.Size(0)
-			.Aggregations(a => a
-				.Terms("states", st => st
-					.Field(p => p.State)
-					.MinimumDocumentCount(2)
-					.Size(5)
-					.ShardSize(100)
-					.ExecutionHint(TermsAggregationExecutionHint.Map)
-					.Missing("n/a")
-					.Script(ss => ss.Inline("'State of Being: '+_value"))
-					.Order(TermsOrder.TermAscending)
-					.Order(TermsOrder.CountDescending)
-					.Meta(m => m
-						.Add("foo", "bar")
-					)
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.Terms("states", st => st
+				.Field(p => p.State)
+				.MinimumDocumentCount(2)
+				.Size(5)
+				.ShardSize(100)
+				.ExecutionHint(TermsAggregationExecutionHint.Map)
+				.Missing("n/a")
+				.Script(ss => ss.Source("'State of Being: '+_value"))
+				.Order(o => o
+					.KeyAscending()
+					.CountDescending()
+				)
+				.Meta(m => m
+					.Add("foo", "bar")
 				)
 			);
 
-		protected override SearchRequest<Project> Initializer =>
-			new SearchRequest<Project>
+
+		protected override AggregationDictionary InitializerAggs =>
+			new TermsAggregation("states")
 			{
-				Size = 0,
-				Aggregations = new TermsAggregation("states")
+				Field = Field<Project>(p => p.State),
+				MinimumDocumentCount = 2,
+				Size = 5,
+				ShardSize = 100,
+				ExecutionHint = TermsAggregationExecutionHint.Map,
+				Missing = "n/a",
+				Script = new InlineScript("'State of Being: '+_value"),
+				Order = new List<TermsOrder>
 				{
-					Field = Field<Project>(p => p.State),
-					MinimumDocumentCount = 2,
-					Size = 5,
-					ShardSize = 100,
-					ExecutionHint = TermsAggregationExecutionHint.Map,
-					Missing = "n/a",
-					Script = new InlineScript("'State of Being: '+_value"),
-					Order = new List<TermsOrder>
-					{
-						TermsOrder.TermAscending,
-						TermsOrder.CountDescending
-					},
-					Meta = new Dictionary<string, object>
-					{
-						{"foo", "bar"}
-					}
+					TermsOrder.KeyAscending,
+					TermsOrder.CountDescending
+				},
+				Meta = new Dictionary<string, object>
+				{
+					{"foo", "bar"}
 				}
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
-			var states = response.Aggs.Terms("states");
+			var states = response.Aggregations.Terms("states");
 			states.Should().NotBeNull();
 			states.DocCountErrorUpperBound.Should().HaveValue();
 			states.SumOtherDocCount.Should().HaveValue();
@@ -125,88 +118,77 @@ namespace Tests.Aggregations.Bucket.Terms
 	 */
 	public class TermsAggregationIncludePatternUsageTests : AggregationUsageTestBase
 	{
-		public TermsAggregationIncludePatternUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage)
-		{
-		}
+		public TermsAggregationIncludePatternUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
-		protected override object ExpectJson => new
+		protected override object AggregationJson => new
 		{
-			size = 0,
-			aggs = new
+			states = new
 			{
-				states = new
+				meta = new
 				{
-					meta = new
+					foo = "bar"
+				},
+				terms = new
+				{
+					field = "state.keyword",
+					min_doc_count = 2,
+					size = 5,
+					shard_size = 100,
+					execution_hint = "map",
+					missing = "n/a",
+					include = "(Stable|VeryActive)",
+					order = new object[]
 					{
-						foo = "bar"
-					},
-					terms = new
-					{
-						field = "state.keyword",
-						min_doc_count = 2,
-						size = 5,
-						shard_size = 100,
-						execution_hint = "map",
-						missing = "n/a",
-						include = "(Stable|VeryActive)",
-						order = new object[]
-						{
-							new {_term = "asc"},
-							new {_count = "desc"}
-						}
+						new {_key = "asc"},
+						new {_count = "desc"}
 					}
 				}
 			}
 		};
 
-		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
-			.Size(0)
-			.Aggregations(a => a
-				.Terms("states", st => st
-					.Field(p => p.State.Suffix("keyword"))
-					.MinimumDocumentCount(2)
-					.Size(5)
-					.ShardSize(100)
-					.ExecutionHint(TermsAggregationExecutionHint.Map)
-					.Missing("n/a")
-					.Include("(Stable|VeryActive)")
-					.Order(TermsOrder.TermAscending)
-					.Order(TermsOrder.CountDescending)
-					.Meta(m => m
-						.Add("foo", "bar")
-					)
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.Terms("states", st => st
+				.Field(p => p.State.Suffix("keyword"))
+				.MinimumDocumentCount(2)
+				.Size(5)
+				.ShardSize(100)
+				.ExecutionHint(TermsAggregationExecutionHint.Map)
+				.Missing("n/a")
+				.Include("(Stable|VeryActive)")
+				.Order(o => o
+					.KeyAscending()
+					.CountDescending()
+				)
+				.Meta(m => m
+					.Add("foo", "bar")
 				)
 			);
 
-		protected override SearchRequest<Project> Initializer =>
-			new SearchRequest<Project>
+		protected override AggregationDictionary InitializerAggs =>
+			new TermsAggregation("states")
 			{
-				Size = 0,
-				Aggregations = new TermsAggregation("states")
+				Field = Field<Project>(p => p.State.Suffix("keyword")),
+				MinimumDocumentCount = 2,
+				Size = 5,
+				ShardSize = 100,
+				ExecutionHint = TermsAggregationExecutionHint.Map,
+				Missing = "n/a",
+				Include = new TermsInclude("(Stable|VeryActive)"),
+				Order = new List<TermsOrder>
 				{
-					Field = Field<Project>(p => p.State.Suffix("keyword")),
-					MinimumDocumentCount = 2,
-					Size = 5,
-					ShardSize = 100,
-					ExecutionHint = TermsAggregationExecutionHint.Map,
-					Missing = "n/a",
-					Include = new TermsInclude("(Stable|VeryActive)"),
-					Order = new List<TermsOrder>
-					{
-						TermsOrder.TermAscending,
-						TermsOrder.CountDescending
-					},
-					Meta = new Dictionary<string, object>
-					{
-						{"foo", "bar"}
-					}
+					TermsOrder.KeyAscending,
+					TermsOrder.CountDescending
+				},
+				Meta = new Dictionary<string, object>
+				{
+					{"foo", "bar"}
 				}
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
-			var states = response.Aggs.Terms("states");
+			var states = response.Aggregations.Terms("states");
 			states.Should().NotBeNull();
 			states.DocCountErrorUpperBound.Should().HaveValue();
 			states.SumOtherDocCount.Should().HaveValue();
@@ -232,88 +214,77 @@ namespace Tests.Aggregations.Bucket.Terms
 	 */
 	public class TermsAggregationIncludeExactValuesUsageTests : AggregationUsageTestBase
 	{
-		public TermsAggregationIncludeExactValuesUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage)
-		{
-		}
+		public TermsAggregationIncludeExactValuesUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
-		protected override object ExpectJson => new
+		protected override object AggregationJson => new
 		{
-			size = 0,
-			aggs = new
+			states = new
 			{
-				states = new
+				meta = new
 				{
-					meta = new
+					foo = "bar"
+				},
+				terms = new
+				{
+					field = "state.keyword",
+					min_doc_count = 2,
+					size = 5,
+					shard_size = 100,
+					execution_hint = "map",
+					missing = "n/a",
+					include = new[] {"Stable", "VeryActive"},
+					order = new object[]
 					{
-						foo = "bar"
-					},
-					terms = new
-					{
-						field = "state.keyword",
-						min_doc_count = 2,
-						size = 5,
-						shard_size = 100,
-						execution_hint = "map",
-						missing = "n/a",
-						include = new[] {"Stable", "VeryActive"},
-						order = new object[]
-						{
-							new {_term = "asc"},
-							new {_count = "desc"}
-						}
+						new {_key = "asc"},
+						new {_count = "desc"}
 					}
 				}
 			}
 		};
 
-		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
-			.Size(0)
-			.Aggregations(a => a
-				.Terms("states", st => st
-					.Field(p => p.State.Suffix("keyword"))
-					.MinimumDocumentCount(2)
-					.Size(5)
-					.ShardSize(100)
-					.ExecutionHint(TermsAggregationExecutionHint.Map)
-					.Missing("n/a")
-					.Include(new[] {StateOfBeing.Stable.ToString(), StateOfBeing.VeryActive.ToString()})
-					.Order(TermsOrder.TermAscending)
-					.Order(TermsOrder.CountDescending)
-					.Meta(m => m
-						.Add("foo", "bar")
-					)
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.Terms("states", st => st
+				.Field(p => p.State.Suffix("keyword"))
+				.MinimumDocumentCount(2)
+				.Size(5)
+				.ShardSize(100)
+				.ExecutionHint(TermsAggregationExecutionHint.Map)
+				.Missing("n/a")
+				.Include(new[] {StateOfBeing.Stable.ToString(), StateOfBeing.VeryActive.ToString()})
+				.Order(o => o
+					.KeyAscending()
+					.CountDescending()
+				)
+				.Meta(m => m
+					.Add("foo", "bar")
 				)
 			);
 
-		protected override SearchRequest<Project> Initializer =>
-			new SearchRequest<Project>
+		protected override AggregationDictionary InitializerAggs =>
+			new TermsAggregation("states")
 			{
-				Size = 0,
-				Aggregations = new TermsAggregation("states")
+				Field = Field<Project>(p => p.State.Suffix("keyword")),
+				MinimumDocumentCount = 2,
+				Size = 5,
+				ShardSize = 100,
+				ExecutionHint = TermsAggregationExecutionHint.Map,
+				Missing = "n/a",
+				Include = new TermsInclude(new[] {StateOfBeing.Stable.ToString(), StateOfBeing.VeryActive.ToString()}),
+				Order = new List<TermsOrder>
 				{
-					Field = Field<Project>(p => p.State.Suffix("keyword")),
-					MinimumDocumentCount = 2,
-					Size = 5,
-					ShardSize = 100,
-					ExecutionHint = TermsAggregationExecutionHint.Map,
-					Missing = "n/a",
-					Include = new TermsInclude(new[] { StateOfBeing.Stable.ToString(), StateOfBeing.VeryActive.ToString() }),
-					Order = new List<TermsOrder>
-					{
-						TermsOrder.TermAscending,
-						TermsOrder.CountDescending
-					},
-					Meta = new Dictionary<string, object>
-					{
-						{"foo", "bar"}
-					}
+					TermsOrder.KeyAscending,
+					TermsOrder.CountDescending
+				},
+				Meta = new Dictionary<string, object>
+				{
+					{"foo", "bar"}
 				}
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
-			var states = response.Aggs.Terms("states");
+			var states = response.Aggregations.Terms("states");
 			states.Should().NotBeNull();
 			states.DocCountErrorUpperBound.Should().HaveValue();
 			states.SumOtherDocCount.Should().HaveValue();
@@ -344,57 +315,44 @@ namespace Tests.Aggregations.Bucket.Terms
 	[SkipVersion("<5.2.0", "Partitioning term aggregations responses is a new feature in 5.2.0")]
 	public class PartitionTermsAggregationUsageTests : AggregationUsageTestBase
 	{
-		public PartitionTermsAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage)
-		{
-		}
+		public PartitionTermsAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
-		protected override object ExpectJson => new
+		protected override object AggregationJson => new
 		{
-			size = 0,
-			aggs = new
+			commits = new
 			{
-				commits = new
+				terms = new
 				{
-					terms = new
+					field = "numberOfCommits",
+					size = 5,
+					include = new
 					{
-						field = "numberOfCommits",
-						size = 5,
-						include = new
-						{
-							partition = 0,
-							num_partitions = 10
-						}
+						partition = 0,
+						num_partitions = 10
 					}
 				}
 			}
 		};
 
-		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
-			.Size(0)
-			.Aggregations(a => a
-				.Terms("commits", st => st
-					.Field(p => p.NumberOfCommits)
-					.Include(partition: 0, numberOfPartitions: 10)
-					.Size(5)
-				)
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.Terms("commits", st => st
+				.Field(p => p.NumberOfCommits)
+				.Include(partition: 0, numberOfPartitions: 10)
+				.Size(5)
 			);
 
-		protected override SearchRequest<Project> Initializer =>
-			new SearchRequest<Project>
+		protected override AggregationDictionary InitializerAggs =>
+			new TermsAggregation("commits")
 			{
-				Size = 0,
-				Aggregations = new TermsAggregation("commits")
-				{
-					Field = Infer.Field<Project>(p => p.NumberOfCommits),
-					Include = new TermsInclude(0, 10),
-					Size = 5
-				}
+				Field = Infer.Field<Project>(p => p.NumberOfCommits),
+				Include = new TermsInclude(0, 10),
+				Size = 5
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
-			var commits = response.Aggs.Terms<int>("commits");
+			var commits = response.Aggregations.Terms<int>("commits");
 			commits.Should().NotBeNull();
 			commits.DocCountErrorUpperBound.Should().HaveValue();
 			commits.SumOtherDocCount.Should().HaveValue();
@@ -414,56 +372,42 @@ namespace Tests.Aggregations.Bucket.Terms
 	 *
 	 * A terms aggregation on a numeric field
 	 */
-	public class NumericTermsAggregationUsageTests : AggregationUsageTestBase
+	public class NumericTermsAggregationUsageTests : ProjectsOnlyAggregationUsageTestBase
 	{
-		public NumericTermsAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage)
-		{
-		}
+		public NumericTermsAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
-		protected override object ExpectJson => new
+		protected override object AggregationJson => new
 		{
-			size = 0,
-			aggs = new
+			commits = new
 			{
-				commits = new
+				terms = new
 				{
-
-					terms = new
-					{
-						field = "numberOfCommits",
-						missing = -1,
-						show_term_doc_count_error = true
-					}
+					field = "numberOfCommits",
+					missing = -1,
+					show_term_doc_count_error = true
 				}
 			}
 		};
 
-		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
-			.Size(0)
-			.Aggregations(a => a
-				.Terms<int>("commits", st => st
-					.Field(p => p.NumberOfCommits)
-					.Missing(-1)
-					.ShowTermDocCountError()
-				)
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.Terms("commits", st => st
+				.Field(p => p.NumberOfCommits)
+				.Missing(-1)
+				.ShowTermDocCountError()
 			);
 
-		protected override SearchRequest<Project> Initializer =>
-			new SearchRequest<Project>
+		protected override AggregationDictionary InitializerAggs =>
+			new TermsAggregation("commits")
 			{
-				Size = 0,
-				Aggregations = new TermsAggregation<int>("commits")
-				{
-					Field = Field<Project>(p => p.NumberOfCommits),
-					ShowTermDocCountError = true,
-					Missing = -1
-				}
+				Field = Field<Project>(p => p.NumberOfCommits),
+				ShowTermDocCountError = true,
+				Missing = -1
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
-			var commits = response.Aggs.Terms<int>("commits");
+			var commits = response.Aggregations.Terms<int>("commits");
 			commits.Should().NotBeNull();
 			commits.DocCountErrorUpperBound.Should().HaveValue();
 			commits.SumOtherDocCount.Should().HaveValue();
@@ -475,6 +419,105 @@ namespace Tests.Aggregations.Bucket.Terms
 				item.DocCount.Should().BeGreaterOrEqualTo(1);
 			}
 			commits.Buckets.Should().Contain(b => b.DocCountErrorUpperBound.HasValue);
+		}
+	}
+
+	/**
+	 * [float]
+	 * == Nested terms aggregations
+	 *
+	 * A terms aggregation returns buckets that can contain more aggregations
+	 */
+	public class NestedTermsAggregationUsageTests : ProjectsOnlyAggregationUsageTestBase
+	{
+		public NestedTermsAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
+
+		protected override object AggregationJson => new
+		{
+			commits = new
+			{
+				terms = new { field = "numberOfCommits", },
+				 aggs = new
+				 {
+					state = new
+					{
+						meta = new { x = "y" },
+						terms = new { field = "state" }
+					}
+				},
+			}
+		};
+
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.Terms("commits", st => st
+				.Field(p => p.NumberOfCommits)
+				.Aggregations(aggs => aggs
+					.Terms("state", t => t
+						.Meta(m => m.Add("x", "y"))
+						.Field(p => p.State)
+					)
+				)
+			);
+
+		protected override AggregationDictionary InitializerAggs =>
+			new TermsAggregation("commits")
+			{
+				Field = Field<Project>(p => p.NumberOfCommits),
+				Aggregations = new TermsAggregation("state")
+				{
+					Meta = new Dictionary<string, object> {{"x", "y"}},
+					Field = Field<Project>(p => p.State),
+				}
+			};
+
+		protected override void ExpectResponse(ISearchResponse<Project> response)
+		{
+			response.ShouldBeValid();
+			var commits = response.Aggregations.Terms<int>("commits");
+			commits.Should().NotBeNull();
+			commits.DocCountErrorUpperBound.Should().HaveValue();
+			commits.SumOtherDocCount.Should().HaveValue();
+			commits.Buckets.Should().NotBeNull();
+			commits.Buckets.Count.Should().BeGreaterThan(0);
+			foreach (var item in commits.Buckets)
+			{
+				item.Key.Should().BeGreaterThan(0);
+				item.DocCount.Should().BeGreaterOrEqualTo(1);
+				var states = item.Terms("state");
+				states.Should().NotBeNull();
+				states.Buckets.Should().NotBeEmpty();
+				states.Meta.Should().NotBeEmpty("meta").And.ContainKey("x");
+				foreach (var b in states.Buckets)
+				{
+					b.DocCount.Should().BeGreaterThan(0);
+					b.Key.Should().NotBeNullOrEmpty();
+				}
+			}
+		}
+	}
+	/**
+	 * [float]
+	 * == Typed Keys aggregations
+	 *
+	 * Starting with Elasticsearch 6.x you can provide a `typed_keys` parameter which will prefix all the aggregation names
+	 * with the type of aggregation that is returned. The following modifies the previous nested terms aggregation and sends it again
+	 * but this time with the `typed_keys` option set. The client should treat this in a an opaque fashion so let's assert that it does.
+	 */
+
+	public class TypedKeysTermsAggregationUsageTests : NestedTermsAggregationUsageTests
+	{
+		public TypedKeysTermsAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
+
+		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => f => base.Fluent(f.TypedKeys());
+
+		protected override SearchRequest<Project> Initializer
+		{
+			get
+			{
+				var r = base.Initializer;
+				r.TypedKeys = true;
+				return r;
+			}
 		}
 	}
 }

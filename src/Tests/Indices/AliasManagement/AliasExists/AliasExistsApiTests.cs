@@ -13,11 +13,8 @@ namespace Tests.Indices.AliasManagement.AliasExists
 {
 	public class AliasExistsApiTests
 		: ApiIntegrationTestBase<WritableCluster, IExistsResponse, IAliasExistsRequest, AliasExistsDescriptor, AliasExistsRequest>
-
 	{
-		public AliasExistsApiTests(WritableCluster cluster, EndpointUsage usage) : base(cluster, usage)
-		{
-		}
+		public AliasExistsApiTests(WritableCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override void IntegrationSetup(IElasticClient client, CallUniqueValues values)
 		{
@@ -28,8 +25,8 @@ namespace Tests.Indices.AliasManagement.AliasExists
 		}
 
 		protected override LazyResponses ClientUsage() => Calls(
-			fluent: (client, f) => client.AliasExists(f),
-			fluentAsync: (client, f) => client.AliasExistsAsync(f),
+			fluent: (client, f) => client.AliasExists(CallIsolatedValue + "-alias", f),
+			fluentAsync: (client, f) => client.AliasExistsAsync(CallIsolatedValue + "-alias", f),
 			request: (client, r) => client.AliasExists(r),
 			requestAsync: (client, r) => client.AliasExistsAsync(r)
 		);
@@ -41,23 +38,27 @@ namespace Tests.Indices.AliasManagement.AliasExists
 
 		protected override bool SupportsDeserialization => false;
 
-		protected override Func<AliasExistsDescriptor, IAliasExistsRequest> Fluent => d => d
-			.Name(CallIsolatedValue + "-alias");
+		protected override AliasExistsDescriptor NewDescriptor() => new AliasExistsDescriptor(Names(CallIsolatedValue + "-alias"));
+
+		protected override Func<AliasExistsDescriptor, IAliasExistsRequest> Fluent => d => d;
 
 		protected override AliasExistsRequest Initializer => new AliasExistsRequest(Names(CallIsolatedValue + "-alias"));
+
+		protected override void ExpectResponse(IExistsResponse response)
+		{
+			response.Exists.Should().BeTrue();
+		}
 	}
 
 	public class AliasExistsNotFoundApiTests
 		: ApiIntegrationTestBase<ReadOnlyCluster, IExistsResponse, IAliasExistsRequest, AliasExistsDescriptor, AliasExistsRequest>
 
 	{
-		public AliasExistsNotFoundApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage)
-		{
-		}
+		public AliasExistsNotFoundApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override LazyResponses ClientUsage() => Calls(
-			fluent: (client, f) => client.AliasExists(f),
-			fluentAsync: (client, f) => client.AliasExistsAsync(f),
+			fluent: (client, f) => client.AliasExists("unknown-alias", f),
+			fluentAsync: (client, f) => client.AliasExistsAsync("unknown-alias", f),
 			request: (client, r) => client.AliasExists(r),
 			requestAsync: (client, r) => client.AliasExistsAsync(r)
 		);
@@ -69,8 +70,9 @@ namespace Tests.Indices.AliasManagement.AliasExists
 
 		protected override bool SupportsDeserialization => false;
 
-		protected override Func<AliasExistsDescriptor, IAliasExistsRequest> Fluent => d => d
-			.Name("unknown-alias");
+		protected override AliasExistsDescriptor NewDescriptor() => new AliasExistsDescriptor(Names("unknown-alias"));
+
+		protected override Func<AliasExistsDescriptor, IAliasExistsRequest> Fluent => d => d;
 
 		protected override AliasExistsRequest Initializer => new AliasExistsRequest(Names("unknown-alias"));
 

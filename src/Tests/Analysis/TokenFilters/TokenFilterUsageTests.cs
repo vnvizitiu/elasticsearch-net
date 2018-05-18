@@ -18,7 +18,7 @@ namespace Tests.Analysis.TokenFilters
 					myAscii = new
 					{
 						type = "asciifolding",
-						preserveOriginal = true
+						preserve_original = true
 					},
 					myCommonGrams = new
 					{
@@ -56,7 +56,6 @@ namespace Tests.Analysis.TokenFilters
 					hunspell = new
 					{
 						type = "hunspell",
-						ignore_case = true,
 						locale = "en_US",
 						dictionary = "path_to_dict",
 						dedup = true,
@@ -158,7 +157,7 @@ namespace Tests.Analysis.TokenFilters
 					{
 						type = "ngram",
 						min_gram = 3,
-						max_gram = 30
+						max_gram = 4
 					},
 					pc = new
 					{
@@ -184,7 +183,7 @@ namespace Tests.Analysis.TokenFilters
 					{
 						type = "shingle",
 						min_shingle_size = 8,
-						max_shingle_size = 12,
+						max_shingle_size = 10,
 						output_unigrams = true,
 						output_unigrams_if_no_shingles = true,
 						token_separator = "|",
@@ -222,7 +221,6 @@ namespace Tests.Analysis.TokenFilters
 						synonyms_path = "analysis/stopwords.txt",
 						format = "wordnet",
 						synonyms = new[] {"x=>y", "z=>s"},
-						ignore_case = true,
 						expand = true,
 						tokenizer = "whitespace"
 					},
@@ -232,7 +230,6 @@ namespace Tests.Analysis.TokenFilters
 						synonyms_path = "analysis/stopwords.txt",
 						format = "wordnet",
 						synonyms = new[] {"x=>y", "z=>s"},
-						ignore_case = true,
 						expand = true,
 						tokenizer = "whitespace"
 					},
@@ -281,6 +278,14 @@ namespace Tests.Analysis.TokenFilters
 						split_on_numerics = true,
 						stem_english_possessive = true,
 						protected_words = new[] {"x", "y", "z"}
+					},
+					phonetic = new
+					{
+						type = "phonetic",
+						encoder = "beider_morse",
+						rule_type = "exact",
+						name_type = "sephardic",
+						languageset = new [] { "cyrillic", "english", "hebrew" }
 					}
 				}
 			}
@@ -321,7 +326,6 @@ namespace Tests.Analysis.TokenFilters
 					.Hunspell("hunspell", t => t
 						.Dedup()
 						.Dictionary("path_to_dict")
-						.IgnoreCase()
 						.Locale("en_US")
 						.LongestOnly()
 					)
@@ -356,7 +360,7 @@ namespace Tests.Analysis.TokenFilters
 					.Lowercase("lc")
 					.NGram("ngram", t => t
 						.MinGram(3)
-						.MaxGram(30)
+						.MaxGram(4)
 					)
 					.PatternCapture("pc", t => t
 						.Patterns(@"\d", @"\w")
@@ -370,7 +374,7 @@ namespace Tests.Analysis.TokenFilters
 					.Reverse("rev")
 					.Shingle("shing", t => t
 						.FillerToken("x")
-						.MaxShingleSize(12)
+						.MaxShingleSize(10)
 						.MinShingleSize(8)
 						.OutputUnigrams()
 						.OutputUnigramsIfNoShingles()
@@ -388,7 +392,6 @@ namespace Tests.Analysis.TokenFilters
 					.Synonym("syn", t => t
 						.Expand()
 						.Format(SynonymFormat.WordNet)
-						.IgnoreCase()
 						.SynonymsPath("analysis/stopwords.txt")
 						.Synonyms("x=>y", "z=>s")
 						.Tokenizer("whitespace")
@@ -396,7 +399,6 @@ namespace Tests.Analysis.TokenFilters
 					.SynonymGraph("syn_graph", t => t
 						.Expand()
 						.Format(SynonymFormat.WordNet)
-						.IgnoreCase()
 						.SynonymsPath("analysis/stopwords.txt")
 						.Synonyms("x=>y", "z=>s")
 						.Tokenizer("whitespace")
@@ -456,6 +458,12 @@ namespace Tests.Analysis.TokenFilters
 						.Direction(IcuTransformDirection.Forward)
 						.Id("Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC")
 					)
+					.Phonetic("phonetic", t => t
+						.Encoder(PhoneticEncoder.Beidermorse)
+						.RuleType(PhoneticRuleType.Exact)
+						.NameType(PhoneticNameType.Sephardic)
+						.LanguageSet(PhoneticLanguage.Cyrillic, PhoneticLanguage.English, PhoneticLanguage.Hebrew)
+					)
 				)
 			);
 
@@ -490,7 +498,6 @@ namespace Tests.Analysis.TokenFilters
 							{
 								Dedup = true,
 								Dictionary = "path_to_dict",
-								IgnoreCase = true,
 								Locale = "en_US",
 								LongestOnly = true
 							}
@@ -513,7 +520,7 @@ namespace Tests.Analysis.TokenFilters
 						{"length", new LengthTokenFilter {Min = 10, Max = 200}},
 						{"limit", new LimitTokenCountTokenFilter {ConsumeAllTokens = true, MaxTokenCount = 12}},
 						{"lc", new LowercaseTokenFilter()},
-						{"ngram", new NGramTokenFilter {MinGram = 3, MaxGram = 30}},
+						{"ngram", new NGramTokenFilter {MinGram = 3, MaxGram = 4}},
 						{"pc", new PatternCaptureTokenFilter {Patterns = new[] {@"\d", @"\w"}, PreserveOriginal = true}},
 						{"pr", new PatternReplaceTokenFilter {Pattern = @"(\d|\w)", Replacement = "replacement"}},
 						{"porter", new PorterStemTokenFilter()},
@@ -522,7 +529,7 @@ namespace Tests.Analysis.TokenFilters
 							"shing", new ShingleTokenFilter
 							{
 								FillerToken = "x",
-								MaxShingleSize = 12,
+								MaxShingleSize = 10,
 								MinShingleSize = 8,
 								OutputUnigrams = true,
 								OutputUnigramsIfNoShingles = true,
@@ -539,7 +546,6 @@ namespace Tests.Analysis.TokenFilters
 							{
 								Expand = true,
 								Format = SynonymFormat.WordNet,
-								IgnoreCase = true,
 								SynonymsPath = "analysis/stopwords.txt",
 								Synonyms = new[] {"x=>y", "z=>s"},
 								Tokenizer = "whitespace"
@@ -550,7 +556,6 @@ namespace Tests.Analysis.TokenFilters
 							{
 								Expand = true,
 								Format = SynonymFormat.WordNet,
-								IgnoreCase = true,
 								SynonymsPath = "analysis/stopwords.txt",
 								Synonyms = new[] {"x=>y", "z=>s"},
 								Tokenizer = "whitespace"
@@ -621,6 +626,13 @@ namespace Tests.Analysis.TokenFilters
 						{
 							Direction = IcuTransformDirection.Forward,
 							Id = "Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC"
+						}},
+						{ "phonetic", new PhoneticTokenFilter
+						{
+							Encoder = PhoneticEncoder.Beidermorse,
+							RuleType = PhoneticRuleType.Exact,
+							NameType = PhoneticNameType.Sephardic,
+							LanguageSet = new [] { PhoneticLanguage.Cyrillic, PhoneticLanguage.English, PhoneticLanguage.Hebrew }
 						}},
 					}
 				}

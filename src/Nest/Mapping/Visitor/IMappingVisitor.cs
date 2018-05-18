@@ -6,9 +6,6 @@ namespace Nest
 	{
 		int Depth { get; set; }
 		void Visit(ITypeMapping mapping);
-#pragma warning disable 618
-		void Visit(IStringProperty property);
-#pragma warning restore 618
 		void Visit(ITextProperty property);
 		void Visit(IKeywordProperty property);
 		void Visit(IDateProperty property);
@@ -29,6 +26,8 @@ namespace Nest
 		void Visit(ILongRangeProperty property);
 		void Visit(IDoubleRangeProperty property);
 		void Visit(IDateRangeProperty property);
+		void Visit(IIpRangeProperty property);
+		void Visit(IJoinProperty property);
 	}
 
 	public class NoopMappingVisitor : IMappingVisitor
@@ -36,10 +35,6 @@ namespace Nest
 		public virtual int Depth { get; set; }
 
 		public virtual void Visit(ITypeMapping mapping) { }
-
-#pragma warning disable 618
-		public virtual void Visit(IStringProperty property ) { }
-#pragma warning restore 618
 
 		public virtual void Visit(ITextProperty property) { }
 
@@ -80,5 +75,9 @@ namespace Nest
 		public virtual void Visit(IDoubleRangeProperty property) { }
 
 		public virtual void Visit(IDateRangeProperty property) { }
+
+		public virtual void Visit(IIpRangeProperty property) { }
+
+		public virtual void Visit(IJoinProperty property) { }
 	}
 }

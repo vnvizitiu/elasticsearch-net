@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.IO;
 using Elasticsearch.Net;
 using Newtonsoft.Json;
 
@@ -23,27 +24,29 @@ namespace Nest
 	}
 
 	/// <summary>
-	/// A request that has an untyped document property
+	/// A request that that does not necessarily (de)serializes itself
 	/// </summary>
-	public interface IUntypedDocumentRequest : IRequest
+	public interface IProxyRequest : IRequest
 	{
-		/// <summary>
-		/// The untyped document
-		/// </summary>
-		object UntypedDocument { get; }
+		void WriteJson(IElasticsearchSerializer sourceSerializer, Stream s, SerializationFormatting serializationFormatting);
 	}
 
-	public abstract class RequestBase<TParameters> : IRequest<TParameters>
-		where TParameters : IRequestParameters, new()
+	public abstract class RequestBase<TParameters> : IRequest<TParameters> where TParameters : IRequestParameters, new()
 	{
 		[JsonIgnore]
 		protected IRequest<TParameters> RequestState => this;
 
-		protected RequestBase() { }
+		protected RequestBase()
+		{
+			Initialize();
+		}
 		protected RequestBase(Func<RouteValues, RouteValues> pathSelector)
 		{
 			pathSelector(RequestState.RouteValues);
+			Initialize();
 		}
+
+		protected virtual void Initialize() { }
 
 		protected virtual HttpMethod HttpMethod => RequestState.RequestParameters.DefaultHttpMethod;
 
@@ -58,11 +61,11 @@ namespace Nest
 
 		protected TOut Q<TOut>(string name) => RequestState.RequestParameters.GetQueryStringValue<TOut>(name);
 
-		protected void Q(string name, object value) => RequestState.RequestParameters.AddQueryStringValue(name, value);
+		protected void Q(string name, object value) => RequestState.RequestParameters.SetQueryString(name, value);
 
 	}
 
-	public abstract class PlainRequestBase<TParameters> : RequestBase<TParameters>
+	public abstract partial class PlainRequestBase<TParameters> : RequestBase<TParameters>
 		where TParameters : IRequestParameters, new()
 	{
 		protected PlainRequestBase() { }
@@ -73,14 +76,14 @@ namespace Nest
 		/// </summary>
 		public IRequestConfiguration RequestConfiguration
 		{
-			get { return RequestState.RequestParameters.RequestConfiguration;  }
-			set { RequestState.RequestParameters.RequestConfiguration = value; }
+			get => RequestState.RequestParameters.RequestConfiguration;
+			set => RequestState.RequestParameters.RequestConfiguration = value;
 		}
 	}
 
-	public abstract class RequestDescriptorBase<TDescriptor, TParameters, TInterface> : RequestBase<TParameters>, IDescriptor
+	public abstract partial class RequestDescriptorBase<TDescriptor, TParameters, TInterface> : RequestBase<TParameters>, IDescriptor
 		where TDescriptor : RequestDescriptorBase<TDescriptor, TParameters, TInterface>, TInterface
-		where TParameters : FluentRequestParameters<TParameters>, new()
+		where TParameters : RequestParameters<TParameters>, new()
 	{
 		private readonly TDescriptor _descriptor;
 
@@ -97,13 +100,25 @@ namespace Nest
 			assigner?.Invoke(this.RequestState.RequestParameters);
 			return _descriptor;
 		}
+		protected TDescriptor Qs(Action<TParameters> assigner)
+		{
+			assigner?.Invoke(this.RequestState.RequestParameters);
+			return _descriptor;
+		}
+
+		protected TDescriptor Qs(string name, object value)
+		{
+			Q(name, value);
+			return _descriptor;
+		}
 
 		/// <summary>
 		/// Specify settings for this request alone, handy if you need a custom timeout or want to bypass sniffing, retries
 		/// </summary>
 		public TDescriptor RequestConfiguration(Func<RequestConfigurationDescriptor, IRequestConfiguration> configurationSelector)
 		{
-			RequestState.RequestParameters.RequestConfiguration(configurationSelector);
+			var rc = RequestState.RequestParameters.RequestConfiguration;
+			RequestState.RequestParameters.RequestConfiguration = configurationSelector?.Invoke(new RequestConfigurationDescriptor(rc)) ?? rc;
 			return _descriptor;
 		}
 

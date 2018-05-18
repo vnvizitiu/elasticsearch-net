@@ -11,12 +11,21 @@ namespace Nest
 	/// </summary>
 	public interface IDFRSimilarity : ISimilarity
 	{
+		/// <summary>
+		/// The basic model
+		/// </summary>
 		[JsonProperty("basic_model")]
 		DFRBasicModel? BasicModel { get; set; }
 
+		/// <summary>
+		/// The after effect
+		/// </summary>
 		[JsonProperty("after_effect")]
 		DFRAfterEffect? AfterEffect { get; set; }
 
+		/// <summary>
+		/// The normalization
+		/// </summary>
 		[JsonProperty("normalization")]
 		Normalization? Normalization { get; set; }
 
@@ -44,25 +53,35 @@ namespace Nest
 		[JsonProperty("normalization.z.z")]
 		double? NormalizationZZ { get; set; }
 	}
+
+	/// <inheritdoc/>
 	public class DFRSimilarity : IDFRSimilarity
 	{
 		public string Type => "DFR";
 
+		/// <inheritdoc/>
 		public DFRBasicModel? BasicModel { get; set; }
 
+		/// <inheritdoc/>
 		public DFRAfterEffect? AfterEffect { get; set; }
 
+		/// <inheritdoc/>
 		public Normalization? Normalization { get; set; }
 
+		/// <inheritdoc/>
 		public double? NormalizationH1C { get; set; }
 
+		/// <inheritdoc/>
 		public double? NormalizationH2C { get; set; }
 
+		/// <inheritdoc/>
 		public double? NormalizationH3C { get; set; }
 
+		/// <inheritdoc/>
 		public double? NormalizationZZ { get; set; }
 	}
 
+	/// <inheritdoc/>
 	public class DFRSimilarityDescriptor
 		: DescriptorBase<DFRSimilarityDescriptor, IDFRSimilarity>, IDFRSimilarity
 	{
@@ -75,8 +94,13 @@ namespace Nest
 		double? IDFRSimilarity.NormalizationH3C { get; set; }
 		double? IDFRSimilarity.NormalizationZZ { get; set; }
 
+		/// <inheritdoc/>
 		public DFRSimilarityDescriptor BasicModel(DFRBasicModel? model) => Assign(a => a.BasicModel = model);
+
+		/// <inheritdoc/>
 		public DFRSimilarityDescriptor AfterEffect(DFRAfterEffect? afterEffect) => Assign(a => a.AfterEffect = afterEffect);
+
+		/// <inheritdoc/>
 		public DFRSimilarityDescriptor NoNormalization() => Assign(a => a.Normalization = Normalization.No);
 
 		/// <summary>
@@ -85,7 +109,7 @@ namespace Nest
 		/// <param name="c">hyper-parameter that controls the term frequency normalization with respect to the document length.</param>
 		public DFRSimilarityDescriptor NormalizationH1(double? c) => Assign(a =>
 		{
-			a.Normalization = Normalization.H1;
+			a.Normalization = c == null ? (Normalization?) null : Normalization.H1;
 			a.NormalizationH1C = c;
 		});
 
@@ -95,7 +119,7 @@ namespace Nest
 		/// <param name="c">hyper-parameter that controls the term frequency normalization with respect to the document length.</param>
 		public DFRSimilarityDescriptor NormalizationH2(double? c) => Assign(a =>
 		{
-			a.Normalization = Normalization.H2;
+			a.Normalization = c == null ? (Normalization?) null : Normalization.H2;
 			a.NormalizationH1C = c;
 		});
 
@@ -105,17 +129,15 @@ namespace Nest
 		/// <param name="mu">smoothing parameter μ.</param>
 		public DFRSimilarityDescriptor NormalizationH3(double? mu) => Assign(a =>
 		{
-			a.Normalization = Normalization.H3;
+			a.Normalization = mu == null ? (Normalization?) null : Normalization.H3;
 			a.NormalizationH1C = mu;
 		});
 
-		/// <summary>
-		/// Pareto-Zipf Normalization
-		/// </summary>
+		/// <summary> Pareto-Zipf Normalization </summary>
 		/// <param name="z">represents A/(A+1) where A measures the specificity of the language..</param>
 		public DFRSimilarityDescriptor NormalizationZ(double? z) => Assign(a =>
 		{
-			a.Normalization = Normalization.Z;
+			a.Normalization = z == null ? (Normalization?) null : Normalization.Z;
 			a.NormalizationH1C = z;
 		});
 	}

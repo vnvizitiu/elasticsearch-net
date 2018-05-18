@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -328,7 +328,8 @@ the relevancy score calculated, since both queries are running in a query contex
 so no score is calculated for matching documents (all documents have the same score
 of 1.0 for this query).
 
-Because `bool` queries are so common, NEST overloads operators on queries to make forming`bool` queries much more succinct. The previous `bool` query can be more concisely
+Because `bool` queries are so common, NEST overloads operators on queries to make forming
+`bool` queries much more succinct. The previous `bool` query can be more concisely
 expressed as
 
 [source,csharp]
@@ -383,7 +384,7 @@ var projects = searchResponse.Documents;
 
 [source,csharp]
 ----
-searchResponse.HitsMetaData.Hits.Select(h => h.Source);
+searchResponse.HitsMetadata.Hits.Select(h => h.Source);
 ----
 
 and it's possible to retrieve other metadata about each hit from the hits collection. Here's
@@ -391,7 +392,7 @@ an example that retrieves the highlights for a hit, when using <<highlighting-us
 
 [source,csharp]
 ----
-var highlights = searchResponse.HitsMetaData.Hits.Select(h => h
+var highlights = searchResponse.HitsMetadata.Hits.Select(h => h
     .Highlights <1>
 );
 ----

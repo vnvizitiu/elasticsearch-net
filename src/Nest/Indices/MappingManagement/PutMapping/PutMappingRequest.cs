@@ -21,17 +21,11 @@ namespace Nest
 		/// <inheritdoc/>
 		public bool? DateDetection { get; set; }
 		/// <inheritdoc/>
-		public bool? IncludeInAll { get; set; }
-		/// <inheritdoc/>
 		public IEnumerable<string> DynamicDateFormats { get; set; }
 		/// <inheritdoc/>
 		public IDynamicTemplateContainer DynamicTemplates { get; set; }
 		/// <inheritdoc/>
 		public Union<bool, DynamicMapping> Dynamic { get; set; }
-		/// <inheritdoc/>
-		public string Analyzer { get; set; }
-		/// <inheritdoc/>
-		public string SearchAnalyzer { get; set; }
 		/// <inheritdoc/>
 		public IFieldNamesField FieldNamesField { get; set; }
 		/// <inheritdoc/>
@@ -40,8 +34,6 @@ namespace Nest
 		public IDictionary<string, object> Meta { get; set; }
 		/// <inheritdoc/>
 		public bool? NumericDetection { get; set; }
-		/// <inheritdoc/>
-		public IParentField ParentField { get; set; }
 		/// <inheritdoc/>
 		public IProperties Properties { get; set; }
 		/// <inheritdoc/>
@@ -61,17 +53,11 @@ namespace Nest
 		/// <inheritdoc/>
 		public bool? DateDetection { get; set; }
 		/// <inheritdoc/>
-		public bool? IncludeInAll { get; set; }
-		/// <inheritdoc/>
 		public IEnumerable<string> DynamicDateFormats { get; set; }
 		/// <inheritdoc/>
 		public IDynamicTemplateContainer DynamicTemplates { get; set; }
 		/// <inheritdoc/>
 		public Union<bool, DynamicMapping> Dynamic { get; set; }
-		/// <inheritdoc/>
-		public string Analyzer { get; set; }
-		/// <inheritdoc/>
-		public string SearchAnalyzer { get; set; }
 		/// <inheritdoc/>
 		public IFieldNamesField FieldNamesField { get; set; }
 		/// <inheritdoc/>
@@ -80,8 +66,6 @@ namespace Nest
 		public IDictionary<string, object> Meta { get; set; }
 		/// <inheritdoc/>
 		public bool? NumericDetection { get; set; }
-		/// <inheritdoc/>
-		public IParentField ParentField { get; set; }
 		/// <inheritdoc/>
 		public IProperties Properties { get; set; }
 		/// <inheritdoc/>
@@ -102,17 +86,13 @@ namespace Nest
 
 		IAllField ITypeMapping.AllField { get; set; }
 		bool? ITypeMapping.DateDetection { get; set; }
-		bool? ITypeMapping.IncludeInAll { get; set; }
 		IEnumerable<string> ITypeMapping.DynamicDateFormats { get; set; }
-		string ITypeMapping.Analyzer { get; set; }
-		string ITypeMapping.SearchAnalyzer { get; set; }
 		IDynamicTemplateContainer ITypeMapping.DynamicTemplates { get; set; }
 		Union<bool, DynamicMapping> ITypeMapping.Dynamic { get; set; }
 		IFieldNamesField ITypeMapping.FieldNamesField { get; set; }
 		IIndexField ITypeMapping.IndexField { get; set; }
 		IDictionary<string, object> ITypeMapping.Meta { get; set; }
 		bool? ITypeMapping.NumericDetection { get; set; }
-		IParentField ITypeMapping.ParentField { get; set; }
 		IProperties ITypeMapping.Properties { get; set; }
 		IRoutingField ITypeMapping.RoutingField { get; set; }
 		ISizeField ITypeMapping.SizeField { get; set; }
@@ -134,24 +114,7 @@ namespace Nest
 		public PutMappingDescriptor<T> Dynamic(Union<bool, DynamicMapping> dynamic) => Assign(a => a.Dynamic = dynamic);
 
 		/// <inheritdoc/>
-		public PutMappingDescriptor<T> Dynamic(bool dynamic = true) => Assign(a => a.Dynamic = dynamic);
-
-		/// <inheritdoc/>
-		public PutMappingDescriptor<T> IncludeInAll(bool include = true) => Assign(a => a.IncludeInAll = include);
-
-		/// <inheritdoc/>
-		public PutMappingDescriptor<T> Parent(TypeName parentType) => Assign(a => a.ParentField = new ParentField { Type = parentType });
-
-		/// <inheritdoc/>
-		public PutMappingDescriptor<T> Parent<TParent>() where TParent : class => Assign(a => a.ParentField = new ParentField { Type = typeof(TParent) });
-
-#pragma warning disable 618
-		/// <inheritdoc/>
-		public PutMappingDescriptor<T> Analyzer(string analyzer) => Assign(a => a.Analyzer = analyzer);
-
-		/// <inheritdoc/>
-		public PutMappingDescriptor<T> SearchAnalyzer(string searchAnalyzer) => Assign(a => a.SearchAnalyzer = searchAnalyzer);
-#pragma warning restore 618
+		public PutMappingDescriptor<T> Dynamic(bool? dynamic = true) => Assign(a => a.Dynamic = dynamic);
 
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> AllField(Func<AllFieldDescriptor, IAllField> allFieldSelector) => Assign(a => a.AllField = allFieldSelector?.Invoke(new AllFieldDescriptor()));
@@ -163,19 +126,19 @@ namespace Nest
 		public PutMappingDescriptor<T> SizeField(Func<SizeFieldDescriptor, ISizeField> sizeFieldSelector) => Assign(a => a.SizeField = sizeFieldSelector?.Invoke(new SizeFieldDescriptor()));
 
 		/// <inheritdoc/>
-		public PutMappingDescriptor<T> DisableSizeField(bool disabled = true) => Assign(a => a.SizeField = new SizeField { Enabled = !disabled });
+		public PutMappingDescriptor<T> DisableSizeField(bool? disabled = true) => Assign(a => a.SizeField = new SizeField { Enabled = !disabled });
 
 		/// <inheritdoc/>
-		public PutMappingDescriptor<T> DisableIndexField(bool disabled = true) => Assign(a => a.IndexField = new IndexField { Enabled = !disabled });
+		public PutMappingDescriptor<T> DisableIndexField(bool? disabled = true) => Assign(a => a.IndexField = new IndexField { Enabled = !disabled });
 
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> DynamicDateFormats(IEnumerable<string> dateFormats) => Assign(a => a.DynamicDateFormats = dateFormats);
 
 		/// <inheritdoc/>
-		public PutMappingDescriptor<T> DateDetection(bool detect = true) => Assign(a => a.DateDetection = detect);
+		public PutMappingDescriptor<T> DateDetection(bool? detect = true) => Assign(a => a.DateDetection = detect);
 
 		/// <inheritdoc/>
-		public PutMappingDescriptor<T> NumericDetection(bool detect = true) => Assign(a => a.NumericDetection = detect);
+		public PutMappingDescriptor<T> NumericDetection(bool? detect = true) => Assign(a => a.NumericDetection = detect);
 
 		/// <inheritdoc/>
 		public PutMappingDescriptor<T> SourceField(Func<SourceFieldDescriptor, ISourceField> sourceFieldSelector) => Assign(a => a.SourceField = sourceFieldSelector?.Invoke(new SourceFieldDescriptor()));

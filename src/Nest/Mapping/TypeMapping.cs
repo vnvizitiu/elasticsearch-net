@@ -17,25 +17,11 @@ namespace Nest
 		[JsonProperty("numeric_detection")]
 		bool? NumericDetection { get; set; }
 
-		[JsonProperty("include_in_all")]
-		bool? IncludeInAll { get; set; }
-
-		[Obsolete("Scheduled to be removed in 6.0. Default analyzers can no longer be specified at the type level.  Use an index or field level analyzer instead.")]
-		[JsonProperty("analyzer")]
-		string Analyzer { get; set; }
-
-		[Obsolete("Scheduled to be removed in 6.0. Default analyzers can no longer be specified at the type level.  Use an index or field level analyzer instead.")]
-		[JsonProperty("search_analyzer")]
-		string SearchAnalyzer { get; set; }
-
 		[JsonProperty("_source")]
 		ISourceField SourceField { get; set; }
 
 		[JsonProperty("_all")]
 		IAllField AllField { get; set; }
-
-		[JsonProperty("_parent")]
-		IParentField ParentField { get; set; }
 
 		[JsonProperty("_routing")]
 		IRoutingField RoutingField { get; set; }
@@ -70,8 +56,6 @@ namespace Nest
 		/// <inheritdoc/>
 		public bool? DateDetection { get; set; }
 		/// <inheritdoc/>
-		public bool? IncludeInAll { get; set; }
-		/// <inheritdoc/>
 		public Union<bool, DynamicMapping> Dynamic { get; set; }
 		/// <inheritdoc/>
 		public IEnumerable<string> DynamicDateFormats { get; set; }
@@ -86,17 +70,9 @@ namespace Nest
 		/// <inheritdoc/>
 		public bool? NumericDetection { get; set; }
 		/// <inheritdoc/>
-		public IParentField ParentField { get; set; }
-		/// <inheritdoc/>
 		public IProperties Properties { get; set; }
 		/// <inheritdoc/>
 		public IRoutingField RoutingField { get; set; }
-		/// <inheritdoc/>
-		[Obsolete("Scheduled to be removed in 6.0. Default analyzers can no longer be specified at the type level.  Use an index or field level analyzer instead.")]
-		public string Analyzer { get; set; }
-		/// <inheritdoc/>
-		[Obsolete("Scheduled to be removed in 6.0. Default analyzers can no longer be specified at the type level.  Use an index or field level analyzer instead.")]
-		public string SearchAnalyzer { get; set; }
 		/// <inheritdoc/>
 		public ISizeField SizeField { get; set; }
 		/// <inheritdoc/>
@@ -109,7 +85,6 @@ namespace Nest
 	{
 		IAllField ITypeMapping.AllField { get; set; }
 		bool? ITypeMapping.DateDetection { get; set; }
-		bool? ITypeMapping.IncludeInAll { get; set; }
 		Union<bool, DynamicMapping> ITypeMapping.Dynamic { get; set; }
 		IEnumerable<string> ITypeMapping.DynamicDateFormats { get; set; }
 		IDynamicTemplateContainer ITypeMapping.DynamicTemplates { get; set; }
@@ -117,13 +92,8 @@ namespace Nest
 		IIndexField ITypeMapping.IndexField { get; set; }
 		IDictionary<string, object> ITypeMapping.Meta { get; set; }
 		bool? ITypeMapping.NumericDetection { get; set; }
-		IParentField ITypeMapping.ParentField { get; set; }
 		IProperties ITypeMapping.Properties { get; set; }
 		IRoutingField ITypeMapping.RoutingField { get; set; }
-		[Obsolete("Scheduled to be removed in 6.0. Default analyzers can no longer be specified at the type level.  Use an index or field level analyzer instead.")]
-		string ITypeMapping.Analyzer { get; set; }
-		[Obsolete("Scheduled to be removed in 6.0. Default analyzers can no longer be specified at the type level.  Use an index or field level analyzer instead.")]
-		string ITypeMapping.SearchAnalyzer { get; set; }
 		ISizeField ITypeMapping.SizeField { get; set; }
 		ISourceField ITypeMapping.SourceField { get; set; }
 
@@ -136,6 +106,30 @@ namespace Nest
 		public TypeMappingDescriptor<T> AutoMap(IPropertyVisitor visitor = null, int maxRecursion = 0) =>
 			Assign(a => a.Properties = a.Properties.AutoMap<T>(visitor, maxRecursion));
 
+		/// <summary>
+		/// Convenience method to map as much as it can based on <see cref="ElasticsearchTypeAttribute"/> attributes set on the type.
+		/// This particular overload is useful for automapping any children
+		/// <pre>This method also automatically sets up mappings for known values types (int, long, double, datetime, etc)</pre>
+		/// <pre>Class types default to object and Enums to int</pre>
+		/// <pre>Later calls can override whatever is set is by this call.</pre>
+		/// </summary>
+		public TypeMappingDescriptor<T> AutoMap(Type documentType, IPropertyVisitor visitor = null, int maxRecursion = 0)
+		{
+			if (!documentType.IsClass()) throw new ArgumentException("must be a reference type", nameof(documentType));
+			return Assign(a => a.Properties = a.Properties.AutoMap(documentType, visitor, maxRecursion));
+		}
+
+		/// <summary>
+		/// Convenience method to map as much as it can based on <see cref="ElasticsearchTypeAttribute"/> attributes set on the type.
+		/// This particular overload is useful for automapping any children
+		/// <pre>This method also automatically sets up mappings for known values types (int, long, double, datetime, etc)</pre>
+		/// <pre>Class types default to object and Enums to int</pre>
+		/// <pre>Later calls can override whatever is set is by this call.</pre>
+		/// </summary>
+		public TypeMappingDescriptor<T> AutoMap<TDocument>(IPropertyVisitor visitor = null, int maxRecursion = 0)
+			where TDocument : class =>
+			Assign(a => a.Properties = a.Properties.AutoMap<TDocument>(visitor, maxRecursion));
+
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> AutoMap(int maxRecursion) => AutoMap(null, maxRecursion);
 
@@ -144,23 +138,6 @@ namespace Nest
 
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> Dynamic(bool dynamic = true) => Assign(a => a.Dynamic = dynamic);
-
-		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> IncludeInAll(bool include = true) => Assign(a => a.IncludeInAll = include);
-
-		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> Parent(TypeName parentType) => Assign(a => a.ParentField = new ParentField { Type = parentType });
-
-		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> Parent<TOther>() where TOther : class => Assign(a => a.ParentField = new ParentField { Type = typeof(TOther) });
-
-		/// <inheritdoc/>
-		[Obsolete("Scheduled to be removed in 6.0. Default analyzers can no longer be specified at the type level.  Use an index or field level analyzer instead.")]
-		public TypeMappingDescriptor<T> Analyzer(string analyzer) => Assign(a => a.Analyzer = analyzer);
-
-		/// <inheritdoc/>
-		[Obsolete("Scheduled to be removed in 6.0. Default analyzers can no longer be specified at the type level.  Use an index or field level analyzer instead.")]
-		public TypeMappingDescriptor<T> SearchAnalyzer(string searchAnalyzer)=> Assign(a => a.SearchAnalyzer = searchAnalyzer);
 
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> AllField(Func<AllFieldDescriptor, IAllField> allFieldSelector) => Assign(a => a.AllField = allFieldSelector?.Invoke(new AllFieldDescriptor()));
@@ -175,19 +152,19 @@ namespace Nest
 		public TypeMappingDescriptor<T> SourceField(Func<SourceFieldDescriptor, ISourceField> sourceFieldSelector) => Assign(a => a.SourceField = sourceFieldSelector?.Invoke(new SourceFieldDescriptor()));
 
 		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> DisableSizeField(bool disabled = true) => Assign(a => a.SizeField = new SizeField { Enabled = !disabled });
+		public TypeMappingDescriptor<T> DisableSizeField(bool? disabled = true) => Assign(a => a.SizeField = new SizeField { Enabled = !disabled });
 
 		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> DisableIndexField(bool disabled = true) => Assign(a => a.IndexField = new IndexField { Enabled = !disabled });
+		public TypeMappingDescriptor<T> DisableIndexField(bool? disabled = true) => Assign(a => a.IndexField = new IndexField { Enabled = !disabled });
 
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> DynamicDateFormats(IEnumerable<string> dateFormats) => Assign(a => a.DynamicDateFormats = dateFormats);
 
 		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> DateDetection(bool detect = true) => Assign(a => a.DateDetection = detect);
+		public TypeMappingDescriptor<T> DateDetection(bool? detect = true) => Assign(a => a.DateDetection = detect);
 
 		/// <inheritdoc/>
-		public TypeMappingDescriptor<T> NumericDetection(bool detect = true) => Assign(a => a.NumericDetection = detect);
+		public TypeMappingDescriptor<T> NumericDetection(bool? detect = true) => Assign(a => a.NumericDetection = detect);
 
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> RoutingField(Func<RoutingFieldDescriptor<T>, IRoutingField> routingFieldSelector) => Assign(a => a.RoutingField = routingFieldSelector?.Invoke(new RoutingFieldDescriptor<T>()));
@@ -204,6 +181,10 @@ namespace Nest
 
 		public TypeMappingDescriptor<T> Properties(Func<PropertiesDescriptor<T>, IPromise<IProperties>> propertiesSelector) =>
 			Assign(a => a.Properties = propertiesSelector?.Invoke(new PropertiesDescriptor<T>(Self.Properties))?.Value);
+
+		public TypeMappingDescriptor<T> Properties<TDocument>(Func<PropertiesDescriptor<TDocument>, IPromise<IProperties>> propertiesSelector)
+			where TDocument : class =>
+			Assign(a => a.Properties = propertiesSelector?.Invoke(new PropertiesDescriptor<TDocument>(Self.Properties))?.Value);
 
 		/// <inheritdoc/>
 		public TypeMappingDescriptor<T> DynamicTemplates(Func<DynamicTemplateContainerDescriptor<T>, IPromise<IDynamicTemplateContainer>> dynamicTemplatesSelector) =>

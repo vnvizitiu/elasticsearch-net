@@ -2,7 +2,6 @@
 using Nest;
 using Elasticsearch.Net;
 using Tests.Framework;
-using static Tests.Framework.RoundTripper;
 using Tests.Framework.Integration;
 using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
@@ -24,7 +23,7 @@ namespace Tests.Mapping.Types
 		protected override bool ExpectIsValid => true;
 		protected override int ExpectStatusCode => 200;
 		protected override HttpMethod HttpMethod => HttpMethod.PUT;
-		protected override string UrlPath => $"/{CallIsolatedValue}/project/_mapping";
+		protected override string UrlPath => $"/{CallIsolatedValue}/doc/_mapping";
 
 		protected abstract Func<PropertiesDescriptor<Project>, IPromise<IProperties>> FluentProperties { get; }
 

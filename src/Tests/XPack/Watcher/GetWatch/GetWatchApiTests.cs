@@ -55,7 +55,7 @@ namespace Tests.XPack.Watcher.GetWatch
 							)
 							.Transform(ctt => ctt
 								.Script(st => st
-									.Inline("return [ 'time' : ctx.trigger.scheduled_time ]")
+									.Source("return [ 'time' : ctx.trigger.scheduled_time ]")
 								)
 							)
 						)
@@ -148,8 +148,6 @@ namespace Tests.XPack.Watcher.GetWatch
 
 	public class GetNonExistentWatchApiTests : ApiIntegrationTestBase<XPackCluster, IGetWatchResponse, IGetWatchRequest, GetWatchDescriptor, GetWatchRequest>
 	{
-
-		//TODO this setup should not be necessary but in 6.0.0-alpha1 if no `.watches` index exists the response is actually an error
 		protected override void IntegrationSetup(IElasticClient client, CallUniqueValues values) => GetWatchApiTests.PutWatch(client, values);
 
 		public GetNonExistentWatchApiTests(XPackCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
@@ -161,7 +159,7 @@ namespace Tests.XPack.Watcher.GetWatch
 			requestAsync: (client, r) => client.GetWatchAsync(r)
 		);
 
-		protected override bool ExpectIsValid => true;
+		protected override bool ExpectIsValid => false;
 		protected override int ExpectStatusCode => 404;
 		protected override HttpMethod HttpMethod => HttpMethod.GET;
 

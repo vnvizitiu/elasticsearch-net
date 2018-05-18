@@ -52,9 +52,9 @@ namespace Tests.Reproduce
 			this.AssertRequestEquals(request, postData);
 		}
 
-		private PostData<object> CreatePostData(Exception e)
+		private PostData CreatePostData(Exception e)
 		{
-			PostData<object> postData = new List<object>
+			PostData postData = PostData.MultiJson(new List<object>
 			{
 				_bulkHeader,
 				new
@@ -62,7 +62,7 @@ namespace Tests.Reproduce
 					message = "My message",
 					exception = this.ExceptionJson(e).ToArray(),
 				}
-			};
+			});
 			return postData;
 		}
 
@@ -72,20 +72,6 @@ namespace Tests.Reproduce
 			int maxExceptions = 20;
 			do
 			{
-#if !DOTNETCORE
-				var si = new SerializationInfo(e.GetType(), new FormatterConverter());
-				var sc = new StreamingContext();
-				e.GetObjectData(si, sc);
-
-				var helpUrl = si.GetString("HelpURL");
-				var stackTrace = si.GetString("StackTraceString");
-				var remoteStackTrace = si.GetString("RemoteStackTraceString");
-				var remoteStackIndex = si.GetInt32("RemoteStackIndex");
-				var exceptionMethod = si.GetString("ExceptionMethod");
-				var hresult = si.GetInt32("HResult");
-				var source = si.GetString("Source");
-				var className = si.GetString("ClassName");
-#else
 				var helpUrl = e.HelpLink;
 				var stackTrace = e.StackTrace;
 				var remoteStackTrace = string.Empty;
@@ -94,7 +80,6 @@ namespace Tests.Reproduce
 				var hresult = e.HResult;
 				var source = e.Source;
 				var className = string.Empty;
-#endif
 
 				yield return new
 				{
@@ -107,9 +92,7 @@ namespace Tests.Reproduce
 					RemoteStackIndex = remoteStackIndex,
 					HResult = hresult,
 					HelpURL = helpUrl,
-#if !DOTNETCORE && !__MonoCS__
-					ExceptionMethod = this.WriteStructuredExceptionMethod(exceptionMethod)
-#endif
+					//ExceptionMethod = this.WriteStructuredExceptionMethod(exceptionMethod)
 				};
 				depth++;
 				e = e.InnerException;
@@ -156,14 +139,14 @@ namespace Tests.Reproduce
 				_bulkHeader,
 				document
 			};
-			var response = this._client.Bulk<byte[]>(payload);
+			var response = this._client.Bulk<BytesResponse>(PostData.MultiJson(payload));
 
 
 			var request = Encoding.UTF8.GetString(response.RequestBodyInBytes);
 			return request;
 		}
 
-		private void AssertRequestEquals(string request, PostData<object> postData)
+		private void AssertRequestEquals(string request, PostData postData)
 		{
 			using (var ms = new MemoryStream())
 			{

@@ -16,6 +16,8 @@ namespace Tests.Document.Single.Create
 	public class CreateApiTests :
 		ApiIntegrationTestBase<WritableCluster, ICreateResponse, ICreateRequest<Project>, CreateDescriptor<Project>, CreateRequest<Project>>
 	{
+		protected override bool IncludeNullInExpected => false;
+
 		private Project Document => new Project
 		{
 			State = StateOfBeing.Stable,
@@ -23,25 +25,24 @@ namespace Tests.Document.Single.Create
 			StartedOn = FixedDate,
 			LastActivity = FixedDate,
 			CuratedTags = new List<Tag> {new Tag {Name = "x", Added = FixedDate}},
+			SourceOnly = TestClient.Configuration.Random.SourceSerializer ? new SourceOnlyObject() : null
 		};
 
-		public CreateApiTests(WritableCluster cluster, EndpointUsage usage) : base(cluster, usage)
-		{
-		}
+		public CreateApiTests(WritableCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
 		protected override LazyResponses ClientUsage() => Calls(
 			fluent: (client, f) => client.Create(this.Document, f),
 			fluentAsync: (client, f) => client.CreateAsync(this.Document, f),
 			request: (client, r) => client.Create(r),
 			requestAsync: (client, r) => client.CreateAsync(r)
-			);
+		);
 
 		protected override bool ExpectIsValid => true;
 		protected override int ExpectStatusCode => 201;
 		protected override HttpMethod HttpMethod => HttpMethod.PUT;
 
 		protected override string UrlPath
-			=> $"/project/project/{CallIsolatedValue}/_create?wait_for_active_shards=1&refresh=true&routing=route";
+			=> $"/project/doc/{CallIsolatedValue}/_create?wait_for_active_shards=1&refresh=true&routing=route";
 
 		protected override bool SupportsDeserialization => true;
 
@@ -49,9 +50,13 @@ namespace Tests.Document.Single.Create
 			new
 			{
 				name = CallIsolatedValue,
+				join = Document.Join.ToAnonymousObject(),
 				state = "Stable",
+				visibility = "Public",
 				startedOn = FixedDate,
 				lastActivity = FixedDate,
+				numberOfContributors = 0,
+				sourceOnly = Dependant(null, new { notWrittenByDefaultSerializer = "written" }),
 				curatedTags = new[] {new {name = "x", added = FixedDate}},
 			};
 
@@ -85,18 +90,22 @@ namespace Tests.Document.Single.Create
 			);
 			createResponse.ShouldBeValid();
 			createResponse.ApiCall.HttpStatusCode.Should().Be(201);
-			createResponse.Created.Should().BeTrue();
 			createResponse.Result.Should().Be(Result.Created);
 			createResponse.Index.Should().Be(index);
 			createResponse.Type.Should().Be(this.Client.Infer.TypeName<Project>());
 			createResponse.Id.Should().Be(project.Name);
+
+			createResponse.Shards.Should().NotBeNull();
+			createResponse.Shards.Total.Should().BeGreaterThan(0);
+			createResponse.Shards.Successful.Should().BeGreaterThan(0);
+			createResponse.PrimaryTerm.Should().BeGreaterThan(0);
+			createResponse.SequenceNumber.Should().BeGreaterOrEqualTo(0);
 
 			createResponse = this.Client.Create(project, f => f
 				.Index(index)
 			);
 
 			createResponse.ShouldNotBeValid();
-			createResponse.Created.Should().BeFalse();
 			createResponse.ApiCall.HttpStatusCode.Should().Be(409);
 		}
 	}
@@ -135,7 +144,7 @@ namespace Tests.Document.Single.Create
 
 			createResponse.ShouldBeValid();
 			createResponse.ApiCall.HttpStatusCode.Should().Be(201);
-			createResponse.Created.Should().BeTrue();
+			createResponse.Result.Should().Be(Result.Created);
 			createResponse.Index.Should().Be(index);
 			createResponse.Type.Should().Be("jobject");
 
@@ -182,7 +191,6 @@ namespace Tests.Document.Single.Create
 
 			createResponse.ShouldBeValid();
 			createResponse.ApiCall.HttpStatusCode.Should().Be(201);
-			createResponse.Created.Should().BeTrue();
 			createResponse.Index.Should().Be(index);
 			createResponse.Result.Should().Be(Result.Created);
 			createResponse.Type.Should().StartWith("<>");

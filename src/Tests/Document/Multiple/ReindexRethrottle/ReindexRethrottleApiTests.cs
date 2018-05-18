@@ -47,7 +47,7 @@ namespace Tests.Document.Multiple.ReindexRethrottle
 			var reindex = client.UpdateByQuery<Project>(u => u
 				.Conflicts(Conflicts.Proceed)
 				.Query(q => q.MatchAll())
-				.Script(s => s.Inline("ctx._source.numberOfCommits+10"))
+				.Script(s => s.Source("ctx._source.numberOfCommits+10"))
 				.Refresh()
 				.RequestsPerSecond(1)
 				.WaitForCompletion(false)
@@ -74,8 +74,8 @@ namespace Tests.Document.Multiple.ReindexRethrottle
 		}
 
 		protected override LazyResponses ClientUsage() => Calls(
-			fluent: (client, f) => client.Rethrottle(f),
-			fluentAsync: (client, f) => client.RethrottleAsync(f),
+			fluent: (client, f) => client.Rethrottle(TaskId, f),
+			fluentAsync: (client, f) => client.RethrottleAsync(TaskId, f),
 			request: (client, r) => client.Rethrottle(r),
 			requestAsync: (client, r) => client.RethrottleAsync(r)
 		);
@@ -88,8 +88,9 @@ namespace Tests.Document.Multiple.ReindexRethrottle
 
 		protected override bool SupportsDeserialization => false;
 
+		protected override ReindexRethrottleDescriptor NewDescriptor() => new ReindexRethrottleDescriptor(TaskId);
+
 		protected override Func<ReindexRethrottleDescriptor, IReindexRethrottleRequest> Fluent => d => d
-			.TaskId(TaskId)
 			.RequestsPerSecond(-1);
 
 		protected override ReindexRethrottleRequest Initializer => new ReindexRethrottleRequest(TaskId)

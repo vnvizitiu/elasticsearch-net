@@ -15,7 +15,7 @@ namespace Tests.Search.Request
 {
 	/**
 	* Allows to highlight search results on one or more fields.
-	* The implementation uses either the lucene `highlighter`, `fast-vector-highlighter` or `postings-highlighter`.
+	* The implementation uses either the lucene `highlighter` or `fast-vector-highlighter`.
 	*
 	* See the Elasticsearch documentation on {ref_current}/search-request-highlighting.html[highlighting] for more detail.
 	*/
@@ -29,9 +29,9 @@ namespace Tests.Search.Request
 		{
 			query = new
 			{
-				match = new JObject
+				match = new Dictionary<string, object>
 				{
-					{ "name.standard", new JObject
+					{ "name.standard", new Dictionary<string, object>
 						{
 							{ "query", "Upton Sons Shield Rice Rowe Roberts" }
 						}
@@ -42,9 +42,10 @@ namespace Tests.Search.Request
 			{
 				pre_tags = new[] { "<tag1>" },
 				post_tags = new[] { "</tag1>" },
-				fields = new JObject
+				encoder = "html",
+				fields = new Dictionary<string, object>
 				{
-					{ "name.standard", new JObject
+					{ "name.standard", new Dictionary<string, object>
 						{
 							{ "type", "plain" },
 							{ "force_source", true},
@@ -54,17 +55,18 @@ namespace Tests.Search.Request
 							{ "no_match_size", 150 }
 						}
 					},
-					{ "leadDeveloper.firstName", new JObject
+					{ "leadDeveloper.firstName", new Dictionary<string, object>
 						{
 							{ "type", "fvh" },
+							{ "phrase_limit", 10 },
 							{ "boundary_max_scan", 50 },
-							{ "pre_tags", new JArray { "<name>" } },
-							{ "post_tags", new JArray { "</name>" } },
-							{ "highlight_query", new JObject
+							{ "pre_tags", new [] { "<name>" } },
+							{ "post_tags", new [] { "</name>" } },
+							{ "highlight_query", new Dictionary<string, object>
 								{
-									{ "match", new JObject
+									{ "match", new Dictionary<string, object>
 										{
-											{ "leadDeveloper.firstName", new JObject
+											{ "leadDeveloper.firstName", new Dictionary<string, object>
 												{
 													{ "query", "Kurt Edgardo Naomi Dariana Justice Felton" }
 												}
@@ -75,36 +77,20 @@ namespace Tests.Search.Request
 							}
 						}
 					},
-					{ "leadDeveloper.lastName", new JObject
+					{ "leadDeveloper.lastName", new Dictionary<string, object>
 						{
 							{ "type", "unified" },
-							{ "pre_tags", new JArray { "<name>" } },
-							{ "post_tags", new JArray { "</name>" } },
-							{ "highlight_query", new JObject
+							{ "pre_tags", new [] { "<name>" } },
+							{ "post_tags", new [] { "</name>" } },
+							{ "highlight_query", new Dictionary<string, object>
 								{
-									{ "match", new JObject
+									{ "match", new Dictionary<string, object>
 										{
-											{ "leadDeveloper.lastName", new JObject
+											{ "leadDeveloper.lastName", new Dictionary<string, object>
 												{
 													{ "query", LastNameSearch }
 												}
 											}
-										}
-									}
-								}
-							}
-						}
-					},
-					{ "state.offsets", new JObject
-						{
-							{ "type", "postings" },
-							{ "pre_tags", new JArray { "<state>" } },
-							{ "post_tags", new JArray { "</state>" } },
-							{ "highlight_query", new JObject
-								{
-									{ "terms", new JObject
-										{
-											{ "state.offsets", new JArray { "stable" , "bellyup" } }
 										}
 									}
 								}
@@ -125,6 +111,7 @@ namespace Tests.Search.Request
 			.Highlight(h => h
 				.PreTags("<tag1>")
 				.PostTags("</tag1>")
+				.Encoder(HighlighterEncoder.Html)
 				.Fields(
 					fs => fs
 						.Field(p => p.Name.Suffix("standard"))
@@ -140,6 +127,7 @@ namespace Tests.Search.Request
 						.PreTags("<name>")
 						.PostTags("</name>")
 						.BoundaryMaxScan(50)
+						.PhraseLimit(10)
 						.HighlightQuery(q => q
 							.Match(m => m
 								.Field(p => p.LeadDeveloper.FirstName)
@@ -155,20 +143,6 @@ namespace Tests.Search.Request
 							.Match(m => m
 								.Field(p => p.LeadDeveloper.LastName)
 								.Query(LastNameSearch)
-							)
-						),
-					fs => fs
-						.Field(p => p.State.Suffix("offsets"))
-						.Type(HighlighterType.Postings)
-						.PreTags("<state>")
-						.PostTags("</state>")
-						.HighlightQuery(q => q
-							.Terms(t => t
-								.Field(f => f.State.Suffix("offsets"))
-								.Terms(
-									StateOfBeing.Stable.ToString().ToLowerInvariant(),
-									StateOfBeing.BellyUp.ToString().ToLowerInvariant()
-								)
 							)
 						)
 				)
@@ -186,6 +160,7 @@ namespace Tests.Search.Request
 				{
 					PreTags = new[] { "<tag1>" },
 					PostTags = new[] { "</tag1>" },
+					Encoder = HighlighterEncoder.Html,
 					Fields = new Dictionary<Field, IHighlightField>
 					{
 						{ "name.standard", new HighlightField
@@ -201,6 +176,7 @@ namespace Tests.Search.Request
 						{ "leadDeveloper.firstName", new HighlightField
 							{
 								Type = "fvh",
+								PhraseLimit = 10,
 								BoundaryMaxScan = 50,
 								PreTags = new[] { "<name>"},
 								PostTags = new[] { "</name>"},
@@ -220,18 +196,6 @@ namespace Tests.Search.Request
 								{
 									Field = "leadDeveloper.lastName",
 									Query = LastNameSearch
-								}
-							}
-						},
-						{ "state.offsets", new HighlightField
-							{
-								Type = HighlighterType.Postings,
-								PreTags = new[] { "<state>"},
-								PostTags = new[] { "</state>"},
-								HighlightQuery = new TermsQuery
-								{
-									Field = "state.offsets",
-									Terms = new [] { "stable", "bellyup" }
 								}
 							}
 						}
@@ -269,14 +233,6 @@ namespace Tests.Search.Request
 						{
 							highlight.Should().Contain("<name>");
 							highlight.Should().Contain("</name>");
-						}
-					}
-					else if (highlightField.Key == "state.offsets")
-					{
-						foreach (var highlight in highlightField.Value.Highlights)
-						{
-							highlight.Should().Contain("<state>");
-							highlight.Should().Contain("</state>");
 						}
 					}
 					else

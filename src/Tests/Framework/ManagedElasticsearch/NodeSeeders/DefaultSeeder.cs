@@ -9,13 +9,15 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 	public class DefaultSeeder
 	{
 		public const string TestsIndexTemplateName = "nest_tests";
+
+		public const string ProjectsIndex = "project";
 		public const string ProjectsAliasName = "projects-alias";
+		public const string ProjectsAliasFilter = "projects-only";
+		public const string CommitsAliasFilter = "commits-only";
 
 		private IElasticClient Client { get; }
 
-		private readonly IIndexSettings _defaultIndexSettings = new IndexSettings(new Dictionary<string, object> {
-			{ "mapping.single_type", "false" } //TODO this is temporarily while parent child mappings are reimagined in 6.0
-		})
+		private readonly IIndexSettings _defaultIndexSettings = new IndexSettings()
 		{
 			NumberOfShards = 2,
 			NumberOfReplicas = 0,
@@ -53,8 +55,8 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 				this.Client.DeleteIndex(typeof(Project));
 			if (this.Client.IndexExists(Infer.Indices<Developer>()).Exists)
 				this.Client.DeleteIndex(typeof(Developer));
-			if (this.Client.IndexExists(Infer.Indices<PercolatedQuery>()).Exists)
-				this.Client.DeleteIndex(typeof(PercolatedQuery));
+			if (this.Client.IndexExists(Infer.Indices<ProjectPercolation>()).Exists)
+				this.Client.DeleteIndex(typeof(ProjectPercolation));
 		}
 
 		public void CreateIndices()
@@ -69,7 +71,7 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 		{
 			this.Client.IndexMany(Project.Projects);
 			this.Client.IndexMany(Developer.Developers);
-			this.Client.Index(new PercolatedQuery
+			this.Client.IndexDocument(new ProjectPercolation
 			{
 				Id = "1",
 				Query = new MatchAllQuery()
@@ -77,10 +79,10 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 			this.Client.Bulk(b => b
 				.IndexMany(
 					CommitActivity.CommitActivities,
-					(d, c) => d.Document(c).Parent(c.ProjectName)
+					(d, c) => d.Document(c).Routing(c.ProjectName)
 				)
 			);
-			this.Client.Refresh(Nest.Indices.Index(typeof(Project), typeof(Developer), typeof(PercolatedQuery)));
+			this.Client.Refresh(Nest.Indices.Index(typeof(Project), typeof(Developer), typeof(ProjectPercolation)));
 		}
 
 		private void CreateIndicesAndSeedIndexData()
@@ -93,7 +95,7 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 		{
 			var putTemplateResult = this.Client.PutIndexTemplate(new PutIndexTemplateRequest(TestsIndexTemplateName)
 			{
-				IndexPatterns = new[] { "*" },
+				IndexPatterns = new[] {"*"},
 				Settings = this.IndexSettings
 			});
 			putTemplateResult.ShouldBeValid();
@@ -118,18 +120,21 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 				.Settings(settings => settings
 					.Analysis(ProjectAnalysisSettings)
 				)
-				.Aliases(a => a
+				.Aliases(aliases => aliases
 					.Alias(ProjectsAliasName)
+					.Alias(ProjectsAliasFilter, a => a
+						.Filter<Project>(f => f.Term(p => p.Join, Infer.Relation<Project>()))
+					)
+					.Alias(CommitsAliasFilter, a => a
+						.Filter<CommitActivity>(f => f.Term(p => p.Join, Infer.Relation<CommitActivity>()))
+					)
 				)
 				.Mappings(map => map
 					.Map<Project>(m => m
+						.RoutingField(r=>r.Required())
 						.AutoMap()
 						.Properties(ProjectProperties)
-					)
-					.Map<CommitActivity>(m => m
-						.AutoMap()
-						.Parent<Project>()
-						.Properties(props => props
+						.Properties<CommitActivity>(props => props
 							.Object<Developer>(o => o
 								.AutoMap()
 								.Name(p => p.Committer)
@@ -174,12 +179,13 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 
 		private void CreatePercolatorIndex()
 		{
-			var createPercolatedIndex = this.Client.CreateIndex(typeof(PercolatedQuery), c => c
+			var createPercolatedIndex = this.Client.CreateIndex(typeof(ProjectPercolation), c => c
 				.Settings(s => s
 					.AutoExpandReplicas("0-all")
+					.Analysis(DefaultSeeder.ProjectAnalysisSettings)
 				)
 				.Mappings(map => map
-					.Map<PercolatedQuery>(m => m
+					.Map<ProjectPercolation>(m => m
 						.AutoMap()
 						.Properties(PercolatedQueryProperties)
 					)
@@ -189,7 +195,14 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 			createPercolatedIndex.ShouldBeValid();
 		}
 
-		public static PropertiesDescriptor<Project> ProjectProperties(PropertiesDescriptor<Project> props) => props
+		public static PropertiesDescriptor<TProject> ProjectProperties<TProject>(PropertiesDescriptor<TProject> props)
+			where TProject : Project => props
+			.Join(j => j
+				.Name(n => n.Join)
+					.Relations(r => r
+					.Join<Project, CommitActivity>()
+				)
+			)
 			.Keyword(s => s
 				.Name(p => p.Name)
 				.Store()
@@ -254,10 +267,8 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 					)
 				)
 			)
-			.Number(n => n
-				.Name(p => p.NumberOfCommits)
-				.Store()
-			)
+			.Scalar(p => p.NumberOfCommits, n => n.Store())
+			.Scalar(p => p.NumberOfContributors, n => n.Store())
 			.Object<Dictionary<string, Metadata>>(o => o
 				.Name(p => p.Metadata)
 			);
@@ -285,7 +296,7 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 				.TermVector(TermVectorOption.WithPositionsOffsetsPayloads)
 			)
 			.Ip(s => s
-				.Name(p => p.IPAddress)
+				.Name(p => p.IpAddress)
 			)
 			.GeoPoint(g => g
 				.Name(p => p.Location)
@@ -294,9 +305,7 @@ namespace Tests.Framework.ManagedElasticsearch.NodeSeeders
 				.Name(p => p.GeoIp)
 			);
 
-		public static PropertiesDescriptor<PercolatedQuery> PercolatedQueryProperties(PropertiesDescriptor<PercolatedQuery> props) => props
-			.Percolator(pp => pp
-				.Name(n => n.Query)
-			);
+		public static PropertiesDescriptor<ProjectPercolation> PercolatedQueryProperties(PropertiesDescriptor<ProjectPercolation> props) =>
+			ProjectProperties(props.Percolator(pp => pp.Name(n => n.Query)));
 	}
 }

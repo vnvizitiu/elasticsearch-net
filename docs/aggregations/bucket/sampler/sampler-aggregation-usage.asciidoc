@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,14 +19,12 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Aggregations(aggs => aggs
-    .Sampler("sample", sm => sm
-        .ShardSize(200)
-        .Aggregations(aa => aa
-            .SignificantTerms("significant_names", st => st
-                .Field(p => p.Name)
-            )
+a => a
+.Sampler("sample", sm => sm
+    .ShardSize(200)
+    .Aggregations(aa => aa
+        .SignificantTerms("significant_names", st => st
+            .Field(p => p.Name)
         )
     )
 )
@@ -36,15 +34,12 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new SamplerAggregation("sample")
 {
-    Aggregations = new SamplerAggregation("sample")
+    ShardSize = 200,
+    Aggregations = new SignificantTermsAggregation("significant_names")
     {
-        ShardSize = 200,
-        Aggregations = new SignificantTermsAggregation("significant_names")
-        {
-            Field = "name"
-        }
+        Field = "name"
     }
 }
 ----
@@ -53,16 +48,14 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "sample": {
-      "sampler": {
-        "shard_size": 200
-      },
-      "aggs": {
-        "significant_names": {
-          "significant_terms": {
-            "field": "name"
-          }
+  "sample": {
+    "sampler": {
+      "shard_size": 200
+    },
+    "aggs": {
+      "significant_names": {
+        "significant_terms": {
+          "field": "name"
         }
       }
     }
@@ -76,9 +69,12 @@ new SearchRequest<Project>
 ----
 response.ShouldBeValid();
 
-var sample = response.Aggs.Sampler("sample");
+var sample = response.Aggregations.Sampler("sample");
 sample.Should().NotBeNull();
 var sigTags = sample.SignificantTerms("significant_names");
 sigTags.Should().NotBeNull();
+sigTags.DocCount.Should().BeGreaterThan(0);
+if (TestClient.VersionUnderTestSatisfiedBy(">=5.5.0"))
+    sigTags.BgCount.Should().BeGreaterThan(0);
 ----
 

@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,13 +19,11 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Aggregations(a => a
-    .Global("all_projects", g => g
-        .Aggregations(aa => aa
-            .Terms("names", t => t
-                .Field(p => p.Name)
-            )
+a => a
+.Global("all_projects", g => g
+    .Aggregations(aa => aa
+        .Terms("names", t => t
+            .Field(p => p.Name)
         )
     )
 )
@@ -35,14 +33,11 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new GlobalAggregation("all_projects")
 {
-    Aggregations = new GlobalAggregation("all_projects")
+    Aggregations = new TermsAggregation("names")
     {
-        Aggregations = new TermsAggregation("names")
-        {
-            Field = Field<Project>(p => p.Name)
-        }
+        Field = Field<Project>(p => p.Name)
     }
 }
 ----
@@ -51,14 +46,12 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "all_projects": {
-      "global": {},
-      "aggs": {
-        "names": {
-          "terms": {
-            "field": "name"
-          }
+  "all_projects": {
+    "global": {},
+    "aggs": {
+      "names": {
+        "terms": {
+          "field": "name"
         }
       }
     }
@@ -71,7 +64,7 @@ new SearchRequest<Project>
 [source,csharp]
 ----
 response.ShouldBeValid();
-var allProjects = response.Aggs.Global("all_projects");
+var allProjects = response.Aggregations.Global("all_projects");
 allProjects.Should().NotBeNull();
 var names = allProjects.Terms("names");
 names.Should().NotBeNull();

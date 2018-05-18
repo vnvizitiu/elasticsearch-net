@@ -7,6 +7,7 @@ using Nest;
 using Tests.Framework;
 using Tests.Framework.Integration;
 using Tests.Framework.ManagedElasticsearch.Clusters;
+using Tests.Framework.ManagedElasticsearch.NodeSeeders;
 using Tests.Framework.MockData;
 using Xunit;
 using static Nest.Infer;
@@ -21,10 +22,23 @@ namespace Tests.Document.Multiple.DeleteByQuery
 		{
 			foreach (var index in values.Values)
 			{
+				this.Client.CreateIndex(index, c => c
+					.Settings(s => s
+						.NumberOfShards(2)
+						.NumberOfReplicas(0)
+						.Analysis(DefaultSeeder.ProjectAnalysisSettings)
+					)
+					.Mappings(m => m
+						.Map<Project>(p => p
+							.AutoMap()
+							.Properties(DefaultSeeder.ProjectProperties)
+						)
+					)
+				);
+
 				this.Client.IndexMany(Project.Projects, index);
 				var cloneIndex = index + "-clone";
 				this.Client.CreateIndex(cloneIndex);
-
 				this.Client.Refresh(Index(index).And(cloneIndex));
 			}
 		}
@@ -43,7 +57,7 @@ namespace Tests.Document.Multiple.DeleteByQuery
 		protected override int ExpectStatusCode => 200;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
 
-		protected override string UrlPath => $"/{CallIsolatedValue}%2C{SecondIndex}/project/_delete_by_query?ignore_unavailable=true";
+		protected override string UrlPath => $"/{CallIsolatedValue}%2C{SecondIndex}/doc/_delete_by_query?ignore_unavailable=true";
 
 		protected override bool SupportsDeserialization => false;
 
@@ -53,7 +67,7 @@ namespace Tests.Document.Multiple.DeleteByQuery
 			{
 				ids = new
 				{
-					types = new[] { "project" },
+					type = new[] { "doc" },
 					values = new [] { Project.First.Name, "x" }
 				}
 			}
@@ -102,7 +116,7 @@ namespace Tests.Document.Multiple.DeleteByQuery
 	{
 		public DeleteByQueryWaitForCompletionApiTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 
-		protected override string UrlPath => $"/{CallIsolatedValue}/project/_delete_by_query?wait_for_completion=false&conflicts=proceed";
+		protected override string UrlPath => $"/{CallIsolatedValue}/doc/_delete_by_query?wait_for_completion=false&conflicts=proceed";
 
 		protected override DeleteByQueryDescriptor<Project> NewDescriptor() => new DeleteByQueryDescriptor<Project>(this.CallIsolatedValue);
 
@@ -143,15 +157,17 @@ namespace Tests.Document.Multiple.DeleteByQuery
 						.RefreshInterval(-1)
 					)
 				);
-				this.Client.Index(new Project { Name = "project1", Description = "description" }, i => i.Index(index).Id(1).Refresh(Refresh.True));
-				this.Client.Index(new Project { Name = "project2", Description = "description" }, i => i.Index(index).Id(1));
+				this.Client.Index(new Project { Name = "project1", Description = "description" },
+					i => i.Index(index).Id(1).Refresh(Refresh.True).Routing(Project.Routing));
+				this.Client.Index(new Project { Name = "project2", Description = "description" },
+					i => i.Index(index).Id(1).Routing(Project.Routing));
 			}
 		}
 
 		protected override bool ExpectIsValid => false;
 		protected override int ExpectStatusCode => 409;
 
-		protected override string UrlPath => $"/{CallIsolatedValue}/project/_delete_by_query";
+		protected override string UrlPath => $"/{CallIsolatedValue}/doc/_delete_by_query";
 		protected override object ExpectJson =>
 			new
 			{
@@ -194,8 +210,79 @@ namespace Tests.Document.Multiple.DeleteByQuery
 			failure.Cause.IndexUniqueId.Should().NotBeNullOrWhiteSpace();
 			failure.Cause.Reason.Should().NotBeNullOrWhiteSpace();
 			failure.Cause.Index.Should().NotBeNullOrWhiteSpace();
-			failure.Cause.Shard.Should().NotBeNullOrWhiteSpace();
+			failure.Cause.Shard.Should().NotBeNull();
 			failure.Cause.Type.Should().NotBeNullOrWhiteSpace();
+		}
+	}
+
+	public class DeleteByQueryWithSlicesApiTests : DeleteByQueryApiTests
+	{
+		private static List<string> FirstTenProjectNames => Project.Projects.Take(10).Select(p => p.Name).ToList();
+
+		public DeleteByQueryWithSlicesApiTests(IntrusiveOperationCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
+
+		protected override bool ExpectIsValid => true;
+		protected override int ExpectStatusCode => 200;
+
+		protected override string UrlPath => $"/{CallIsolatedValue}/doc/_delete_by_query";
+
+		protected override object ExpectJson =>
+			new
+			{
+				slice = new { id = 0, max = 2 },
+				query = new { terms = new { name = FirstTenProjectNames } }
+			};
+
+		protected override DeleteByQueryDescriptor<Project> NewDescriptor() => new DeleteByQueryDescriptor<Project>(this.CallIsolatedValue);
+
+		protected override Func<DeleteByQueryDescriptor<Project>, IDeleteByQueryRequest> Fluent => d => d
+			.Index(this.CallIsolatedValue)
+			.Slice(s => s
+				.Id(0)
+				.Max(2)
+			)
+			.Query(q => q
+				.Terms(m => m
+					.Field(p => p.Name)
+					.Terms(FirstTenProjectNames)
+				)
+			)
+			;
+
+		protected override DeleteByQueryRequest Initializer => new DeleteByQueryRequest(this.CallIsolatedValue, Type<Project>())
+		{
+			Slice = new SlicedScroll
+			{
+				Id = 0,
+				Max = 2
+			},
+			Query = new TermsQuery
+			{
+				Field = Field<Project>(p => p.Name),
+				Terms = FirstTenProjectNames
+			},
+		};
+
+		protected override void ExpectResponse(IDeleteByQueryResponse response)
+		{
+			response.ShouldBeValid();
+			response.SliceId.Should().Be(0);
+
+			// Since we only executed one slice of the two, some of the documents that
+			// match the query will still exist.
+			Client.Refresh(CallIsolatedValue);
+
+			var countResponse = Client.Count<Project>(c => c
+				.Index(CallIsolatedValue)
+				.Query(q => q
+					.Terms(m => m
+						.Field(p => p.Name)
+						.Terms(FirstTenProjectNames)
+					)
+				)
+			);
+
+			countResponse.Count.Should().BeGreaterThan(0);
 		}
 	}
 }

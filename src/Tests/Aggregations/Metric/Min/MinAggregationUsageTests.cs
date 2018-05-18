@@ -13,37 +13,29 @@ namespace Tests.Aggregations.Metric.Min
 	{
 		public MinAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
-		protected override object ExpectJson => new
+		protected override object AggregationJson => new
 		{
-			aggs = new
+			min_last_activity = new
 			{
-				min_last_activity = new
+				min = new
 				{
-					min = new
-					{
-						field = "lastActivity"
-					}
+					field = "lastActivity"
 				}
 			}
 		};
 
-		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
-			.Aggregations(a => a
-				.Min("min_last_activity", m => m
-					.Field(p => p.LastActivity)
-				)
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.Min("min_last_activity", m => m
+				.Field(p => p.LastActivity)
 			);
 
-		protected override SearchRequest<Project> Initializer =>
-			new SearchRequest<Project>
-			{
-				Aggregations = new MinAggregation("min_last_activity", Field<Project>(p => p.LastActivity))
-			};
+		protected override AggregationDictionary InitializerAggs =>
+			new MinAggregation("min_last_activity", Field<Project>(p => p.LastActivity));
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
-			var min = response.Aggs.Min("min_last_activity");
+			var min = response.Aggregations.Min("min_last_activity");
 			min.Should().NotBeNull();
 			min.Value.Should().BeGreaterThan(0);
 			min.ValueAsString.Should().NotBeNullOrEmpty();

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
@@ -18,7 +19,7 @@ namespace Elasticsearch.Net
 		IConnection Connection { get; }
 
 		/// <summary>The serializer to use to serialize requests and deserialize responses</summary>
-		IElasticsearchSerializer Serializer { get; }
+		IElasticsearchSerializer RequestResponseSerializer { get; }
 
 		/// <summary>
 		/// The timeout in milliseconds for each request to Elasticsearch
@@ -191,5 +192,12 @@ namespace Elasticsearch.Net
 		/// request using <see cref="RequestConfiguration.ClientCertificates"/>
 		/// </summary>
 		X509CertificateCollection ClientCertificates { get; }
+
+		/// <summary>
+		/// Configure the client to skip deserialization of certain status codes e.g: you run elasticsearch behind a proxy that returns an unexpected json format
+		/// </summary>
+		IReadOnlyCollection<int> SkipDeserializationForStatusCodes { get; }
+
+		ElasticsearchUrlFormatter UrlFormatter { get; }
 	}
 }

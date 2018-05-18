@@ -10,43 +10,50 @@ namespace Nest
 
 	public partial interface IElasticClient
 	{
-		/// <inheritdoc/>
-		IExistsResponse AliasExists(Func<AliasExistsDescriptor, IAliasExistsRequest> selector);
+		/// <summary>
+		/// Checks if aliases exist for indices
+		/// </summary>
+		IExistsResponse AliasExists(Names name, Func<AliasExistsDescriptor, IAliasExistsRequest> selector = null);
 
-		/// <inheritdoc/>
+		/// <summary>
+		/// Checks if aliases exist for indices
+		/// </summary>
 		IExistsResponse AliasExists(IAliasExistsRequest request);
 
-		/// <inheritdoc/>
-		Task<IExistsResponse> AliasExistsAsync(Func<AliasExistsDescriptor, IAliasExistsRequest> selector, CancellationToken cancellationToken = default(CancellationToken));
+		/// <summary>
+		/// Checks if aliases exist for indices
+		/// </summary>
+		Task<IExistsResponse> AliasExistsAsync(Names name, Func<AliasExistsDescriptor, IAliasExistsRequest> selector = null, CancellationToken cancellationToken = default(CancellationToken));
 
-		/// <inheritdoc/>
+		/// <summary>
+		/// Checks if aliases exist for indices
+		/// </summary>
 		Task<IExistsResponse> AliasExistsAsync(IAliasExistsRequest request, CancellationToken cancellationToken = default(CancellationToken));
 	}
 
 	public partial class ElasticClient
 	{
 		/// <inheritdoc/>
-		public IExistsResponse AliasExists(Func<AliasExistsDescriptor, IAliasExistsRequest> selector) =>
-			this.AliasExists(selector?.Invoke(new AliasExistsDescriptor()));
+		public IExistsResponse AliasExists(Names name, Func<AliasExistsDescriptor, IAliasExistsRequest> selector = null) =>
+			this.AliasExists(selector.InvokeOrDefault(new AliasExistsDescriptor(name)));
 
 		/// <inheritdoc/>
 		public IExistsResponse AliasExists(IAliasExistsRequest request) =>
 			this.Dispatcher.Dispatch<IAliasExistsRequest, AliasExistsRequestParameters, ExistsResponse>(
 				request,
-				new AliasExistConverter(DeserializeExistsResponse),
 				(p, d) => this.LowLevelDispatch.IndicesExistsAliasDispatch<ExistsResponse>(p)
 			);
 
 		/// <inheritdoc/>
-		public Task<IExistsResponse> AliasExistsAsync(Func<AliasExistsDescriptor, IAliasExistsRequest> selector, CancellationToken cancellationToken = default(CancellationToken)) =>
-			this.AliasExistsAsync(selector?.Invoke(new AliasExistsDescriptor()), cancellationToken);
+		public Task<IExistsResponse> AliasExistsAsync(Names name, Func<AliasExistsDescriptor, IAliasExistsRequest> selector = null, CancellationToken cancellationToken = default(CancellationToken)) =>
+			this.AliasExistsAsync(selector.InvokeOrDefault(new AliasExistsDescriptor(name)), cancellationToken);
+
 
 		/// <inheritdoc/>
 		public Task<IExistsResponse> AliasExistsAsync(IAliasExistsRequest request, CancellationToken cancellationToken = default(CancellationToken)) =>
 			this.Dispatcher.DispatchAsync<IAliasExistsRequest, AliasExistsRequestParameters, ExistsResponse, IExistsResponse>(
 				request,
 				cancellationToken,
-				new AliasExistConverter(DeserializeExistsResponse),
 				(p, d, c) => this.LowLevelDispatch.IndicesExistsAliasDispatchAsync<ExistsResponse>(p, c)
 			);
 	}

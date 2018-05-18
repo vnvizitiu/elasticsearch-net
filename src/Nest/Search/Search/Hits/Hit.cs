@@ -5,21 +5,23 @@ using Newtonsoft.Json;
 
 namespace Nest
 {
-	public interface IHitMetadata<out T> where T : class
+	public interface IHitMetadata<out TDocument> where TDocument : class
 	{
 		string Index { get; }
 		string Type { get; }
 		long? Version { get; }
 		string Routing { get; }
 		string Id { get; }
+		[Obsolete("No longer returned on indexes created in Elasticsearch 6.x and up, use Routing instead")]
 		string Parent { get; }
-		T Source { get; }
+		[JsonConverter(typeof(SourceConverter))]
+		TDocument Source { get; }
 	}
 
 	internal static class HitMetadataConversionExtensions
 	{
-		public static IHitMetadata<TTarget> Copy<TSource, TTarget>(this IHitMetadata<TSource> source, Func<TSource, TTarget> mapper)
-			where TSource : class
+		public static IHitMetadata<TTarget> Copy<TDocument, TTarget>(this IHitMetadata<TDocument> source, Func<TDocument, TTarget> mapper)
+			where TDocument : class
 			where TTarget : class
 		{
 			return new Hit<TTarget>()
@@ -27,22 +29,18 @@ namespace Nest
 				Type = source.Type,
 				Index = source.Index,
 				Id = source.Id,
-				Routing = source.Routing,
+#pragma warning disable 618
+				Routing = source.Routing ?? source.Parent,
 				Parent = source.Parent,
+#pragma warning restore 618
 				Source = mapper(source.Source)
 			};
 		}
 	}
 
-	[ContractJsonConverter(typeof(DefaultHitJsonConverter))]
-	public interface IHit<out T> : IHitMetadata<T> where T : class
+	[ReadAs(typeof(Hit<>))]
+	public interface IHit<out TDocument> : IHitMetadata<TDocument> where TDocument : class
 	{
-		//technically metadata but we have no intention on preserving these
-		[Obsolete("This feature is no longer supported on indices created in Elasticsearch 5.x and up")]
-		long? Timestamp { get; }
-		[Obsolete("This feature is no longer supported on indices created in Elasticsearch 5.x and up")]
-		long? Ttl { get; }
-
 		//search/get related features on hits
 		double? Score { get; }
 		FieldValues Fields { get; }
@@ -54,13 +52,13 @@ namespace Nest
 	}
 
 	[JsonObject]
-	public class Hit<T> : IHit<T> where T : class
+	public class Hit<TDocument> : IHit<TDocument> where TDocument : class
 	{
 		[JsonProperty("fields")]
 		public FieldValues Fields { get; internal set; }
 
 		[JsonProperty("_source")]
-		public T Source { get; internal set; }
+		public TDocument Source { get; internal set; }
 
 		[JsonProperty("_index")]
 		public string Index { get; internal set; }
@@ -86,18 +84,11 @@ namespace Nest
 		public NestedIdentity Nested { get; internal set; }
 
 		[JsonProperty("_parent")]
+		[Obsolete("This property is no longer returned on indices created in Elasticsearch 6.0.0 and up, use Routing instead")]
 		public string Parent { get; internal set; }
 
 		[JsonProperty("_routing")]
 		public string Routing { get; internal set; }
-
-		[JsonProperty("_timestamp")]
-		[Obsolete("This property is no longer returned on indices created in Elasticsearch 5.0.0 and up")]
-		public long? Timestamp { get; internal set; }
-
-		[JsonProperty("_ttl")]
-		[Obsolete("This property is no longer returned on indices created in Elasticsearch 5.0.0 and up")]
-		public long? Ttl { get; internal set; }
 
 		[JsonProperty("sort")]
 		public IReadOnlyCollection<object> Sorts { get; internal set; } = EmptyReadOnly<object>.Collection;

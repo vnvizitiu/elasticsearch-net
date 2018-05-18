@@ -29,6 +29,8 @@ namespace Tests.CodeStandards
 
 			var abstractClassesNotEndingInBase = typeof(IRequest).Assembly().GetTypes()
 				.Where(t => t.IsClass() && t.IsAbstract() && !t.IsSealed() && !exceptions.Contains(t))
+				//when testing nuget package against merged internalize json.net skip its types.
+				.Where(t => !t.Namespace.StartsWith("Nest.Json"))
 				.Where(t => !t.Name.Split('`')[0].EndsWith("Base"))
 				.Select(t => t.Name.Split('`')[0])
 				.ToList();
@@ -100,11 +102,7 @@ namespace Tests.CodeStandards
 			{
 				//TODO These are new API's should be removed, also add test that no request or response starts with Xpack
 				//only XPack
-				typeof(XpackSecurityDeleteRoleMappingRequest),
-				typeof(XpackSecurityGetRoleMappingRequest),
-				typeof(XpackSecurityGetTokenRequest),
-				typeof(XpackSecurityInvalidateTokenRequest),
-				typeof(XpackSecurityPutRoleMappingRequest),
+
 				//TODO add unit tests that we have no requests starting with Exists
 				typeof(SourceExistsRequest),
 				typeof(SourceExistsRequest<>),
@@ -125,10 +123,6 @@ namespace Tests.CodeStandards
 				typeof(RenderSearchTemplateRequest),
 				typeof(MultiSearchTemplateRequest),
 				typeof(CreateRequest<>)
-
-
-
-
 			};
 
 			var types = typeof(IRequest).Assembly().GetTypes();
@@ -158,17 +152,21 @@ namespace Tests.CodeStandards
 
 			var exceptions = new List<Type>
 			{
-				nestAssembly.GetType("System.AssemblyVersionInformation"),
-#if DOTNETCORE
+				nestAssembly.GetType("System.AssemblyVersionInformation", throwOnError: false),
+				nestAssembly.GetType("System.Runtime.Serialization.Formatters.FormatterAssemblyStyle", throwOnError: false),
 				typeof(SynchronizedCollection<>),
-				nestAssembly.GetType("System.ComponentModel.Browsable")
-#endif
+				nestAssembly.GetType("System.ComponentModel.Browsable", throwOnError: false),
+				nestAssembly.GetType("Microsoft.CodeAnalysis.EmbeddedAttribute", throwOnError: false),
+				nestAssembly.GetType("System.Runtime.CompilerServices.IsReadOnlyAttribute", throwOnError: false),
 			};
 
 			var types = nestAssembly.GetTypes();
 			var typesNotInNestNamespace = types
+				.Where(t => t != null)
 				.Where(t => !exceptions.Contains(t))
 				.Where(t => t.Namespace != "Nest")
+				//when testing nuget package against merged internalize json.net skip its types.
+				.Where(t => !string.IsNullOrWhiteSpace(t.Namespace) && !t.Namespace.StartsWith("Nest.Json"))
 				.Where(t => !t.Name.StartsWith("<"))
 				.Where(t => IsValidTypeNameOrIdentifier(t.Name, true))
 				.ToList();
@@ -192,9 +190,7 @@ namespace Tests.CodeStandards
 				elasticsearchNetAssembly.GetType("Purify.Purifier+PurifierDotNet"),
 				elasticsearchNetAssembly.GetType("Purify.Purifier+PurifierMono"),
 				elasticsearchNetAssembly.GetType("Purify.Purifier+UriInfo"),
-#if DOTNETCORE
 				elasticsearchNetAssembly.GetType("System.ComponentModel.Browsable")
-#endif
 			};
 
 			var types = elasticsearchNetAssembly.GetTypes();
@@ -217,11 +213,7 @@ namespace Tests.CodeStandards
 			for (int index = 0; index < value.Length; ++index)
 			{
 				var character = value[index];
-#if DOTNETCORE
 				var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(character);
-#else
-				var unicodeCategory = char.GetUnicodeCategory(character);
-#endif
 				switch (unicodeCategory)
 				{
 					case UnicodeCategory.UppercaseLetter:

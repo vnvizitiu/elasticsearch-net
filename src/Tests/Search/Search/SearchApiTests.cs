@@ -26,7 +26,7 @@ namespace Tests.Search.Search
 		protected override int ExpectStatusCode => 200;
 		protected override bool ExpectIsValid => true;
 		protected override HttpMethod HttpMethod => HttpMethod.POST;
-		protected override string UrlPath => $"/project/project/_search";
+		protected override string UrlPath => $"/project/doc/_search";
 
 		protected override object ExpectJson => new
 		{
@@ -66,8 +66,13 @@ namespace Tests.Search.Search
 			response.Hits.First().Source.Should().NotBeNull();
 			response.Aggregations.Count.Should().BeGreaterThan(0);
 			response.Took.Should().BeGreaterThan(0);
-			var startDates = response.Aggs.Terms("startDates");
+			var startDates = response.Aggregations.Terms("startDates");
 			startDates.Should().NotBeNull();
+
+			foreach (var document in response.Documents)
+			{
+				document.ShouldAdhereToSourceSerializerWhenSet();
+			}
 		}
 
 		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
@@ -181,7 +186,7 @@ namespace Tests.Search.Search
 			response.Hits.First().Fields.ValueOf<Project, string>(p => p.Name).Should().NotBeNullOrEmpty();
 			response.Hits.First().Fields.ValueOf<Project, int?>(p => p.NumberOfCommits).Should().BeGreaterThan(0);
 			response.Aggregations.Count.Should().BeGreaterThan(0);
-			var startDates = response.Aggs.Terms("startDates");
+			var startDates = response.Aggregations.Terms("startDates");
 			startDates.Should().NotBeNull();
 		}
 	}

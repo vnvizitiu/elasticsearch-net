@@ -4,14 +4,8 @@ using System.Linq.Expressions;
 
 namespace Nest
 {
-	public class SingleMappingDescriptor<T> :
-		DescriptorBase<SingleMappingDescriptor<T>, IPropertiesDescriptor<T, IProperty>>, IPropertiesDescriptor<T, IProperty>
-		where T : class
+	public class SingleMappingSelector<T> : SelectorBase<IProperty>, IPropertiesDescriptor<T, IProperty> where T : class
 	{
-		[Obsolete("Only valid for indices created before Elasticsearch 5.0 and will be removed in the next major version.  For newly created indices, use `text` or `keyword` instead.")]
-		public IProperty String(Func<StringPropertyDescriptor<T>, IStringProperty> selector) =>
-			selector?.Invoke(new StringPropertyDescriptor<T>());
-
 		public IProperty Text(Func<TextPropertyDescriptor<T>, ITextProperty> selector) =>
 			selector?.Invoke(new TextPropertyDescriptor<T>());
 
@@ -78,6 +72,12 @@ namespace Nest
 
 		public IProperty LongRange(Func<LongRangePropertyDescriptor<T>, ILongRangeProperty> selector) =>
 			selector?.Invoke(new LongRangePropertyDescriptor<T>());
+
+		public IProperty IpRange(Func<IpRangePropertyDescriptor<T>, IIpRangeProperty> selector) =>
+			selector?.Invoke(new IpRangePropertyDescriptor<T>());
+
+		public IProperty Join(Func<JoinPropertyDescriptor<T>, IJoinProperty> selector) =>
+			selector?.Invoke(new JoinPropertyDescriptor<T>());
 
 #pragma warning disable CS3001 // Argument type is not CLS-compliant
 		public IProperty Scalar(Expression<Func<T, int>> field, Func<NumberPropertyDescriptor<T>, INumberProperty> selector = null) =>
@@ -242,6 +242,8 @@ namespace Nest
 			selector.InvokeOrDefault(new IntegerRangePropertyDescriptor<T>().Name(field));
 		public IProperty Scalar(Expression<Func<T, FloatRange>> field, Func<FloatRangePropertyDescriptor<T>, IFloatRangeProperty> selector = null) =>
 			selector.InvokeOrDefault(new FloatRangePropertyDescriptor<T>().Name(field));
+		public IProperty Scalar(Expression<Func<T, IpRange>> field, Func<IpRangePropertyDescriptor<T>, IIpRangeProperty> selector = null) =>
+			selector.InvokeOrDefault(new IpRangePropertyDescriptor<T>().Name(field));
 #pragma warning restore CS3001 // Argument type is not CLS-compliant
 	}
 }

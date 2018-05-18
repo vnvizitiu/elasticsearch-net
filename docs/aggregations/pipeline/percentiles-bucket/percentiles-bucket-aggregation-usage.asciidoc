@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,22 +19,19 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Size(0)
-.Aggregations(a => a
-    .DateHistogram("projects_started_per_month", dh => dh
-        .Field(p => p.StartedOn)
-        .Interval(DateInterval.Month)
-        .Aggregations(aa => aa
-            .Sum("commits", sm => sm
-                .Field(p => p.NumberOfCommits)
-            )
+a => a
+.DateHistogram("projects_started_per_month", dh => dh
+    .Field(p => p.StartedOn)
+    .Interval(DateInterval.Month)
+    .Aggregations(aa => aa
+        .Sum("commits", sm => sm
+            .Field(p => p.NumberOfCommits)
         )
     )
-    .PercentilesBucket("commits_outlier", aaa => aaa
-        .BucketsPath("projects_started_per_month>commits")
-        .Percents(95, 99, 99.9)
-    )
+)
+.PercentilesBucket("commits_outlier", aaa => aaa
+    .BucketsPath("projects_started_per_month>commits")
+    .Percents(95, 99, 99.9)
 )
 ----
 
@@ -42,19 +39,15 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>()
+new DateHistogramAggregation("projects_started_per_month")
 {
-    Size = 0,
-    Aggregations = new DateHistogramAggregation("projects_started_per_month")
-    {
-        Field = "startedOn",
-        Interval = DateInterval.Month,
-        Aggregations = new SumAggregation("commits", "numberOfCommits")
-    }
-    && new PercentilesBucketAggregation("commits_outlier", "projects_started_per_month>commits")
-    {
-        Percents = new[] { 95, 99, 99.9 }
-    }
+    Field = "startedOn",
+    Interval = DateInterval.Month,
+    Aggregations = new SumAggregation("commits", "numberOfCommits")
+}
+&& new PercentilesBucketAggregation("commits_outlier", "projects_started_per_month>commits")
+{
+    Percents = new[] {95, 99, 99.9}
 }
 ----
 
@@ -62,30 +55,27 @@ new SearchRequest<Project>()
 .Example json output
 ----
 {
-  "size": 0,
-  "aggs": {
-    "projects_started_per_month": {
-      "date_histogram": {
-        "field": "startedOn",
-        "interval": "month"
-      },
-      "aggs": {
-        "commits": {
-          "sum": {
-            "field": "numberOfCommits"
-          }
+  "projects_started_per_month": {
+    "date_histogram": {
+      "field": "startedOn",
+      "interval": "month"
+    },
+    "aggs": {
+      "commits": {
+        "sum": {
+          "field": "numberOfCommits"
         }
       }
-    },
-    "commits_outlier": {
-      "percentiles_bucket": {
-        "buckets_path": "projects_started_per_month>commits",
-        "percents": [
-          95.0,
-          99.0,
-          99.9
-        ]
-      }
+    }
+  },
+  "commits_outlier": {
+    "percentiles_bucket": {
+      "buckets_path": "projects_started_per_month>commits",
+      "percents": [
+        95.0,
+        99.0,
+        99.9
+      ]
     }
   }
 }
@@ -97,12 +87,12 @@ new SearchRequest<Project>()
 ----
 response.ShouldBeValid();
 
-var projectsPerMonth = response.Aggs.DateHistogram("projects_started_per_month");
+var projectsPerMonth = response.Aggregations.DateHistogram("projects_started_per_month");
 projectsPerMonth.Should().NotBeNull();
 projectsPerMonth.Buckets.Should().NotBeNull();
 projectsPerMonth.Buckets.Count.Should().BeGreaterThan(0);
 
-var commitsOutlier = response.Aggs.PercentilesBucket("commits_outlier");
+var commitsOutlier = response.Aggregations.PercentilesBucket("commits_outlier");
 commitsOutlier.Should().NotBeNull();
 commitsOutlier.Items.Should().NotBeNullOrEmpty();
 foreach (var item in commitsOutlier.Items)

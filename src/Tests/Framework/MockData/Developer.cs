@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Bogus;
 using Nest;
 
@@ -10,14 +11,15 @@ namespace Tests.Framework.MockData
 		public string OnlineHandle { get; set; }
 		public Gender Gender { get; set; }
 		public string PrivateValue { get; set; }
-		public string IPAddress { get; set; }
+		public string IpAddress { get; set; }
 
 		// not populated by generator. Used by ingest geoip test
 		public GeoIp GeoIp { get; set; }
 
 		public new static Faker<Developer> Generator { get; } =
 			new Faker<Developer>()
-				.RuleFor(p => p.Id, p => IdState++)
+				.UseSeed(TestClient.Configuration.Seed)
+				.RuleFor(p => p.Id, p => Interlocked.Increment(ref IdState))
 				.RuleFor(p => p.FirstName, p => p.Name.FirstName())
 				.RuleFor(p => p.LastName, p => p.Name.LastName())
 				.RuleFor(p => p.JobTitle, p => p.Name.JobTitle())
@@ -25,10 +27,9 @@ namespace Tests.Framework.MockData
 				.RuleFor(p => p.OnlineHandle, p => p.Internet.UserName())
 				.RuleFor(p => p.Gender, p => p.PickRandom<Gender>())
 				.RuleFor(p => p.PrivateValue, p => "THIS SHOULD NEVER BE INDEXED")
-				.RuleFor(p => p.IPAddress, p => p.Internet.Ip())
+				.RuleFor(p => p.IpAddress, p => p.Internet.Ip())
 			;
 
-		public static IList<Developer> Developers { get; } =
-			Developer.Generator.Generate(1000).ToList();
+		public static IList<Developer> Developers { get; } = Developer.Generator.Clone().Generate(1000);
 	}
 }

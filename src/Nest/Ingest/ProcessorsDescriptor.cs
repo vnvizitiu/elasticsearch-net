@@ -103,8 +103,8 @@ namespace Nest
 		public ProcessorsDescriptor Trim<T>(Func<TrimProcessorDescriptor<T>, ITrimProcessor> selector) where T : class  =>
 			Assign(a => a.AddIfNotNull(selector?.Invoke(new TrimProcessorDescriptor<T>())));
 
-		public ProcessorsDescriptor Uppercase<T>(Func<UppercaseProcessDescriptor<T>, IUppercaseProcessor> selector) where T : class  =>
-			Assign(a => a.AddIfNotNull(selector?.Invoke(new UppercaseProcessDescriptor<T>())));
+		public ProcessorsDescriptor Uppercase<T>(Func<UppercaseProcessorDescriptor<T>, IUppercaseProcessor> selector) where T : class  =>
+			Assign(a => a.AddIfNotNull(selector?.Invoke(new UppercaseProcessorDescriptor<T>())));
 
 		/// <summary>
 		/// Converts a JSON string into a structured JSON object.
@@ -127,5 +127,10 @@ namespace Nest
 		public ProcessorsDescriptor KeyValue<T>(Func<UserAgentProcessorDescriptor<T>, IUserAgentProcessor> selector) where T : class  =>
 			Assign(a => a.AddIfNotNull(selector?.Invoke(new UserAgentProcessorDescriptor<T>())));
 
+		/// <summary>
+		/// URL-decodes a string
+		/// </summary>
+		public ProcessorsDescriptor UrlDecode<T>(Func<UrlDecodeProcessorDescriptor<T>, IUrlDecodeProcessor> selector) where T : class  =>
+			Assign(a => a.AddIfNotNull(selector?.Invoke(new UrlDecodeProcessorDescriptor<T>())));
 	}
 }

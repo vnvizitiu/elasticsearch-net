@@ -38,7 +38,7 @@ namespace Tests.ClientConcepts.Troubleshooting
 			 */
 			var pool = new SniffingConnectionPool(new []{ new Uri($"http://{TestClient.DefaultHost}:9200") });
 		    var connectionSettings = new ConnectionSettings(pool)
-				.InferMappingFor<Project>(i => i
+				.DefaultMappingFor<Project>(i => i
 					.IndexName("project")
 				);
 
@@ -50,29 +50,12 @@ namespace Tests.ClientConcepts.Troubleshooting
 		    var response = client.Search<Project>(s => s
 				.MatchAll()
 		    );
-
 			/**
-			 * The response contains an audit trail with four events
-			 */
-		    response.ApiCall.AuditTrail.Count.Should().Be(4);
-		    response.ApiCall.AuditTrail[0].Event.Should().Be(AuditEvent.SniffOnStartup);
-		    response.ApiCall.AuditTrail[1].Event.Should().Be(AuditEvent.SniffSuccess);
-		    response.ApiCall.AuditTrail[2].Event.Should().Be(AuditEvent.PingSuccess);
-		    response.ApiCall.AuditTrail[3].Event.Should().Be(AuditEvent.HealthyResponse);
-
-			/**
-			 * Each audit has a started and ended `DateTime` on it that will provide
-			 * some understanding of how long it took
-			 */
-		    response.ApiCall.AuditTrail
-				.Should().OnlyContain(a => a.Ended - a.Started > TimeSpan.Zero);
-
-			/**
-			 * The audit trail is also provided in the <<debug-information, Debug information>> in a human
+			 * The audit trail is provided in the <<debug-information, Debug information>> in a human
 			 * readable fashion, similar to
 			 *
 			 * ....
-			 * Valid NEST response built from a successful low level call on POST: /project/project/_search
+			 * Valid NEST response built from a successful low level call on POST: /project/doc/_search
              * # Audit trail of this API call:
              *  - [1] SniffOnStartup: Took: 00:00:00.0360264
              *  - [2] SniffSuccess: Node: http://localhost:9200/ Took: 00:00:00.0310228
@@ -84,9 +67,26 @@ namespace Tests.ClientConcepts.Troubleshooting
              * <Response stream not captured or already read to completion by serializer. Set DisableDirectStreaming() on ConnectionSettings to force it to be set on the response.>
 			 * ....
 			 *
-			 * to help with troubleshooting
+			 * to help with troubleshootin
 			 */
-			var debugInformation = response.DebugInformation;
+		    var debug = response.DebugInformation;
+
+			/**
+			 * But can also be accessed manually:
+			 */
+		    response.ApiCall.AuditTrail.Count.Should().Be(4, "{0}", debug);
+		    response.ApiCall.AuditTrail[0].Event.Should().Be(AuditEvent.SniffOnStartup, "{0}", debug);
+		    response.ApiCall.AuditTrail[1].Event.Should().Be(AuditEvent.SniffSuccess, "{0}", debug);
+		    response.ApiCall.AuditTrail[2].Event.Should().Be(AuditEvent.PingSuccess, "{0}", debug);
+		    response.ApiCall.AuditTrail[3].Event.Should().Be(AuditEvent.HealthyResponse, "{0}", debug);
+
+			/**
+			 * Each audit has a started and ended `DateTime` on it that will provide
+			 * some understanding of how long it took
+			 */
+		    response.ApiCall.AuditTrail
+				.Should().OnlyContain(a => a.Ended - a.Started > TimeSpan.Zero);
+
 	    }
     }
 }

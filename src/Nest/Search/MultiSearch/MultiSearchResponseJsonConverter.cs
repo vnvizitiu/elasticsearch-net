@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using Elasticsearch.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -49,16 +47,14 @@ namespace Nest
 				return multiSearchDescriptor;
 
 			IEnumerable<SearchHitTuple> withMeta;
-			var multiSearch = this._request as IMultiSearchRequest;
-			if (multiSearch != null)
+			if (this._request is IMultiSearchRequest multiSearch)
 			{
 				withMeta = docsJarray.Zip(multiSearch.Operations,
 					(doc, desc) => new SearchHitTuple { Hit = doc, Descriptor = new KeyValuePair<string, ICovariantSearchRequest>(desc.Key, desc.Value) });
 			}
 			else
 			{
-				var multiSearchTemplate = this._request as IMultiSearchTemplateRequest;
-				if (multiSearchTemplate == null)
+				if (!(this._request is IMultiSearchTemplateRequest multiSearchTemplate))
 					throw new InvalidOperationException($"Request must be an instance of {nameof(IMultiSearchRequest)} or {nameof(IMultiSearchTemplateRequest)}");
 
 				withMeta = docsJarray.Zip(multiSearchTemplate.Operations,
@@ -68,7 +64,6 @@ namespace Nest
 			foreach (var m in withMeta)
 			{
 				var descriptor = m.Descriptor.Value;
-				var concreteTypeSelector = descriptor.TypeSelector;
 				var baseType = m.Descriptor.Value.ClrType ?? typeof(object);
 				var cachedDelegate = serializer.GetConnectionSettings().Inferrer.CreateSearchResponseDelegates.GetOrAdd(baseType, t =>
 				{
@@ -82,20 +77,6 @@ namespace Nest
 					var lambda = Expression.Lambda<Action<SearchHitTuple, JsonSerializer, IDictionary<string, object>>>(call, parameterExpressions);
 					return lambda.Compile();
 				});
-
-				if (concreteTypeSelector != null)
-				{
-					var state = (JsonConverter)typeof(ConcreteTypeConverter<>).CreateGenericInstance(baseType, concreteTypeSelector);
-					if (state != null)
-					{
-						var elasticSerializer = this._settings.StatefulSerializer(state) as JsonNetSerializer;
-						if (elasticSerializer != null)
-						{
-							cachedDelegate(m, elasticSerializer.Serializer, response.Responses);
-							continue;
-						}
-					}
-				}
 
 				cachedDelegate(m, serializer, response.Responses);
 			}
@@ -114,16 +95,10 @@ namespace Nest
 			public KeyValuePair<string, ICovariantSearchRequest> Descriptor { get; set; }
 		}
 
-		private static void CreateSearchResponse<T>(
-			SearchHitTuple tuple,
-			JsonSerializer serializer,
-			IDictionary<string, object> collection) where T : class
+		private static void CreateSearchResponse<T>(SearchHitTuple tuple, JsonSerializer serializer, IDictionary<string, object> collection)
+			where T : class
 		{
 			var response = tuple.Hit.ToObject<SearchResponse<T>>(serializer);
-
-			ServerError error;
-			if (tuple.Hit.TryParseServerError(serializer, out error))
-				response.MultiSearchError = error;
 
 			collection.Add(tuple.Descriptor.Key, response);
 		}

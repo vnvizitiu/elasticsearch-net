@@ -1,57 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace Nest
 {
-	[JsonConverter(typeof(GetAliasResponseConverter))]
 	public interface IGetAliasResponse : IResponse
 	{
-		IReadOnlyDictionary<string, IReadOnlyList<AliasDefinition>> Indices { get; }
+		IReadOnlyDictionary<IndexName, IndexAliases> Indices { get; }
 	}
 
-	public class GetAliasResponse : ResponseBase, IGetAliasResponse
+	public class IndexAliases
 	{
-		public IReadOnlyDictionary<string, IReadOnlyList<AliasDefinition>> Indices { get; internal set; } = EmptyReadOnly<string, IReadOnlyList<AliasDefinition>>.Dictionary;
+		[JsonProperty("aliases")]
+		public IReadOnlyDictionary<string, AliasDefinition> Aliases { get; internal set; } = EmptyReadOnly<string, AliasDefinition>.Dictionary;
 	}
 
-	internal class GetAliasResponseConverter : JsonConverter
+	[JsonConverter(typeof(ResolvableDictionaryResponseJsonConverter<GetAliasResponse, IndexName, IndexAliases>))]
+	public class GetAliasResponse : DictionaryResponseBase<IndexName, IndexAliases>, IGetAliasResponse
 	{
-		public override bool CanWrite => false;
+		[JsonIgnore]
+		public IReadOnlyDictionary<IndexName, IndexAliases> Indices => Self.BackingDictionary;
 
-		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-		{
-			throw new NotSupportedException();
-		}
-
-		public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
-		{
-			var dict = serializer.Deserialize<Dictionary<string, Dictionary<string, Dictionary<string, AliasDefinition>>>>(reader);
-			var indices = new Dictionary<string, IReadOnlyList<AliasDefinition>>();
-
-			foreach (var kv in dict)
-			{
-				var indexDict = kv.Key;
-				var aliases = new List<AliasDefinition>();
-				if (kv.Value != null && kv.Value.ContainsKey("aliases"))
-				{
-					var aliasDict = kv.Value["aliases"];
-					if (aliasDict != null)
-						aliases = aliasDict.Select(kva =>
-						{
-							var alias = kva.Value;
-							alias.Name = kva.Key;
-							return alias;
-						}).ToList();
-				}
-
-				indices.Add(indexDict, aliases);
-			}
-
-			return new GetAliasResponse { Indices = indices };
-		}
-
-		public override bool CanConvert(Type objectType) => true;
+		public override bool IsValid => this.Indices.Count > 0;
 	}
 }

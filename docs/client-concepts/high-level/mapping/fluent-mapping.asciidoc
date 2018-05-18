@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -52,15 +52,15 @@ and map each property explicitly
 
 [source,csharp]
 ----
-var descriptor = new CreateIndexDescriptor("myindex")
+var createIndexResponse = client.CreateIndex("myindex", c => c
     .Mappings(ms => ms
         .Map<Company>(m => m
             .Properties(ps => ps
                 .Text(s => s
-                    .Name(c => c.Name)
+                    .Name(n => n.Name)
                 )
                 .Object<Employee>(o => o
-                    .Name(c => c.Employees)
+                    .Name(n => n.Employees)
                     .Properties(eps => eps
                         .Text(s => s
                             .Name(e => e.FirstName)
@@ -76,7 +76,8 @@ var descriptor = new CreateIndexDescriptor("myindex")
                 )
             )
         )
-    );
+    )
+            );
 ----
 
 Here, the Name property of the `Company` type has been mapped as a {ref_current}/text.html[text datatype] and
@@ -131,21 +132,23 @@ In this case, it's possible to use `.AutoMap()` in conjunction with explicitly m
 
 Here we are using `.AutoMap()` to automatically infer the mapping of our `Company` type from the
 CLR property types, but then we're overriding the `Employees` property to make it a
-{ref_current}/nested.html[nested datatype], since by default `.AutoMap()` will infer the`List<Employee>` property as an `object` datatype
+{ref_current}/nested.html[nested datatype], since by default `.AutoMap()` will infer the
+`List<Employee>` property as an `object` datatype
 
 [source,csharp]
 ----
-var descriptor = new CreateIndexDescriptor("myindex")
+var createIndexResponse = client.CreateIndex("myindex", c => c
     .Mappings(ms => ms
         .Map<Company>(m => m
             .AutoMap()
             .Properties(ps => ps
                 .Nested<Employee>(n => n
-                    .Name(c => c.Employees)
+                    .Name(nn => nn.Employees)
                 )
             )
         )
-    );
+    )
+            );
 ----
 
 [source,javascript]
@@ -178,18 +181,21 @@ generates the same mapping as the previous
 
 [source,csharp]
 ----
-descriptor = new CreateIndexDescriptor("myindex")
+createIndexResponse = client.CreateIndex("myindex", c => c
     .Mappings(ms => ms
         .Map<Company>(m => m
             .Properties(ps => ps
                 .Nested<Employee>(n => n
-                    .Name(c => c.Employees)
+                    .Name(nn => nn.Employees)
                 )
             )
             .AutoMap()
         )
-    );
+    )
+            );
 ----
+
+==== Auto mapping overrides down the object graph
 
 Just as we were able to override the inferred properties from auto mapping in the previous example,
 fluent mapping also takes precedence over <<attribute-mapping, Attribute Mapping>>.
@@ -209,7 +215,7 @@ public class CompanyWithAttributes
     public TimeSpan? HeadOfficeHours { get; set; }
 
     [Object(Store = false)]
-    public List<Employee> Employees { get; set; }
+    public List<EmployeeWithAttributes> Employees { get; set; }
 }
 
 [ElasticsearchType(Name = "employee")]
@@ -231,7 +237,7 @@ public class EmployeeWithAttributes
     public bool IsManager { get; set; }
 
     [Nested]
-    [JsonProperty("empl")]
+    [PropertyName("empl")]
     public List<Employee> Employees { get; set; }
 }
 ----
@@ -241,47 +247,46 @@ attributes, and inferred mappings are overridden with fluent mapping
 
 [source,csharp]
 ----
-var descriptor = new CreateIndexDescriptor("myindex")
+var createIndexResponse = client.CreateIndex("myindex", c => c
     .Mappings(ms => ms
         .Map<CompanyWithAttributes>(m => m
             .AutoMap() <1>
             .Properties(ps => ps <2>
-                .Nested<Employee>(n => n
-                    .Name(c => c.Employees)
-                )
-            )
-        )
-        .Map<EmployeeWithAttributes>(m => m
-            .AutoMap() <3>
-            .Properties(ps => ps <4>
-                .Text(s => s
+                .Nested<EmployeeWithAttributes>(n => n
+                    .Name(nn => nn.Employees)
+         .AutoMap() <3>
+          .Properties(pps => pps <4>
+               .Text(s => s
                     .Name(e => e.FirstName)
                     .Fields(fs => fs
-                        .Keyword(ss => ss
-                            .Name("firstNameRaw")
-                        )
-                        .TokenCount(t => t
-                            .Name("length")
-                            .Analyzer("standard")
-                        )
+                         .Keyword(ss => ss
+                              .Name("firstNameRaw")
+                         )
+                         .TokenCount(t => t
+                              .Name("length")
+                              .Analyzer("standard")
+                         )
                     )
-                )
-                .Number(n => n
+               )
+               .Number(nu => nu
                     .Name(e => e.Salary)
                     .Type(NumberType.Double)
                     .IgnoreMalformed(false)
-                )
-                .Date(d => d
+               )
+               .Date(d => d
                     .Name(e => e.Birthday)
                     .Format("MM-dd-yy")
+               )
+          )
                 )
             )
         )
-    );
+    )
+            );
 ----
 <1> Automap company
 <2> Override company inferred mappings
-<3> Auto map employee
+<3> Automap nested employee type
 <4> Override employee inferred mappings
 
 [source,javascript]
@@ -291,7 +296,76 @@ var descriptor = new CreateIndexDescriptor("myindex")
     "company": {
       "properties": {
         "employees": {
-          "type": "nested"
+          "type": "nested",
+          "properties": {
+            "birthday": {
+              "format": "MM-dd-yy",
+              "type": "date"
+            },
+            "empl": {
+              "properties": {
+                "birthday": {
+                  "type": "date"
+                },
+                "employees": {
+                  "properties": {},
+                  "type": "object"
+                },
+                "firstName": {
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  },
+                  "type": "text"
+                },
+                "hours": {
+                  "type": "long"
+                },
+                "isManager": {
+                  "type": "boolean"
+                },
+                "lastName": {
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  },
+                  "type": "text"
+                },
+                "salary": {
+                  "type": "integer"
+                }
+              },
+              "type": "nested"
+            },
+            "first_name": {
+              "fields": {
+                "firstNameRaw": {
+                  "type": "keyword"
+                },
+                "length": {
+                  "analyzer": "standard",
+                  "type": "token_count"
+                }
+              },
+              "type": "text"
+            },
+            "isManager": {
+              "null_value": false,
+              "store": true,
+              "type": "boolean"
+            },
+            "last_name": {
+              "type": "text"
+            },
+            "salary": {
+              "ignore_malformed": false,
+              "type": "double"
+            }
+          }
         },
         "name": {
           "null_value": "null",
@@ -302,166 +376,12 @@ var descriptor = new CreateIndexDescriptor("myindex")
           "type": "text"
         }
       }
-    },
-    "employee": {
-      "properties": {
-        "birthday": {
-          "format": "MM-dd-yy",
-          "type": "date"
-        },
-        "empl": {
-          "properties": {
-            "birthday": {
-              "type": "date"
-            },
-            "employees": {
-              "properties": {},
-              "type": "object"
-            },
-            "firstName": {
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              },
-              "type": "text"
-            },
-            "hours": {
-              "type": "long"
-            },
-            "isManager": {
-              "type": "boolean"
-            },
-            "lastName": {
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              },
-              "type": "text"
-            },
-            "salary": {
-              "type": "integer"
-            }
-          },
-          "type": "nested"
-        },
-        "first_name": {
-          "fields": {
-            "firstNameRaw": {
-              "type": "keyword"
-            },
-            "length": {
-              "analyzer": "standard",
-              "type": "token_count"
-            }
-          },
-          "type": "text"
-        },
-        "isManager": {
-          "null_value": false,
-          "store": true,
-          "type": "boolean"
-        },
-        "last_name": {
-          "type": "text"
-        },
-        "salary": {
-          "ignore_malformed": false,
-          "type": "double"
-        }
-      }
     }
   }
 }
 ----
 
-==== Auto mapping overrides down the object graph
-
-You may have noticed in the <<auto-map-with-overrides, Automap with fluent overrides example>>
-that the properties of the `Employees` property on `Company` were not mapped. This is because the automapping
-was applied only at the root level of the `Company` mapping.
-
-By calling `.AutoMap()` inside of the `.Nested<Employee>` mapping, it is possible to auto map the`Employee` nested properties and again, override any inferred mapping from the automapping process,
+As demonstrated, by calling `.AutoMap()` inside of the `.Nested<Employee>` mapping, it is possible to auto map the
+`Employee` nested properties and again, override any inferred mapping from the automapping process,
 through manual mapping
-
-[source,csharp]
-----
-var descriptor = new CreateIndexDescriptor("myindex")
-    .Mappings(m => m
-        .Map<Company>(mm => mm
-            .AutoMap() <1>
-            .Properties(p => p <2>
-                .Nested<Employee>(n => n
-                    .Name(c => c.Employees)
-                    .AutoMap() <3>
-                    .Properties(pp => pp <4>
-                        .Text(t => t
-                            .Name(e => e.FirstName)
-                        )
-                        .Text(t => t
-                            .Name(e => e.LastName)
-                        )
-                        .Nested<Employee>(nn => nn
-                            .Name(e => e.Employees)
-                        )
-                    )
-                )
-            )
-        )
-    );
-----
-<1> Automap `Company`
-<2> Override specific `Company` mappings
-<3> Automap `Employees` property
-<4> Override specific `Employee` properties
-
-[source,javascript]
-----
-{
-  "mappings": {
-    "company": {
-      "properties": {
-        "name": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
-        },
-        "employees": {
-          "type": "nested",
-          "properties": {
-            "firstName": {
-              "type": "text"
-            },
-            "lastName": {
-              "type": "text"
-            },
-            "salary": {
-              "type": "integer"
-            },
-            "birthday": {
-              "type": "date"
-            },
-            "isManager": {
-              "type": "boolean"
-            },
-            "employees": {
-              "type": "nested"
-            },
-            "hours": {
-              "type": "long"
-            }
-          }
-        }
-      }
-    }
-  }
-}
-----
 

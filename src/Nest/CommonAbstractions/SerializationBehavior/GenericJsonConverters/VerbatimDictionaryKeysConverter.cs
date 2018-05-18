@@ -3,7 +3,6 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
-using Elasticsearch.Net;
 using Newtonsoft.Json;
 
 namespace Nest
@@ -35,11 +34,6 @@ namespace Nest
 			var settings = serializer.GetConnectionSettings();
 			var seenEntries = new Dictionary<string, object>(dictionary.Count);
 
-			Field fieldName;
-			PropertyName propertyName;
-			IndexName indexName;
-			TypeName typeName;
-
 			foreach (DictionaryEntry entry in dictionary)
 			{
 				if (entry.Value == null && serializer.NullValueHandling == NullValueHandling.Ignore)
@@ -47,33 +41,38 @@ namespace Nest
 				string key;
 				if (settings == null)
 					key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
-				else if (AsType(entry.Key, out fieldName))
-				{
-					key = settings.Inferrer.Field(fieldName);
-				}
-				else if (AsType(entry.Key, out propertyName))
-				{
-					if (propertyName?.Property != null)
-					{
-						IPropertyMapping mapping;
-						if (settings.PropertyMappings.TryGetValue(propertyName.Property, out mapping) && mapping.Ignore)
-						{
-							continue;
-						}
-					}
-
-					key = settings.Inferrer.PropertyName(propertyName);
-				}
-				else if (AsType(entry.Key, out indexName))
-				{
-					key = settings.Inferrer.IndexName(indexName);
-				}
-				else if (AsType(entry.Key, out typeName))
-				{
-					key = settings.Inferrer.TypeName(typeName);
-				}
 				else
-					key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
+				{
+					if (AsType(entry.Key, out Field fieldName))
+					{
+						key = settings.Inferrer.Field(fieldName);
+					}
+					else
+					{
+						if (AsType(entry.Key, out PropertyName propertyName))
+						{
+							if (propertyName?.Property != null &&
+							    (settings.PropertyMappings.TryGetValue(propertyName.Property, out var mapping) && mapping.Ignore))
+								continue;
+
+							key = settings.Inferrer.PropertyName(propertyName);
+						}
+						else if (AsType(entry.Key, out IndexName indexName))
+						{
+							key = settings.Inferrer.IndexName(indexName);
+						}
+						else if (AsType(entry.Key, out TypeName typeName))
+						{
+							key = settings.Inferrer.TypeName(typeName);
+						}
+						else if (AsType(entry.Key, out RelationName relationName))
+						{
+							key = settings.Inferrer.RelationName(relationName);
+						}
+						else
+							key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
+					}
+				}
 
 				if (key != null)
 					seenEntries[key] = entry.Value;
@@ -107,6 +106,7 @@ namespace Nest
 		private readonly bool _keyIsPropertyName = typeof(TKey) == typeof(PropertyName);
 		private readonly bool _keyIsIndexName = typeof(TKey) == typeof(IndexName);
 		private readonly bool _keyIsTypeName = typeof(TKey) == typeof(TypeName);
+		private readonly bool _keyIsRelationName = typeof(TKey) == typeof(RelationName);
 
 		public override bool CanConvert(Type t) =>
 			typeof(IDictionary<TKey, TValue>).IsAssignableFrom(t) ||
@@ -114,10 +114,8 @@ namespace Nest
 
 		public override bool CanRead => false;
 
-		public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
-		{
+		public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) =>
 			throw new NotSupportedException();
-		}
 
 		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
 		{
@@ -148,14 +146,9 @@ namespace Nest
 				else if (_keyIsPropertyName)
 				{
 					var propertyName = entry.Key as PropertyName;
-					if (propertyName?.Property != null)
-					{
-						IPropertyMapping mapping;
-						if (settings.PropertyMappings.TryGetValue(propertyName.Property, out mapping) && mapping.Ignore)
-						{
-							continue;
-						}
-					}
+					if (propertyName?.Property != null &&
+					    (settings.PropertyMappings.TryGetValue(propertyName.Property, out var mapping) && mapping.Ignore))
+						continue;
 
 					key = settings.Inferrer.PropertyName(propertyName);
 				}
@@ -168,6 +161,11 @@ namespace Nest
 				{
 					var typeName = entry.Key as TypeName;
 					key = settings.Inferrer.TypeName(typeName);
+				}
+				else if (_keyIsRelationName)
+				{
+					var typeName = entry.Key as RelationName;
+					key = settings.Inferrer.RelationName(typeName);
 				}
 				else
 					key = Convert.ToString(entry.Key, CultureInfo.InvariantCulture);
@@ -209,5 +207,4 @@ namespace Nest
 	{
 		protected override bool SkipValue(JsonSerializer serializer, KeyValuePair<TKey, TValue> entry) => false;
 	}
-
 }

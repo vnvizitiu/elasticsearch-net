@@ -13,12 +13,10 @@ namespace Nest
 		//Only here for ReadAsType new() constraint needs to be updated
 		internal CreateIndexRequest() { }
 
-		public CreateIndexRequest(IndexName index, IndexState state) : this(index)
+		public CreateIndexRequest(IndexName index, IIndexState state) : this(index)
 		{
 			this.Settings = state.Settings;
 			this.Mappings = state.Mappings;
-			this.Aliases = state.Aliases;
-			this.Similarity = state.Similarity;
 			CreateIndexRequest.RemoveReadOnlySettings(this.Settings);
 		}
 
@@ -27,6 +25,7 @@ namespace Nest
 			"index.creation_date",
 			"index.uuid",
 			"index.version.created",
+			"index.provided_name"
 		};
 
 		internal static void RemoveReadOnlySettings (IIndexSettings settings)
@@ -44,8 +43,6 @@ namespace Nest
 		public IMappings Mappings { get; set; }
 
 		public IAliases Aliases { get; set; }
-
-		public ISimilarities Similarity { get; set; }
 	}
 
 	[DescriptorFor("IndicesCreate")]
@@ -57,14 +54,11 @@ namespace Nest
 
 		IAliases IIndexState.Aliases { get; set; }
 
-		ISimilarities IIndexState.Similarity { get; set; }
-
 		public CreateIndexDescriptor InitializeUsing(IIndexState indexSettings) => Assign(a =>
 		{
 			a.Settings = indexSettings.Settings;
 			a.Mappings = indexSettings.Mappings;
 			a.Aliases = indexSettings.Aliases;
-			a.Similarity = indexSettings.Similarity;
 			CreateIndexRequest.RemoveReadOnlySettings(a.Settings);
 		});
 
@@ -76,8 +70,5 @@ namespace Nest
 
 		public CreateIndexDescriptor Aliases(Func<AliasesDescriptor, IPromise<IAliases>> selector) =>
 			Assign(a => a.Aliases = selector?.Invoke(new AliasesDescriptor())?.Value);
-
-		public CreateIndexDescriptor Similarity(Func<SimilaritiesDescriptor, IPromise<ISimilarities>> selector) =>
-			Assign(a => a.Similarity = selector?.Invoke(new SimilaritiesDescriptor())?.Value);
 	}
 }

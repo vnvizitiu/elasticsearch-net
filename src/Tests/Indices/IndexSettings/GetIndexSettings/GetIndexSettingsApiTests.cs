@@ -9,11 +9,14 @@ using Tests.Framework.Integration;
 using Tests.Framework.ManagedElasticsearch.Clusters;
 using Tests.Framework.MockData;
 using Xunit;
+using static Nest.Infer;
 
 namespace Tests.Indices.IndexSettings.GetIndexSettings
 {
 	public class GetIndexSettingsApiTests : ApiIntegrationTestBase<ReadOnlyCluster, IGetIndexSettingsResponse, IGetIndexSettingsRequest, GetIndexSettingsDescriptor, GetIndexSettingsRequest>
 	{
+		private static readonly IndexName PercolationIndex = Index<ProjectPercolation>();
+
 		public GetIndexSettingsApiTests(ReadOnlyCluster cluster, EndpointUsage usage) : base(cluster, usage) { }
 		protected override LazyResponses ClientUsage() => Calls(
 			fluent: (client, f) => client.GetIndexSettings(f),
@@ -28,11 +31,11 @@ namespace Tests.Indices.IndexSettings.GetIndexSettings
 		protected override string UrlPath => $"/queries/_settings/index.%2A?local=true";
 
 		protected override Func<GetIndexSettingsDescriptor, IGetIndexSettingsRequest> Fluent => d => d
-			.Index<PercolatedQuery>()
+			.Index<ProjectPercolation>()
 			.Name("index.*")
 			.Local();
 
-		protected override GetIndexSettingsRequest Initializer => new GetIndexSettingsRequest(Infer.Index<PercolatedQuery>(), "index.*")
+		protected override GetIndexSettingsRequest Initializer => new GetIndexSettingsRequest(PercolationIndex, "index.*")
 		{
 			Local = true
 		};
@@ -40,7 +43,7 @@ namespace Tests.Indices.IndexSettings.GetIndexSettings
 		protected override void ExpectResponse(IGetIndexSettingsResponse response)
 		{
 			response.Indices.Should().NotBeEmpty();
-			var index = response.Indices.First().Value;
+			var index = response.Indices[PercolationIndex];
 			index.Should().NotBeNull();
 			index.Settings.NumberOfShards.Should().HaveValue().And.BeGreaterThan(0);
 			index.Settings.NumberOfReplicas.Should().HaveValue();

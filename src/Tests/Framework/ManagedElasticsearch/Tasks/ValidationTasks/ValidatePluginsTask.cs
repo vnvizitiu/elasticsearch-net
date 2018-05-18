@@ -1,9 +1,7 @@
 using System;
 using System.Linq;
-using Elasticsearch.Net;
 using Nest;
-using Tests.Framework.Configuration;
-using Tests.Framework.Integration;
+using Tests.Document.Multiple.UpdateByQuery;
 using Tests.Framework.ManagedElasticsearch.Nodes;
 using Tests.Framework.ManagedElasticsearch.Plugins;
 
@@ -14,9 +12,6 @@ namespace Tests.Framework.ManagedElasticsearch.Tasks.ValidationTasks
 		public override void Validate(IElasticClient client, NodeConfiguration configuration)
 		{
 			var v = configuration.ElasticsearchVersion;
-			//if the version we are running against is a s snapshot version we do not validate plugins
-			//because we can not reliably install plugins against snapshots
-			if (v.IsSnapshot) return;
 
 			var requiredMonikers = ElasticsearchPluginCollection.Supported
 				.Where(plugin => plugin.IsValid(v) && configuration.RequiredPlugins.Contains(plugin.Plugin))
@@ -24,6 +19,14 @@ namespace Tests.Framework.ManagedElasticsearch.Tasks.ValidationTasks
 				.ToList();
 
 			if (!requiredMonikers.Any()) return;
+
+			// 6.2.4 splits out X-Pack into separate plugin names
+			if (requiredMonikers.Contains(ElasticsearchPlugin.XPack.Moniker()) && TestClient.VersionUnderTestSatisfiedBy(">=6.2.4"))
+			{
+				requiredMonikers.Remove(ElasticsearchPlugin.XPack.Moniker());
+				requiredMonikers.Add(ElasticsearchPlugin.XPack.Moniker() + "-core");
+			}
+
 			var checkPlugins = client.CatPlugins();
 
 			if (!checkPlugins.IsValid)

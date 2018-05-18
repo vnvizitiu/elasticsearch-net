@@ -13,37 +13,34 @@ namespace Tests.Aggregations.Metric.ExtendedStats
 	{
 		public ExtendedStatsAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
-		protected override object ExpectJson => new
+		protected override object AggregationJson => new
 		{
-			aggs = new
+			commit_stats = new
 			{
-				commit_stats = new
+				extended_stats = new
 				{
-					extended_stats = new
-					{
-						field = "numberOfCommits"
-					}
+					field = "numberOfCommits",
+					sigma = 1d
 				}
 			}
 		};
 
-		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
-			.Aggregations(a => a
-				.ExtendedStats("commit_stats", es => es
-					.Field(p => p.NumberOfCommits)
-				)
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.ExtendedStats("commit_stats", es => es
+				.Field(p => p.NumberOfCommits)
+				.Sigma(1)
 			);
 
-		protected override SearchRequest<Project> Initializer =>
-			new SearchRequest<Project>
+		protected override AggregationDictionary InitializerAggs =>
+			new ExtendedStatsAggregation("commit_stats", Field<Project>(p => p.NumberOfCommits))
 			{
-				Aggregations = new ExtendedStatsAggregation("commit_stats", Field<Project>(p => p.NumberOfCommits))
+				Sigma = 1
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
-			var commitStats = response.Aggs.ExtendedStats("commit_stats");
+			var commitStats = response.Aggregations.ExtendedStats("commit_stats");
 			commitStats.Should().NotBeNull();
 			commitStats.Average.Should().BeGreaterThan(0);
 			commitStats.Max.Should().BeGreaterThan(0);

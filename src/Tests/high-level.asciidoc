@@ -26,13 +26,13 @@ There are a number of conventions that NEST uses for inference of
 - <<field-inference, Field names>> and <<property-inference, Property names>>
 - <<ids-inference, Document IDs>>
 - <<document-paths, Building a URI path to a document>>
-- <<features-inference, API features>>
 
 As well as a number of types for working with
 
 - <<time-units, Time Units>>
 - <<distance-units, Distance Units>>
 - <<date-math-expressions, Date Math>>
+- <<union, Union types>>
 
 And features such as
 
@@ -92,16 +92,19 @@ There are several ways to control mapping in NEST
 - <<attribute-mapping, Attribute mapping>>
 - <<fluent-mapping, Fluent mapping>>
 - <<visitor-pattern-mapping, through the Visitor Pattern>>
+- <<parent-child-relationships, Parent/Child relationships>>
 
 and these can be combined to form an overall mapping approach. In addition, there are also ways to control
 
 - <<ignoring-properties, Ignoring properties>>
 - <<multi-fields, Multi fields>>
 
+
 include::{output-dir}/mapping/auto-map.asciidoc[]
 include::{output-dir}/mapping/attribute-mapping.asciidoc[]
 include::{output-dir}/mapping/fluent-mapping.asciidoc[]
 include::{output-dir}/mapping/visitor-pattern-mapping.asciidoc[]
+include::{output-dir}/mapping/parent-child-relationships.asciidoc[]
 include::{output-dir}/mapping/ignoring-properties.asciidoc[]
 include::{output-dir}/mapping/multi-fields.asciidoc[]
 
@@ -155,12 +158,12 @@ include::aggregations/reserved-aggregation-names.asciidoc[]
 There are a number of conventions that NEST uses for inference of
 
 - <<document-paths, Document paths>>
-- <<features-inference, API features>>
 - <<field-inference, Fields>>
 - <<ids-inference, Ids>>
 - <<index-name-inference, Index names>>
 - <<indices-paths, Index paths>>
 - <<property-inference, Properties>>
+- <<routing-inference, Routing>>
 
 :includes-from-dirs: client-concepts/high-level/inference
 
@@ -171,8 +174,10 @@ NEST has a number of types for working with Elasticsearch conventions for
 
 - <<time-units, Time units>>
 - <<distance-units, Distance units>>
-- <<date-math-expressions, Dat math expressions>>
+- <<date-math-expressions, Date Math expressions>>
+- <<union, Union types>>
 
 include::common-options/time-unit/time-units.asciidoc[]
 include::common-options/distance-unit/distance-units.asciidoc[]
 include::common-options/date-math/date-math-expressions.asciidoc[]
+include::common-options/union/union.asciidoc[]

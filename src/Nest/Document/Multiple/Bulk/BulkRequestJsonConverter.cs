@@ -14,22 +14,30 @@ namespace Nest
 		{
 			var bulk = value as IBulkRequest;
 			var settings = serializer?.GetConnectionSettings();
-			var elasticsearchSerializer = settings?.Serializer;
-			if (elasticsearchSerializer == null|| bulk?.Operations == null) return ;
+			var requestResponseSerializer = settings?.RequestResponseSerializer;
+			var sourceSerializer = settings?.SourceSerializer;
+			if (requestResponseSerializer == null|| bulk?.Operations == null) return ;
 
 			foreach(var op in bulk.Operations)
 			{
 				op.Index = op.Index ?? bulk.Index ?? op.ClrType;
-				if (op.Index.EqualsMarker(bulk.Index)) op.Index = null;
+				if (op.Index.Equals(bulk.Index)) op.Index = null;
 				op.Type = op.Type ?? bulk.Type ?? op.ClrType;
-				if (op.Type.EqualsMarker(bulk.Type)) op.Type = null;
+				if (op.Type.Equals(bulk.Type)) op.Type = null;
 				op.Id = op.GetIdForOperation(settings.Inferrer);
+				op.Routing = op.GetRoutingForOperation(settings.Inferrer);
 
-				var opJson = elasticsearchSerializer.SerializeToString(op, SerializationFormatting.None);
+				var opJson = requestResponseSerializer.SerializeToString(op, SerializationFormatting.None);
 				writer.WriteRaw($"{{\"{op.Operation}\":" + opJson + "}\n");
 				var body = op.GetBody();
 				if (body == null) continue;
-				var bodyJson = elasticsearchSerializer.SerializeToString(body, SerializationFormatting.None);
+				var bodyJson = (
+					op.Operation == "update" || body is ILazyDocument
+						? requestResponseSerializer
+						: sourceSerializer
+					)
+					.SerializeToString(body, SerializationFormatting.None);
+
 				writer.WriteRaw(bodyJson + "\n");
 			}
 		}

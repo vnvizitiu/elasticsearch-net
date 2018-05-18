@@ -54,6 +54,7 @@ namespace Nest
 		void Visit(IRangeAggregation aggregation);
 		void Visit(ITermsAggregation aggregation);
 		void Visit(ISignificantTermsAggregation aggregation);
+		void Visit(ISignificantTextAggregation aggregation);
 		void Visit(IPercentileRanksAggregation aggregation);
 		void Visit(ITopHitsAggregation aggregation);
 		void Visit(IChildrenAggregation aggregation);
@@ -71,6 +72,7 @@ namespace Nest
 		void Visit(ISerialDifferencingAggregation aggregation);
 		void Visit(IBucketScriptAggregation aggregation);
 		void Visit(IBucketSelectorAggregation aggregation);
+		void Visit(IBucketSortAggregation aggregation);
 		void Visit(ISamplerAggregation aggregation);
 		void Visit(IGeoCentroidAggregation aggregation);
 	}
@@ -129,6 +131,10 @@ namespace Nest
 		{
 		}
 
+		public void Visit(ISignificantTextAggregation aggregation)
+		{
+		}
+
 		public virtual void Visit(IPercentileRanksAggregation aggregation)
 		{
 		}
@@ -174,6 +180,10 @@ namespace Nest
 		}
 
 		public virtual void Visit(IBucketSelectorAggregation aggregation)
+		{
+		}
+
+		public virtual void Visit(IBucketSortAggregation aggregation)
 		{
 		}
 

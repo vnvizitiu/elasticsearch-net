@@ -198,21 +198,25 @@ namespace Nest
 		Yes,
 
 		[EnumMember(Value = "no")]
-		No
-	}
-
-	[JsonConverter(typeof(StringEnumConverter))]
-	[Obsolete("Removed in Elasticsearch 5.2")]
-	public enum FinalDecision
-	{
-		[EnumMember(Value = "YES")]
-		Yes,
-
-		[EnumMember(Value = "NO")]
 		No,
 
-		[EnumMember(Value = "ALREADY_ASSIGNED")]
-		AlreadyAssigned
+		[EnumMember(Value = "worse_balance")]
+		WorseBalance,
+
+		[EnumMember(Value = "throttled")]
+		Throttled,
+
+		[EnumMember(Value = "awaiting_info")]
+		AwaitingInfo,
+
+		[EnumMember(Value = "allocation_delayed")]
+		AllocationDelayed,
+
+		[EnumMember(Value = "no_valid_shard_copy")]
+		NoValidShardCopy,
+
+		[EnumMember(Value = "no_attempt")]
+		NoAttempt
 	}
 
 	[JsonConverter(typeof(StringEnumConverter))]

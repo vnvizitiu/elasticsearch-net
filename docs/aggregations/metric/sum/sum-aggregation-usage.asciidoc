@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,11 +19,9 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Aggregations(a => a
-    .Sum("commits_sum", sm => sm
-        .Field(p => p.NumberOfCommits)
-    )
+a => a
+.Sum("commits_sum", sm => sm
+    .Field(p => p.NumberOfCommits)
 )
 ----
 
@@ -31,21 +29,16 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
-{
-    Aggregations = new SumAggregation("commits_sum", Field<Project>(p => p.NumberOfCommits))
-}
+new SumAggregation("commits_sum", Field<Project>(p => p.NumberOfCommits))
 ----
 
 [source,javascript]
 .Example json output
 ----
 {
-  "aggs": {
-    "commits_sum": {
-      "sum": {
-        "field": "numberOfCommits"
-      }
+  "commits_sum": {
+    "sum": {
+      "field": "numberOfCommits"
     }
   }
 }
@@ -55,8 +48,8 @@ new SearchRequest<Project>
 
 [source,csharp]
 ----
-response.IsValid.Should().BeTrue();
-var commitsSum = response.Aggs.Sum("commits_sum");
+response.ShouldBeValid();
+var commitsSum = response.Aggregations.Sum("commits_sum");
 commitsSum.Should().NotBeNull();
 commitsSum.Value.Should().BeGreaterThan(0);
 ----

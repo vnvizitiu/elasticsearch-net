@@ -9,27 +9,32 @@ namespace Nest
 		where TDocument : class
 		where TPartialDocument : class
 	{
-		[JsonProperty(PropertyName = "script")]
+		[JsonProperty("script")]
 		IScript Script { get; set; }
 
-		[JsonProperty(PropertyName = "upsert")]
+		[JsonProperty("upsert")]
+		[JsonConverter(typeof(SourceConverter))]
 		TDocument Upsert { get; set; }
 
-		[JsonProperty(PropertyName = "doc_as_upsert")]
+		[JsonProperty("doc_as_upsert")]
 		bool? DocAsUpsert { get; set; }
 
 		/// <summary>
 		/// If you would like your script to run regardless of whether the document exists or not — i.e. the script handles
 		/// initializing the document instead of the upsert element — then set scripted_upsert to true
 		/// </summary>
-		[JsonProperty(PropertyName = "scripted_upsert")]
+		[JsonProperty("scripted_upsert")]
 		bool? ScriptedUpsert { get; set; }
 
-		[JsonProperty(PropertyName = "doc")]
+		[JsonProperty("doc")]
+		[JsonConverter(typeof(SourceConverter))]
 		TPartialDocument Doc { get; set; }
 
-		[JsonProperty(PropertyName = "detect_noop")]
+		[JsonProperty("detect_noop")]
 		bool? DetectNoop { get; set; }
+
+		[JsonProperty("_source")]
+		Union<bool, ISourceFilter> Source { get; set; }
 	}
 
 	public partial class UpdateRequest<TDocument, TPartialDocument>
@@ -48,12 +53,17 @@ namespace Nest
 		public bool? DetectNoop { get; set; }
 		/// <inheritdoc/>
 		public bool? ScriptedUpsert { get; set; }
+		/// <inheritdoc/>
+		public Union<bool, ISourceFilter> Source { get; set; }
+
+		private object AutoRouteDocument() => (object)Self.Upsert ?? Self.Doc;
 
 		/// <inheritdoc/>
+		[Obsolete("Removed in Elasticsearch 7.x, use source filtering instead")]
 		public Fields Fields
 		{
-			get { return Self.RequestParameters.GetQueryStringValue<Fields>("fields"); }
-			set { Self.RequestParameters.AddQueryString("fields", value); }
+			get => Self.RequestParameters.GetQueryStringValue<Fields>("fields");
+			set => Self.RequestParameters.SetQueryString("fields", value);
 		}
 	}
 
@@ -61,6 +71,8 @@ namespace Nest
 		where TDocument : class
 		where TPartialDocument : class
 	{
+		private object AutoRouteDocument() => (object)Self.Upsert ?? Self.Doc;
+
 		IScript IUpdateRequest<TDocument, TPartialDocument>.Script { get; set; }
 
 		TDocument IUpdateRequest<TDocument, TPartialDocument>.Upsert { get; set; }
@@ -73,6 +85,8 @@ namespace Nest
 
 		bool? IUpdateRequest<TDocument, TPartialDocument>.ScriptedUpsert { get; set; }
 
+		Union<bool, ISourceFilter> IUpdateRequest<TDocument, TPartialDocument>.Source { get; set; }
+
 		/// <summary>
 		/// The full document to be created if an existing document does not exist for a partial merge.
 		/// </summary>
@@ -83,22 +97,29 @@ namespace Nest
 		/// </summary>
 		public UpdateDescriptor<TDocument, TPartialDocument> Doc(TPartialDocument @object) => Assign(a => a.Doc = @object);
 
-		public UpdateDescriptor<TDocument, TPartialDocument> DocAsUpsert(bool docAsUpsert = true) => Assign(a => a.DocAsUpsert = docAsUpsert);
+		public UpdateDescriptor<TDocument, TPartialDocument> DocAsUpsert(bool? docAsUpsert = true) => Assign(a => a.DocAsUpsert = docAsUpsert);
 
-		public UpdateDescriptor<TDocument, TPartialDocument> DetectNoop(bool detectNoop = true) => Assign(a => a.DetectNoop = detectNoop);
+		public UpdateDescriptor<TDocument, TPartialDocument> DetectNoop(bool? detectNoop = true) => Assign(a => a.DetectNoop = detectNoop);
 
-		public UpdateDescriptor<TDocument, TPartialDocument> ScriptedUpsert(bool scriptedUpsert = true) => Assign(a => a.ScriptedUpsert = scriptedUpsert);
+		public UpdateDescriptor<TDocument, TPartialDocument> ScriptedUpsert(bool? scriptedUpsert = true) => Assign(a => a.ScriptedUpsert = scriptedUpsert);
 
 		public UpdateDescriptor<TDocument, TPartialDocument> Script(Func<ScriptDescriptor, IScript> scriptSelector) =>
 			Assign(a => a.Script = scriptSelector?.Invoke(new ScriptDescriptor()));
 
 		public UpdateDescriptor<TDocument, TPartialDocument> Fields(Fields fields) =>
-			Assign(a => a.RequestParameters.AddQueryString("fields", fields));
+			Assign(a => a.RequestParameters.SetQueryString("fields", fields));
 
+		public UpdateDescriptor<TDocument, TPartialDocument> Source(bool? enabled = true) => Assign(a => a.Source = enabled);
+
+		public UpdateDescriptor<TDocument, TPartialDocument> Source(Func<SourceFilterDescriptor<TDocument>, ISourceFilter> selector) =>
+			Assign(a => a.Source = new Union<bool, ISourceFilter>(selector?.Invoke(new SourceFilterDescriptor<TDocument>())));
+
+		[Obsolete("Removed in Elasticsearch 7.x, use source filtering instead")]
 		public UpdateDescriptor<TDocument, TPartialDocument> Fields(params Expression<Func<TPartialDocument, object>>[] typedPathLookups) =>
-			Assign(a => a.RequestParameters.AddQueryString("fields", typedPathLookups));
+			Assign(a => a.RequestParameters.SetQueryString("fields", typedPathLookups));
 
+		[Obsolete("Removed in Elasticsearch 7.x, use source filtering instead")]
 		public UpdateDescriptor<TDocument, TPartialDocument> Fields(params string[] fields) =>
-			Assign(a => a.RequestParameters.AddQueryString("fields", fields));
+			Assign(a => a.RequestParameters.SetQueryString("fields", fields));
 	}
 }

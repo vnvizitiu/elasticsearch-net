@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
+using Elasticsearch.Net;
 using Newtonsoft.Json;
 
 namespace Nest
@@ -11,13 +13,20 @@ namespace Nest
 
 	public class Properties : IsADictionaryBase<PropertyName, IProperty>, IProperties
 	{
+		private readonly IConnectionSettingsValues _settings;
 		public Properties() {}
 		public Properties(IDictionary<PropertyName, IProperty> container) : base(container) { }
 		public Properties(Dictionary<PropertyName, IProperty> container)
-			: base(container.Select(kv => kv).ToDictionary(kv => kv.Key, kv => kv.Value))
-		{ }
+			: base(container.Select(kv => kv).ToDictionary(kv => kv.Key, kv => kv.Value)) { }
 
-		public void Add(PropertyName name, IProperty property) => this.BackingDictionary.Add(name, property);
+		internal Properties(IConnectionSettingsValues values)
+		{
+			_settings = values;
+		}
+
+		protected override PropertyName Sanitize(PropertyName key) => this._settings?.Inferrer.PropertyName(key) ?? key;
+
+		public void Add(PropertyName name, IProperty property) => this.BackingDictionary.Add(Sanitize(name), property);
 	}
 
 	public class Properties<T> : IsADictionaryBase<PropertyName, IProperty>, IProperties
@@ -37,9 +46,6 @@ namespace Nest
 		where T : class
 		where TReturnType : class
 	{
-
-		[Obsolete("Only valid for indices created before Elasticsearch 5.0 and will be removed in the next major version.  For newly created indices, use `text` or `keyword` instead.")]
-		TReturnType String(Func<StringPropertyDescriptor<T>, IStringProperty> selector);
 		TReturnType Text(Func<TextPropertyDescriptor<T>, ITextProperty> selector);
 		TReturnType Keyword(Func<KeywordPropertyDescriptor<T>, IKeywordProperty> selector);
 		/// <summary>
@@ -66,17 +72,14 @@ namespace Nest
 		TReturnType FloatRange(Func<FloatRangePropertyDescriptor<T>, IFloatRangeProperty> selector);
 		TReturnType IntegerRange(Func<IntegerRangePropertyDescriptor<T>, IIntegerRangeProperty> selector);
 		TReturnType LongRange(Func<LongRangePropertyDescriptor<T>, ILongRangeProperty> selector);
+		TReturnType IpRange(Func<IpRangePropertyDescriptor<T>, IIpRangeProperty> selector);
+		TReturnType Join(Func<JoinPropertyDescriptor<T>, IJoinProperty> selector);
 	}
 
-	public partial class PropertiesDescriptor<T> : IsADictionaryDescriptorBase<PropertiesDescriptor<T>, IProperties, PropertyName, IProperty>, IPropertiesDescriptor<T, PropertiesDescriptor<T>>
-		where T : class
+	public partial class PropertiesDescriptor<T> where T : class
 	{
 		public PropertiesDescriptor() : base(new Properties<T>()) { }
 		public PropertiesDescriptor(IProperties properties) : base(properties ?? new Properties<T>()) { }
-
-
-		[Obsolete("Only valid for indices created before Elasticsearch 5.0 and will be removed in the next major version.  For newly created indices, use `text` or `keyword` instead.")]
-		public PropertiesDescriptor<T> String(Func<StringPropertyDescriptor<T>, IStringProperty> selector) => SetProperty(selector);
 
 		public PropertiesDescriptor<T> Text(Func<TextPropertyDescriptor<T>, ITextProperty> selector) => SetProperty(selector);
 
@@ -125,6 +128,10 @@ namespace Nest
 
 		public PropertiesDescriptor<T> LongRange(Func<LongRangePropertyDescriptor<T>, ILongRangeProperty> selector) => SetProperty(selector);
 
+		public PropertiesDescriptor<T> IpRange(Func<IpRangePropertyDescriptor<T>, IIpRangeProperty> selector) => SetProperty(selector);
+
+		public PropertiesDescriptor<T> Join(Func<JoinPropertyDescriptor<T>, IJoinProperty> selector) => SetProperty(selector);
+
 		public PropertiesDescriptor<T> Custom(IProperty customType) => SetProperty(customType);
 
 		private PropertiesDescriptor<T> SetProperty<TDescriptor, TInterface>(Func<TDescriptor, TInterface> selector)
@@ -149,11 +156,10 @@ namespace Nest
 
 	internal static class PropertiesExtensions
 	{
-		internal static IProperties AutoMap<T>(this IProperties existingProperties, IPropertyVisitor visitor = null, int maxRecursion = 0)
-			where T : class
+		internal static IProperties AutoMap(this IProperties existingProperties, Type documentType, IPropertyVisitor visitor = null, int maxRecursion = 0)
 		{
 			var properties = new Properties();
-			var autoProperties = new PropertyWalker(typeof(T), visitor, maxRecursion).GetProperties();
+			var autoProperties = new PropertyWalker(documentType, visitor, maxRecursion).GetProperties();
 			foreach (var autoProperty in autoProperties)
 				properties[autoProperty.Key] = autoProperty.Value;
 
@@ -165,5 +171,8 @@ namespace Nest
 
 			return properties;
 		}
+
+		internal static IProperties AutoMap<T>(this IProperties existingProperties, IPropertyVisitor visitor = null, int maxRecursion = 0)
+			where T : class => existingProperties.AutoMap(typeof(T), visitor, maxRecursion);
 	}
 }

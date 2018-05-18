@@ -41,23 +41,7 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 		[U] public void ExplicitMappingIsInferredUsingMapDefaultTypeIndices()
 		{
 			var settings = new ConnectionSettings()
-				.MapDefaultTypeIndices(m => m
-					.Add(typeof(Project), "projects")
-				);
-			var resolver = new IndexNameResolver(settings);
-			var index = resolver.Resolve<Project>();
-			index.Should().Be("projects");
-		}
-
-		/**
-		 * `.InferMappingFor<T>()` can also be used to specify the index name, as well as be used
-		 * to specify the type name and POCO property that should be used as the id for the document
-		 */
-		[U]
-		public void ExplicitMappingIsInferredUsingInferMappingFor()
-		{
-			var settings = new ConnectionSettings()
-				.InferMappingFor<Project>(m => m
+				.DefaultMappingFor<Project>(m => m
 					.IndexName("projects")
 				);
 			var resolver = new IndexNameResolver(settings);
@@ -65,7 +49,23 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 			index.Should().Be("projects");
 		}
 
-		/** An index name for a POCO provided using `.MapDefaultTypeIndices()` or `.InferMappingFor<T>()` **will take precedence** over
+		/**
+		 * `.DefaultMappingFor<T>()` can also be used to specify the index name, as well as be used
+		 * to specify the type name and POCO property that should be used as the id for the document
+		 */
+		[U]
+		public void ExplicitMappingIsInferredUsingDefaultMappingFor()
+		{
+			var settings = new ConnectionSettings()
+				.DefaultMappingFor<Project>(m => m
+					.IndexName("projects")
+				);
+			var resolver = new IndexNameResolver(settings);
+			var index = resolver.Resolve<Project>();
+			index.Should().Be("projects");
+		}
+
+		/** An index name for a POCO provided using `.MapDefaultTypeIndices()` or `.DefaultMappingFor<T>()` **will take precedence** over
 		* the default index name set on `ConnectionSettings`. This way, the client can be configured with a default index to use if no
 		* index is specified, and a specific index to use for different POCO types.
 		*/
@@ -73,8 +73,8 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 		{
 			var settings = new ConnectionSettings()
 				.DefaultIndex("defaultindex")
-				.MapDefaultTypeIndices(m => m
-					.Add(typeof(Project), "projects")
+				.DefaultMappingFor<Project>(m => m
+					.IndexName("projects")
 				);
 			var resolver = new IndexNameResolver(settings);
 			var index = resolver.Resolve<Project>();
@@ -99,15 +99,15 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 
 		/** When an index name is provided on a request, it **will take precedence** over the default
 		* index name and any index name specified for the POCO type using `.MapDefaultTypeIndices()` or
-		* `.InferMappingFor<T>()`
+		* `.DefaultMappingFor<T>()`
 		*/
 		[U] public void ExplicitIndexOnRequestTakesPrecedence()
 		{
 			var client = TestClient.GetInMemoryClient(s=>
 				new ConnectionSettings()
 					.DefaultIndex("defaultindex")
-					.MapDefaultTypeIndices(m => m
-						.Add(typeof(Project), "projects")
+					.DefaultMappingFor<Project>(m => m
+						.IndexName("projects")
 					)
 			);
 
@@ -120,7 +120,7 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 		/** In summary, the order of precedence for determining the index name for a request is
 		 *
 		 * . Index name specified  on the request
-		 * . Index name specified for the generic type parameter in the request using `.MapDefaultTypeIndices()` or `.InferMappingFor<T>()`
+		 * . Index name specified for the generic type parameter in the request using `.MapDefaultTypeIndices()` or `.DefaultMappingFor<T>()`
 		 * . Default index name specified on `ConnectionSettings`
 		 */
 
@@ -154,8 +154,8 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 		[U] public void ImplicitConversionReadsCluster()
 		{
 			var i = (IndexName)"cluster_one  :  project  ";
-			i.Cluster.Should().Be("cluster_one");
-			i.Name.Should().Be("project");
+			i.Cluster.Should().Be("cluster_one  ");
+			i.Name.Should().Be("  project  ");
 
 			i = (IndexName)"cluster_one:project";
 			i.Cluster.Should().Be("cluster_one");
@@ -170,6 +170,7 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 		{
 			var clusterIndex = (IndexName)"cluster_one:p";
 			var index = (IndexName)"p";
+			Index<Project>("cluster_one").Should().NotBe(Index<Project>("cluster_two"));
 
 			clusterIndex.Should().NotBe(index);
 			clusterIndex.Should().Be("cluster_one:p");
@@ -177,10 +178,14 @@ namespace Tests.ClientConcepts.HighLevel.Inference
 
 			Index<Project>().Should().Be(Index<Project>());
 			Index<Project>().Should().NotBe(Index<Project>("cluster_two"));
-			Index<Project>("cluster_one").Should().NotBe(Index<Project>("cluster_two"));
 			Index<Project>("cluster_one").Should().NotBe("cluster_one:project");
 			Index<Project>().Should().NotBe(Index<Developer>());
 			Index<Project>("cluster_one").Should().NotBe(Index<Developer>("cluster_one"));
+
+			Nest.Indices indices1 = "foo,bar";
+			Nest.Indices indices2 = "bar,foo";
+			indices1.Should().Be(indices2);
+			(indices1 == indices2).Should().BeTrue();
 		}
 
 		//hide

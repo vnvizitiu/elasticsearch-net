@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <Import Project="..\..\..\build\Clients.Common.targets" />
+  <PropertyGroup>
+    <TargetFrameworks>netstandard1.3</TargetFrameworks>
+    <!--<CopyLocalLockFileAssemblies Condition="'$(TargetFramework)'=='netstandard1.3'">true</CopyLocalLockFileAssemblies>-->
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Nest\Nest.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
+  </ItemGroup>
+  <Import Project="..\..\outputpath.props" />
+</Project>

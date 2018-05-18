@@ -11,17 +11,13 @@ namespace Nest
 
 		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
 		{
-			var v = value as T;
-			if (v == null) return;
+			if (!(value is T v)) return;
 			this.WriteJson(writer, v, serializer);
 		}
 
 		public abstract void WriteJson(JsonWriter writer, T value, JsonSerializer serializer);
 
-		public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
-		{
+		public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) =>
 			throw new NotSupportedException();
-		}
-
 	}
 }

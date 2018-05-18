@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -24,11 +24,9 @@ Be sure to read the Elasticsearch documentation on {ref_current}/search-aggregat
 
 [source,csharp]
 ----
-s => s
-.Aggregations(a => a
-    .GeoCentroid("centroid", gb => gb
-        .Field(p => p.Location)
-    )
+a => a
+.GeoCentroid("centroid", gb => gb
+    .Field(p => p.Location)
 )
 ----
 
@@ -36,21 +34,16 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
-{
-    Aggregations = new GeoCentroidAggregation("centroid", Infer.Field<Project>(p => p.Location))
-}
+new GeoCentroidAggregation("centroid", Infer.Field<Project>(p => p.Location))
 ----
 
 [source,javascript]
 .Example json output
 ----
 {
-  "aggs": {
-    "centroid": {
-      "geo_centroid": {
-        "field": "location"
-      }
+  "centroid": {
+    "geo_centroid": {
+      "field": "location"
     }
   }
 }
@@ -61,8 +54,9 @@ new SearchRequest<Project>
 [source,csharp]
 ----
 response.ShouldBeValid();
-var centroid = response.Aggs.GeoCentroid("centroid");
+var centroid = response.Aggregations.GeoCentroid("centroid");
 centroid.Should().NotBeNull();
+centroid.Count.Should().BeGreaterThan(0);
 centroid.Location.Should().NotBeNull();
 
 centroid.Location.Latitude.Should().NotBe(0);
@@ -79,14 +73,12 @@ The `geo_centroid` aggregation is more interesting when combined as a sub-aggreg
 
 [source,csharp]
 ----
-s => s
-.Aggregations(a => a
-    .Terms("projects", t => t
-        .Field(p => p.Name)
-        .Aggregations(sa => sa
-            .GeoCentroid("centroid", gb => gb
-                .Field(p => p.Location)
-            )
+a => a
+.Terms("projects", t => t
+    .Field(p => p.Name)
+    .Aggregations(sa => sa
+        .GeoCentroid("centroid", gb => gb
+            .Field(p => p.Location)
         )
     )
 )
@@ -96,13 +88,10 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new TermsAggregation("projects")
 {
-    Aggregations = new TermsAggregation("projects")
-    {
-        Field = Infer.Field<Project>(p => p.Name),
-        Aggregations = new GeoCentroidAggregation("centroid", Infer.Field<Project>(p => p.Location))
-    }
+    Field = Infer.Field<Project>(p => p.Name),
+    Aggregations = new GeoCentroidAggregation("centroid", Infer.Field<Project>(p => p.Location))
 }
 ----
 
@@ -110,16 +99,14 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "projects": {
-      "terms": {
-        "field": "name"
-      },
-      "aggs": {
-        "centroid": {
-          "geo_centroid": {
-            "field": "location"
-          }
+  "projects": {
+    "terms": {
+      "field": "name"
+    },
+    "aggs": {
+      "centroid": {
+        "geo_centroid": {
+          "field": "location"
         }
       }
     }
@@ -131,18 +118,58 @@ new SearchRequest<Project>
 
 [source,csharp]
 ----
-response.IsValid.Should().BeTrue();
+response.ShouldBeValid();
 
-var projects = response.Aggs.Terms("projects");
+var projects = response.Aggregations.Terms("projects");
 
 foreach (var bucket in projects.Buckets)
 {
     var centroid = bucket.GeoCentroid("centroid");
     centroid.Should().NotBeNull();
+    centroid.Count.Should().BeGreaterThan(0);
     centroid.Location.Should().NotBeNull();
 
     centroid.Location.Latitude.Should().NotBe(0);
     centroid.Location.Longitude.Should().NotBe(0);
 }
+----
+
+==== Fluent DSL example
+
+[source,csharp]
+----
+a => a
+.GeoCentroid("centroid", gb => gb
+    .Field(p => p.Location)
+)
+----
+
+==== Object Initializer syntax example
+
+[source,csharp]
+----
+new GeoCentroidAggregation("centroid", Infer.Field<Project>(p => p.Location))
+----
+
+[source,javascript]
+.Example json output
+----
+{
+  "centroid": {
+    "geo_centroid": {
+      "field": "location"
+    }
+  }
+}
+----
+
+==== Handling Responses
+
+[source,csharp]
+----
+response.ShouldBeValid();
+var centroid = response.Aggregations.GeoCentroid("centroid");
+centroid.Should().NotBeNull();
+centroid.Count.Should().Be(0);
 ----
 

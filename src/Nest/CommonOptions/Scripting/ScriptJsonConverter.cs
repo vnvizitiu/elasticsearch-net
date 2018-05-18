@@ -24,10 +24,10 @@ namespace Nest
 				var inline = dict["inline"].ToString();
 				script = new InlineScript(inline);
 			}
-			if (dict.ContainsKey("file"))
+			if (dict.ContainsKey("source"))
 			{
-				var file = dict["file"].ToString();
-				script = new FileScript(file);
+				var inline = dict["source"].ToString();
+				script = new InlineScript(inline);
 			}
 			if (dict.ContainsKey("id"))
 			{
@@ -45,9 +45,7 @@ namespace Nest
 			return script;
 		}
 
-		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-		{
+		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) =>
 			throw new NotSupportedException();
-		}
 	}
 }

@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,15 +19,12 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Size(0)
-.Aggregations(aggs => aggs
-    .AdjacencyMatrix("interactions", am => am
-        .Filters(fs => fs
-            .Filter("grpA", f => f.Term(p => p.State, StateOfBeing.BellyUp))
-            .Filter("grpB", f => f.Term(p => p.State, StateOfBeing.Stable))
-            .Filter("grpC", f => f.Term(p => p.State, StateOfBeing.VeryActive))
-        )
+a => a
+.AdjacencyMatrix("interactions", am => am
+    .Filters(fs => fs
+        .Filter("grpA", f => f.Term(p => p.State, StateOfBeing.BellyUp))
+        .Filter("grpB", f => f.Term(p => p.State, StateOfBeing.Stable))
+        .Filter("grpC", f => f.Term(p => p.State, StateOfBeing.VeryActive))
     )
 )
 ----
@@ -36,17 +33,13 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new AdjacencyMatrixAggregation("interactions")
 {
-    Size =  0,
-    Aggregations = new AdjacencyMatrixAggregation("interactions")
+    Filters = new NamedFiltersContainer
     {
-        Filters = new NamedFiltersContainer
-        {
-            { "grpA", new TermQuery { Field = "state", Value = StateOfBeing.BellyUp } },
-            { "grpB", new TermQuery { Field = "state", Value = StateOfBeing.Stable } },
-            { "grpC", new TermQuery { Field = "state", Value = StateOfBeing.VeryActive } },
-        }
+        {"grpA", new TermQuery {Field = "state", Value = StateOfBeing.BellyUp}},
+        {"grpB", new TermQuery {Field = "state", Value = StateOfBeing.Stable}},
+        {"grpC", new TermQuery {Field = "state", Value = StateOfBeing.VeryActive}},
     }
 }
 ----
@@ -55,30 +48,27 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "size": 0,
-  "aggs": {
-    "interactions": {
-      "adjacency_matrix": {
-        "filters": {
-          "grpA": {
-            "term": {
-              "state": {
-                "value": "BellyUp"
-              }
+  "interactions": {
+    "adjacency_matrix": {
+      "filters": {
+        "grpA": {
+          "term": {
+            "state": {
+              "value": "BellyUp"
             }
-          },
-          "grpB": {
-            "term": {
-              "state": {
-                "value": "Stable"
-              }
+          }
+        },
+        "grpB": {
+          "term": {
+            "state": {
+              "value": "Stable"
             }
-          },
-          "grpC": {
-            "term": {
-              "state": {
-                "value": "VeryActive"
-              }
+          }
+        },
+        "grpC": {
+          "term": {
+            "state": {
+              "value": "VeryActive"
             }
           }
         }
@@ -93,7 +83,7 @@ new SearchRequest<Project>
 [source,csharp]
 ----
 response.ShouldBeValid();
-var interactions = response.Aggs.AdjacencyMatrix("interactions");
+var interactions = response.Aggregations.AdjacencyMatrix("interactions");
 interactions.Should().NotBeNull();
 var buckets = interactions.Buckets;
 buckets.Should().NotBeNullOrEmpty();

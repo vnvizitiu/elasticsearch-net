@@ -17,17 +17,19 @@ namespace Tests.Framework.MockData
 
 		public static Faker<Message> Generator { get; } =
 			new Faker<Message>()
+				.UseSeed(TestClient.Configuration.Seed)
 				.RuleFor(m => m.Id, m => Guid.NewGuid())
 				.RuleFor(m => m.Body, m => GetMessageText())
-				.RuleFor(m => m.Timestamp, m => DateTime.UtcNow);
+				.RuleFor(m => m.Timestamp, m => DateTime.UtcNow)
+			;
 
 		private static string GetMessageText()
 		{
-			int numWords = Random.Next(1, 20);
+			var numWords = Random.Next(1, 20);
 
 			var sb = new StringBuilder();
 
-			for (int i = 0; i < numWords; i++)
+			for (var i = 0; i < numWords; i++)
 			{
 				sb.Append(Words[Random.Next(0, Words.Length)]).Append(" ");
 			}

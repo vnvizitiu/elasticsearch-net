@@ -15,8 +15,7 @@ namespace Nest
 
 		public static UnionJsonConverterBase CreateConverter(Type t)
 		{
-			UnionJsonConverterBase conversion;
-			if (KnownTypes.TryGetValue(t, out conversion))
+			if (KnownTypes.TryGetValue(t, out var conversion))
 				return conversion;
 
 			var genericArguments = t.GetTypeInfo().GenericTypeArguments;
@@ -55,9 +54,11 @@ namespace Nest
 				v = serializer.Deserialize<T>(reader);
 				return true;
 			}
-			catch {}
-			v= default(T);
-			return false;
+			catch
+			{
+				v = default(T);
+				return false;
+			}
 		}
 
 		public abstract void WriteJson(JsonWriter writer, object v, JsonSerializer serializer);
@@ -68,8 +69,7 @@ namespace Nest
 	{
 		public override void WriteJson(JsonWriter writer, object v, JsonSerializer serializer)
 		{
-			var union = v as Union<TFirst, TSecond>;
-			if (union == null)
+			if (!(v is Union<TFirst, TSecond> union))
 			{
 				writer.WriteNull();
 				return;
@@ -86,10 +86,8 @@ namespace Nest
 			Union<TFirst, TSecond> u = null;
 			using (var r = JToken.Load(reader).CreateReader())
 			{
-				TFirst first;
-				TSecond second;
-				if (this.TryRead(r, serializer, out first)) u = first;
-				else if (this.TryRead(r, serializer, out second)) u = second;
+				if (this.TryRead(r, serializer, out TFirst first)) u = first;
+				else if (this.TryRead(r, serializer, out TSecond second)) u = second;
 			}
 			return u;
 		}

@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
 using Elasticsearch.Net;
 using Newtonsoft.Json;
 
@@ -39,7 +37,7 @@ namespace Nest
 		long? TerminateAfter { get; set; }
 
 		[JsonProperty("indices_boost")]
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<IndexName, double>))]
+		[JsonConverter(typeof(IndicesBoostJsonConverter))]
 		IDictionary<IndexName, double> IndicesBoost { get; set; }
 
 		[JsonProperty("sort")]
@@ -60,12 +58,6 @@ namespace Nest
 		[JsonProperty("rescore")]
 		IList<IRescore> Rescore { get; set; }
 
-		[JsonProperty("stored_fields")]
-		Fields StoredFields { get; set; }
-
-		[JsonProperty("fielddata_fields")]
-		Fields FielddataFields { get; set; }
-
 		[JsonProperty("script_fields")]
 		IScriptFields ScriptFields { get; set; }
 
@@ -84,13 +76,6 @@ namespace Nest
 		[JsonProperty("post_filter")]
 		QueryContainer PostFilter { get; set; }
 
-		string Preference { get; }
-
-		string Routing { get; }
-
-		SearchType? SearchType { get; }
-
-		bool? IgnoreUnavalable { get; }
 	}
 
 	public partial interface ISearchRequest<T> : ISearchRequest { }
@@ -99,9 +84,10 @@ namespace Nest
 	{
 		private Type _clrType { get; set; }
 		Type ICovariantSearchRequest.ClrType => this._clrType;
-		Types ICovariantSearchRequest.ElasticsearchTypes => ((ISearchRequest)this).Type;
 		protected override HttpMethod HttpMethod =>
-			RequestState.RequestParameters?.ContainsKey("_source") == true || RequestState.RequestParameters?.ContainsKey("q") == true ? HttpMethod.GET : HttpMethod.POST;
+			RequestState.RequestParameters?.ContainsQueryString("source") == true || RequestState.RequestParameters?.ContainsQueryString("q") == true ? HttpMethod.GET : HttpMethod.POST;
+
+		protected sealed override void Initialize() => this.TypedKeys = true;
 
 		public string Timeout { get; set; }
 		public int? From { get; set; }
@@ -112,8 +98,8 @@ namespace Nest
 		public bool? Profile { get; set; }
 		public double? MinScore { get; set; }
 		public long? TerminateAfter { get; set; }
+		public Fields DocValueFields { get; set; }
 		public Fields StoredFields { get; set; }
-		public Fields FielddataFields { get; set; }
 		public IScriptFields ScriptFields { get; set; }
 		public Union<bool, ISourceFilter> Source { get; set; }
 		public IList<ISort> Sort { get; set; }
@@ -127,16 +113,6 @@ namespace Nest
 		public IHighlight Highlight { get; set; }
 		public IFieldCollapse Collapse { get; set; }
 		public AggregationDictionary Aggregations { get; set; }
-
-		SearchType? ISearchRequest.SearchType => RequestState.RequestParameters?.GetQueryStringValue<SearchType?>("search_type");
-
-		string ISearchRequest.Preference => RequestState.RequestParameters?.GetQueryStringValue<string>("preference");
-
-		string ISearchRequest.Routing => RequestState.RequestParameters?.GetQueryStringValue<string[]>("routing") == null
-			? null
-			: string.Join(",", RequestState.RequestParameters?.GetQueryStringValue<string[]>("routing"));
-
-		bool? ISearchRequest.IgnoreUnavalable => RequestState.RequestParameters?.GetQueryStringValue<bool?>("ignore_unavailable");
 
 		public Func<dynamic, Hit<dynamic>, Type> TypeSelector { get; set; }
 	}
@@ -144,9 +120,10 @@ namespace Nest
 	public partial class SearchRequest<T>
 	{
 		Type ICovariantSearchRequest.ClrType => typeof(T);
-		Types ICovariantSearchRequest.ElasticsearchTypes => ((ISearchRequest)this).Type;
 		protected override HttpMethod HttpMethod =>
-			RequestState.RequestParameters?.ContainsKey("_source") == true || RequestState.RequestParameters?.ContainsKey("q") == true ? HttpMethod.GET : HttpMethod.POST;
+			RequestState.RequestParameters?.ContainsQueryString("source") == true || RequestState.RequestParameters?.ContainsQueryString("q") == true ? HttpMethod.GET : HttpMethod.POST;
+
+		protected sealed override void Initialize() => this.TypedKeys = true;
 
 		public string Timeout { get; set; }
 		public int? From { get; set; }
@@ -157,8 +134,8 @@ namespace Nest
 		public bool? Profile { get; set; }
 		public double? MinScore { get; set; }
 		public long? TerminateAfter { get; set; }
+		public Fields DocValueFields { get; set; }
 		public Fields StoredFields { get; set; }
-		public Fields FielddataFields { get; set; }
 		public IScriptFields ScriptFields { get; set; }
 		public Union<bool, ISourceFilter> Source { get; set; }
 		public IList<ISort> Sort { get; set; }
@@ -172,16 +149,6 @@ namespace Nest
 		public IHighlight Highlight { get; set; }
 		public IFieldCollapse Collapse { get; set; }
 		public AggregationDictionary Aggregations { get; set; }
-
-		SearchType? ISearchRequest.SearchType => RequestState.RequestParameters?.GetQueryStringValue<SearchType?>("search_type");
-
-		string ISearchRequest.Preference => RequestState.RequestParameters?.GetQueryStringValue<string>("preference");
-
-		string ISearchRequest.Routing => RequestState.RequestParameters?.GetQueryStringValue<string[]>("routing") == null
-			? null
-			: string.Join(",", RequestState.RequestParameters?.GetQueryStringValue<string[]>("routing"));
-
-		bool? ISearchRequest.IgnoreUnavalable => RequestState.RequestParameters?.GetQueryStringValue<bool?>("ignore_unavailable");
 
 		public Func<dynamic, Hit<dynamic>, Type> TypeSelector { get; set; }
 	}
@@ -192,19 +159,10 @@ namespace Nest
 	public partial class SearchDescriptor<T> where T : class
 	{
 		Type ICovariantSearchRequest.ClrType => typeof(T);
-		Types ICovariantSearchRequest.ElasticsearchTypes => ((ISearchRequest)this).Type;
-		Func<dynamic, Hit<dynamic>, Type> ICovariantSearchRequest.TypeSelector { get; set; }
 		protected override HttpMethod HttpMethod =>
-			RequestState.RequestParameters?.ContainsKey("_source") == true || RequestState.RequestParameters?.ContainsKey("q") == true ? HttpMethod.GET : HttpMethod.POST;
+			RequestState.RequestParameters?.ContainsQueryString("source") == true || RequestState.RequestParameters?.ContainsQueryString("q") == true ? HttpMethod.GET : HttpMethod.POST;
 
-		SearchType? ISearchRequest.SearchType => RequestState.RequestParameters.GetQueryStringValue<SearchType?>("search_type");
-
-		string ISearchRequest.Preference => RequestState.RequestParameters.GetQueryStringValue<string>("preference");
-
-		string ISearchRequest.Routing => RequestState.RequestParameters.GetQueryStringValue<string[]>("routing") == null
-			? null : string.Join(",", RequestState.RequestParameters.GetQueryStringValue<string[]>("routing"));
-
-		bool? ISearchRequest.IgnoreUnavalable => RequestState.RequestParameters.GetQueryStringValue<bool?>("ignore_unavailable");
+		protected sealed override void Initialize() => this.TypedKeys();
 
 		string ISearchRequest.Timeout { get; set; }
 		int? ISearchRequest.From { get; set; }
@@ -227,13 +185,16 @@ namespace Nest
 		QueryContainer ISearchRequest.Query { get; set; }
 		QueryContainer ISearchRequest.PostFilter { get; set; }
 		Fields ISearchRequest.StoredFields { get; set; }
-		Fields ISearchRequest.FielddataFields { get; set; }
+		Fields ISearchRequest.DocValueFields { get; set; }
 		IScriptFields ISearchRequest.ScriptFields { get; set; }
 		Union<bool, ISourceFilter> ISearchRequest.Source { get; set; }
 		AggregationDictionary ISearchRequest.Aggregations { get; set; }
 
 		public SearchDescriptor<T> Aggregations(Func<AggregationContainerDescriptor<T>, IAggregationContainer> aggregationsSelector) =>
 			Assign(a => a.Aggregations = aggregationsSelector(new AggregationContainerDescriptor<T>())?.Aggregations);
+
+		public SearchDescriptor<T> Aggregations(AggregationDictionary aggregations) =>
+			Assign(a => a.Aggregations = aggregations);
 
 		public SearchDescriptor<T> Source(bool enabled = true) => Assign(a => a.Source = enabled);
 
@@ -243,22 +204,22 @@ namespace Nest
 		/// <summary>
 		/// The number of hits to return. Defaults to 10.
 		/// </summary>
-		public SearchDescriptor<T> Size(int size) => Assign(a => a.Size = size);
+		public SearchDescriptor<T> Size(int? size) => Assign(a => a.Size = size);
 
 		/// <summary>
 		/// The number of hits to return. Alias for <see cref="Size"/>. Defaults to 10.
 		/// </summary>
-		public SearchDescriptor<T> Take(int take) => this.Size(take);
+		public SearchDescriptor<T> Take(int? take) => this.Size(take);
 
 		/// <summary>
 		/// The starting from index of the hits to return. Defaults to 0.
 		/// </summary>
-		public SearchDescriptor<T> From(int from) => Assign(a => a.From = from);
+		public SearchDescriptor<T> From(int? from) => Assign(a => a.From = from);
 
 		/// <summary>
 		/// The starting from index of the hits to return. Alias for <see cref="From"/>. Defaults to 0.
 		/// </summary>
-		public SearchDescriptor<T> Skip(int skip) => this.From(skip);
+		public SearchDescriptor<T> Skip(int? skip) => this.From(skip);
 
 		/// <summary>
 		/// A search timeout, bounding the search request to be executed within the
@@ -269,37 +230,37 @@ namespace Nest
 
 		/// <summary>
 		/// Enables explanation for each hit on how its score was computed.
-		/// (Use .DocumentsWithMetaData on the return results)
+		/// (Use .DocumentsWithMetadata on the return results)
 		/// </summary>
-		public SearchDescriptor<T> Explain(bool explain = true) => Assign(a => a.Explain = explain);
+		public SearchDescriptor<T> Explain(bool? explain = true) => Assign(a => a.Explain = explain);
 
 		/// <summary>
-		/// Returns a version for each search hit. (Use .DocumentsWithMetaData on the return results)
+		/// Returns a version for each search hit. (Use .DocumentsWithMetadata on the return results)
 		/// </summary>
-		public SearchDescriptor<T> Version(bool version = true) => Assign(a => a.Version = version);
+		public SearchDescriptor<T> Version(bool? version = true) => Assign(a => a.Version = version);
 
 		/// <summary>
 		/// Make sure we keep calculating score even if we are sorting on a field.
 		/// </summary>
-		public SearchDescriptor<T> TrackScores(bool trackscores = true) => Assign(a => a.TrackScores = trackscores);
+		public SearchDescriptor<T> TrackScores(bool? trackscores = true) => Assign(a => a.TrackScores = trackscores);
 
 		/// <summary>
 		/// The Profile API provides detailed timing information about the execution of individual components in a query.
 		/// It gives the user insight into how queries are executed at a low level so that the user can understand
 		/// why certain queries are slow, and take steps to improve their slow queries.
 		/// </summary>
-		public SearchDescriptor<T> Profile(bool profile = true) => Assign(a => a.Profile = profile);
+		public SearchDescriptor<T> Profile(bool? profile = true) => Assign(a => a.Profile = profile);
 
 		/// <summary>
 		/// Allows to filter out documents based on a minimum score:
 		/// </summary>
-		public SearchDescriptor<T> MinScore(double minScore) => Assign(a => a.MinScore = minScore);
+		public SearchDescriptor<T> MinScore(double? minScore) => Assign(a => a.MinScore = minScore);
 
 		/// <summary>
 		/// The maximum number of documents to collect for each shard, upon reaching which the query execution will terminate early.
 		/// If set, the response will have a boolean field terminated_early to indicate whether the query execution has actually terminated_early.
 		/// </summary>
-		public SearchDescriptor<T> TerminateAfter(long terminateAfter) => Assign(a => a.TerminateAfter = terminateAfter);
+		public SearchDescriptor<T> TerminateAfter(long? terminateAfter) => Assign(a => a.TerminateAfter = terminateAfter);
 
 		/// <summary>
 		/// <para>
@@ -374,14 +335,13 @@ namespace Nest
 
 		public SearchDescriptor<T> StoredFields(Fields fields) => Assign(a => a.StoredFields = fields);
 
-		///<summary>
-		///A comma-separated list of fields to return as the field data representation of a field for each hit
-		///</summary>
-		public SearchDescriptor<T> FielddataFields(Func<FieldsDescriptor<T>, IPromise<Fields>> fields) =>
-			Assign(a => a.FielddataFields = fields?.Invoke(new FieldsDescriptor<T>())?.Value);
-
 		public SearchDescriptor<T> ScriptFields(Func<ScriptFieldsDescriptor, IPromise<IScriptFields>> selector) =>
 			Assign(a => a.ScriptFields = selector?.Invoke(new ScriptFieldsDescriptor())?.Value);
+
+		public SearchDescriptor<T> DocValueFields(Func<FieldsDescriptor<T>, IPromise<Fields>> fields) =>
+			Assign(a => a.DocValueFields = fields?.Invoke(new FieldsDescriptor<T>())?.Value);
+
+		public SearchDescriptor<T> DocValueFields(Fields fields) => Assign(a => a.DocValueFields = fields);
 
 		///<summary>
 		///A comma-separated list of fields to return as the field data representation of a field for each hit
@@ -450,10 +410,5 @@ namespace Nest
 		public SearchDescriptor<T> Rescore(Func<RescoringDescriptor<T>, IPromise<IList<IRescore>>> rescoreSelector) =>
 			Assign(a => a.Rescore = rescoreSelector?.Invoke(new RescoringDescriptor<T>()).Value);
 
-		/// <summary>
-		/// Specify the concrete types to deserialize to when returning covariant search results
-		/// </summary>
-		public SearchDescriptor<T> ConcreteTypeSelector(Func<dynamic, Hit<dynamic>, Type> typeSelector) =>
-			Assign(a => a.TypeSelector = typeSelector);
 	}
 }

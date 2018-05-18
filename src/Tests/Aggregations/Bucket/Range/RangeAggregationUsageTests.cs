@@ -15,57 +15,49 @@ namespace Tests.Aggregations.Bucket.Range
 	{
 		public RangeAggregationUsageTests(ReadOnlyCluster i, EndpointUsage usage) : base(i, usage) { }
 
-		protected override object ExpectJson => new
+		protected override object AggregationJson => new
 		{
-			aggs = new
+			commit_ranges = new
 			{
-				commit_ranges = new
+				range = new
 				{
-					range = new
+					field = "numberOfCommits",
+					ranges = new object[]
 					{
-						field = "numberOfCommits",
-						ranges = new object[]
-						{
-							new { to = 100.0 },
-							new { from = 100.0, to = 500.0 },
-							new { from = 500.0 }
-						}
+						new {to = 100.0},
+						new {from = 100.0, to = 500.0},
+						new {from = 500.0}
 					}
 				}
 			}
 		};
 
-		protected override Func<SearchDescriptor<Project>, ISearchRequest> Fluent => s => s
-			.Aggregations(a => a
-				.Range("commit_ranges", ra => ra
-					.Field(p => p.NumberOfCommits)
-					.Ranges(
-						r => r.To(100),
-						r => r.From(100).To(500),
-						r => r.From(500)
-					)
+		protected override Func<AggregationContainerDescriptor<Project>, IAggregationContainer> FluentAggs => a => a
+			.Range("commit_ranges", ra => ra
+				.Field(p => p.NumberOfCommits)
+				.Ranges(
+					r => r.To(100),
+					r => r.From(100).To(500),
+					r => r.From(500)
 				)
 			);
 
-		protected override SearchRequest<Project> Initializer =>
-			new SearchRequest<Project>
+		protected override AggregationDictionary InitializerAggs =>
+			new RangeAggregation("commit_ranges")
 			{
-				Aggregations = new RangeAggregation("commit_ranges")
+				Field = Field<Project>(p => p.NumberOfCommits),
+				Ranges = new List<AggregationRange>
 				{
-					Field = Field<Project>(p => p.NumberOfCommits),
-					Ranges = new List<AggregationRange>
-					{
-						{ new AggregationRange { To = 100 } },
-						{ new AggregationRange { From = 100, To = 500 } },
-						{ new AggregationRange { From = 500 } }
-					}
+					{new AggregationRange {To = 100}},
+					{new AggregationRange {From = 100, To = 500}},
+					{new AggregationRange {From = 500}}
 				}
 			};
 
 		protected override void ExpectResponse(ISearchResponse<Project> response)
 		{
 			response.ShouldBeValid();
-			var commitRanges = response.Aggs.Range("commit_ranges");
+			var commitRanges = response.Aggregations.Range("commit_ranges");
 			commitRanges.Should().NotBeNull();
 			commitRanges.Buckets.Count.Should().Be(3);
 			commitRanges.Buckets.FirstOrDefault(r => r.Key == "*-100.0").Should().NotBeNull();

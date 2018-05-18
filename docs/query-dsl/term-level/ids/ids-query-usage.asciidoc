@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -48,8 +48,8 @@ new IdsQuery
   "ids": {
     "_name": "named_query",
     "boost": 1.1,
-    "types": [
-      "project",
+    "type": [
+      "doc",
       "developer"
     ],
     "values": [

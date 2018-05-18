@@ -42,10 +42,10 @@ namespace Nest
 				(p, d) =>
 				{
 					var converter = CreateMultiSearchDeserializer(p);
-					var serializer = this.ConnectionSettings.StatefulSerializer(converter);
+					var serializer = this.ConnectionSettings.CreateStateful(converter);
 					var creator = new MultiSearchCreator((r, s) => serializer.Deserialize<MultiSearchResponse>(s));
-					request.RequestParameters.DeserializationOverride(creator);
-					return this.LowLevelDispatch.MsearchDispatch<MultiSearchResponse>(p, (object)p);
+					request.RequestParameters.DeserializationOverride = creator;
+					return this.LowLevelDispatch.MsearchDispatch<MultiSearchResponse>(p, new SerializableData<IMultiSearchRequest>(p));
 				}
 			);
 		}
@@ -64,22 +64,16 @@ namespace Nest
 				(p, d, c) =>
 				{
 					var converter = CreateMultiSearchDeserializer(p);
-					var serializer = this.ConnectionSettings.StatefulSerializer(converter);
+					var serializer = this.ConnectionSettings.CreateStateful(converter);
 					var creator = new MultiSearchCreator((r, s) => serializer.Deserialize<MultiSearchResponse>(s));
-					request.RequestParameters.DeserializationOverride(creator);
-					return this.LowLevelDispatch.MsearchDispatchAsync<MultiSearchResponse>(p, (object)p, c);
+					request.RequestParameters.DeserializationOverride = creator;
+					return this.LowLevelDispatch.MsearchDispatchAsync<MultiSearchResponse>(p, new SerializableData<IMultiSearchRequest>(p), c);
 				}
 			);
 		}
 
 		private JsonConverter CreateMultiSearchDeserializer(IMultiSearchRequest request)
 		{
-			if (request.Operations != null)
-			{
-				foreach (var operation in request.Operations.Values)
-					CovariantSearch.CloseOverAutomagicCovariantResultSelector(this.Infer, operation);
-			}
-
 			return new MultiSearchResponseJsonConverter(this.ConnectionSettings, request);
 		}
 	}

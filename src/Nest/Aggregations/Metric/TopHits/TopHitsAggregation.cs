@@ -30,14 +30,14 @@ namespace Nest
 		[JsonConverter(typeof(ReadAsTypeJsonConverter<ScriptFields>))]
 		IScriptFields ScriptFields { get; set; }
 
-		[JsonProperty("fielddata_fields")]
-		Fields FielddataFields { get; set; }
-
 		[JsonProperty("stored_fields")]
 		Fields StoredFields { get; set; }
 
 		[JsonProperty("version")]
 		bool? Version { get; set; }
+
+		[JsonProperty("track_scores")]
+		bool? TrackScores { get; set; }
 	}
 
 	public class TopHitsAggregation : MetricAggregationBase, ITopHitsAggregation
@@ -49,9 +49,9 @@ namespace Nest
 		public IHighlight Highlight { get; set; }
 		public bool? Explain { get; set; }
 		public IScriptFields ScriptFields { get; set; }
-		public Fields FielddataFields { get; set; }
 		public Fields StoredFields { get; set; }
 		public bool? Version { get; set; }
+		public bool? TrackScores { get; set; }
 
 		internal TopHitsAggregation() { }
 
@@ -79,24 +79,20 @@ namespace Nest
 
 		IScriptFields ITopHitsAggregation.ScriptFields { get; set; }
 
-		Fields ITopHitsAggregation.FielddataFields { get; set; }
-
 		Fields ITopHitsAggregation.StoredFields { get; set; }
 
 		bool? ITopHitsAggregation.Version { get; set; }
 
-		public TopHitsAggregationDescriptor<T> From(int from) => Assign(a => a.From = from);
+		bool? ITopHitsAggregation.TrackScores { get; set; }
 
-		public TopHitsAggregationDescriptor<T> Size(int size) => Assign(a => a.Size = size);
+		public TopHitsAggregationDescriptor<T> From(int? from) => Assign(a => a.From = from);
 
-		public TopHitsAggregationDescriptor<T> Sort(Func<SortFieldDescriptor<T>, IFieldSort> sortSelector) => Assign(a =>
-		{
-			a.Sort = a.Sort ?? new List<ISort>();
-			var sort = sortSelector?.Invoke(new SortFieldDescriptor<T>());
-			if (sort != null) a.Sort.Add(sort);
-		});
+		public TopHitsAggregationDescriptor<T> Size(int? size) => Assign(a => a.Size = size);
 
-		public TopHitsAggregationDescriptor<T> Source(bool enabled = true) =>
+		public TopHitsAggregationDescriptor<T> Sort(Func<SortDescriptor<T>, IPromise<IList<ISort>>> sortSelector) =>
+			Assign(a => a.Sort = sortSelector?.Invoke(new SortDescriptor<T>())?.Value);
+
+		public TopHitsAggregationDescriptor<T> Source(bool? enabled = true) =>
 			Assign(a => a.Source = enabled);
 
 		public TopHitsAggregationDescriptor<T> Source(Func<SourceFilterDescriptor<T>, ISourceFilter> selector) =>
@@ -105,17 +101,16 @@ namespace Nest
 		public TopHitsAggregationDescriptor<T> Highlight(Func<HighlightDescriptor<T>, IHighlight> highlightSelector) =>
 			Assign(a => a.Highlight = highlightSelector?.Invoke(new HighlightDescriptor<T>()));
 
-		public TopHitsAggregationDescriptor<T> Explain(bool explain = true) => Assign(a => a.Explain = explain);
+		public TopHitsAggregationDescriptor<T> Explain(bool? explain = true) => Assign(a => a.Explain = explain);
 
 		public TopHitsAggregationDescriptor<T> ScriptFields(Func<ScriptFieldsDescriptor, IPromise<IScriptFields>> scriptFieldsSelector) =>
 			Assign(a => a.ScriptFields = scriptFieldsSelector?.Invoke(new ScriptFieldsDescriptor())?.Value);
 
-		public TopHitsAggregationDescriptor<T> FielddataFields(Func<FieldsDescriptor<T>, IPromise<Fields>> fields) =>
-			Assign(a => a.FielddataFields = fields?.Invoke(new FieldsDescriptor<T>())?.Value);
-
 		public TopHitsAggregationDescriptor<T> StoredFields(Func<FieldsDescriptor<T>, IPromise<Fields>> fields) =>
 			Assign(a => a.StoredFields = fields?.Invoke(new FieldsDescriptor<T>())?.Value);
 
-		public TopHitsAggregationDescriptor<T> Version(bool version = true) => Assign(a => a.Version = version);
+		public TopHitsAggregationDescriptor<T> Version(bool? version = true) => Assign(a => a.Version = version);
+
+		public TopHitsAggregationDescriptor<T> TrackScores(bool? trackScores = true) => Assign(a => a.TrackScores = trackScores);
 	}
 }

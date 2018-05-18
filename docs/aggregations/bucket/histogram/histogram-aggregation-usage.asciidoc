@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -19,14 +19,13 @@ please modify the original csharp file found at the link and submit the PR with 
 
 [source,csharp]
 ----
-s => s
-.Aggregations(a => a
-    .Histogram("commits", h => h
-        .Field(p => p.NumberOfCommits)
-        .Interval(100)
-        .Missing(0)
-        .Order(HistogramOrder.KeyDescending)
-    )
+a => a
+.Histogram("commits", h => h
+    .Field(p => p.NumberOfCommits)
+    .Interval(100)
+    .Missing(0)
+    .Order(HistogramOrder.KeyDescending)
+    .Offset(1.1)
 )
 ----
 
@@ -34,15 +33,13 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new HistogramAggregation("commits")
 {
-    Aggregations = new HistogramAggregation("commits")
-    {
-        Field = Field<Project>(p => p.NumberOfCommits),
-        Interval = 100,
-        Missing = 0,
-        Order = HistogramOrder.KeyDescending
-    }
+    Field = Field<Project>(p => p.NumberOfCommits),
+    Interval = 100,
+    Missing = 0,
+    Order = HistogramOrder.KeyDescending,
+    Offset = 1.1
 }
 ----
 
@@ -50,16 +47,15 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "commits": {
-      "histogram": {
-        "field": "numberOfCommits",
-        "interval": 100.0,
-        "missing": 0.0,
-        "order": {
-          "_key": "desc"
-        }
-      }
+  "commits": {
+    "histogram": {
+      "field": "numberOfCommits",
+      "interval": 100.0,
+      "missing": 0.0,
+      "order": {
+        "_key": "desc"
+      },
+      "offset": 1.1
     }
   }
 }
@@ -70,7 +66,7 @@ new SearchRequest<Project>
 [source,csharp]
 ----
 response.ShouldBeValid();
-var commits = response.Aggs.Histogram("commits");
+var commits = response.Aggregations.Histogram("commits");
 commits.Should().NotBeNull();
 commits.Buckets.Should().NotBeNull();
 commits.Buckets.Count.Should().BeGreaterThan(0);

@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -204,7 +204,7 @@ var audit = new Auditor(() => Framework.Cluster
         .DisablePing() <1>
         .NodePredicate(node => <2>
             node.Settings.ContainsKey(setting) &&
-            node.Settings[setting] == value
+            node.Settings[setting].ToString() == value
         )
     )
 )

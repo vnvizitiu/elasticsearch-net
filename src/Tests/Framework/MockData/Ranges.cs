@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using Bogus;
 using Nest;
 
@@ -11,9 +12,10 @@ namespace Tests.Framework.MockData
 		public FloatRange Floats { get; set; }
 		public IntegerRange Integers { get; set; }
 		public LongRange Longs { get; set; }
+		public IpRange Ips { get; set; }
 
 		//for deserialization
-		public  Ranges() { }
+		public Ranges() { }
 
 		private Ranges(Faker faker)
 		{
@@ -23,6 +25,7 @@ namespace Tests.Framework.MockData
 			SetFloats(faker, r);
 			SetIntegers(faker, r);
 			SetLongs(faker, r);
+			SetIps(faker, r);
 		}
 
 		private void SetDates(Faker faker, Func<bool> r)
@@ -69,6 +72,30 @@ namespace Tests.Framework.MockData
 			SwapAssign(r(), low, v => d.GreaterThan = v, v => d.GreaterThanOrEqualTo = v);
 			SwapAssign(r(), high, v => d.LessThan = v, v => d.LessThanOrEqualTo = v);
 			this.Longs = d;
+		}
+		private void SetIps(Faker faker, Func<bool> r)
+		{
+			var low = faker.Internet.Ip();
+			var high = faker.Internet.Ip();
+			var lowBytes = IPAddress.Parse(low).GetAddressBytes();
+			var highBytes = IPAddress.Parse(high).GetAddressBytes();
+			for (int i = 0; i < lowBytes.Length; i++)
+			{
+				var comparison = lowBytes[i].CompareTo(highBytes[i]);
+				if (comparison == 0) continue;
+				if (comparison > 0)
+				{
+					var s = low;
+					low = high;
+					high = s;
+				}
+
+				break;
+			}
+			var d = new IpRange();
+			SwapAssign(r(), low, v => d.GreaterThan = v, v => d.GreaterThanOrEqualTo = v);
+			SwapAssign(r(), high, v => d.LessThan = v, v => d.LessThanOrEqualTo = v);
+			this.Ips = d;
 		}
 
 		private static void SwapAssign<T>(bool b, T value, Action<T> first, Action<T> second)

@@ -26,11 +26,8 @@ namespace Nest
 		[JsonProperty("extended_bounds")]
 		ExtendedBounds<double> ExtendedBounds { get; set; }
 
-		[JsonProperty("pre_offset")]
-		long? PreOffset { get; set; }
-
-		[JsonProperty("post_offset")]
-		long? PostOffset { get; set; }
+		[JsonProperty("offset")]
+		double? Offset { get; set; }
 
 		[JsonProperty("missing")]
 		double? Missing { get; set; }
@@ -44,8 +41,7 @@ namespace Nest
 		public int? MinimumDocumentCount { get; set; }
 		public HistogramOrder Order { get; set; }
 		public ExtendedBounds<double> ExtendedBounds { get; set; }
-		public long? PreOffset { get; set; }
-		public long? PostOffset { get; set; }
+		public double? Offset { get; set; }
 		public double? Missing { get; set; }
 
 		internal HistogramAggregation() { }
@@ -71,9 +67,7 @@ namespace Nest
 
 		ExtendedBounds<double> IHistogramAggregation.ExtendedBounds { get; set; }
 
-		long? IHistogramAggregation.PreOffset { get; set; }
-
-		long? IHistogramAggregation.PostOffset { get; set; }
+		double? IHistogramAggregation.Offset { get; set; }
 
 		double? IHistogramAggregation.Missing { get; set; }
 
@@ -86,9 +80,9 @@ namespace Nest
 		public HistogramAggregationDescriptor<T> Script(Func<ScriptDescriptor, IScript> scriptSelector) =>
 			Assign(a => a.Script = scriptSelector?.Invoke(new ScriptDescriptor()));
 
-		public HistogramAggregationDescriptor<T> Interval(double interval) => Assign(a => a.Interval = interval);
+		public HistogramAggregationDescriptor<T> Interval(double? interval) => Assign(a => a.Interval = interval);
 
-		public HistogramAggregationDescriptor<T> MinimumDocumentCount(int minimumDocumentCount) =>
+		public HistogramAggregationDescriptor<T> MinimumDocumentCount(int? minimumDocumentCount) =>
 			Assign(a => a.MinimumDocumentCount = minimumDocumentCount);
 
 		public HistogramAggregationDescriptor<T> Order(HistogramOrder order) => Assign(a => a.Order = order);
@@ -102,10 +96,8 @@ namespace Nest
 		public HistogramAggregationDescriptor<T> ExtendedBounds(double min, double max) =>
 			Assign(a => a.ExtendedBounds = new ExtendedBounds<double> { Minimum = min, Maximum = max });
 
-		public HistogramAggregationDescriptor<T> PreOffset(long preOffset) => Assign(a => a.PreOffset = preOffset);
+		public HistogramAggregationDescriptor<T> Offset(double? offset) => Assign(a => a.Offset = offset);
 
-		public HistogramAggregationDescriptor<T> PostOffset(long postOffset) => Assign(a => a.PostOffset = postOffset);
-
-		public HistogramAggregationDescriptor<T> Missing(double missing) => Assign(a => a.Missing = missing);
+		public HistogramAggregationDescriptor<T> Missing(double? missing) => Assign(a => a.Missing = missing);
 	}
 }

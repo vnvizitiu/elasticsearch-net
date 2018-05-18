@@ -21,10 +21,9 @@ namespace Tests.Mapping.Types.Core.Object
 					type = "object",
 					dynamic = true,
 					enabled = true,
-					include_in_all = true,
 					properties = new
 					{
-						iPAddress = new
+						ipAddress = new
 						{
 							type = "ip"
 						}
@@ -38,10 +37,9 @@ namespace Tests.Mapping.Types.Core.Object
 				.Name(p => p.LeadDeveloper)
 				.Dynamic(true)
 				.Enabled()
-				.IncludeInAll()
 				.Properties(pps => pps
 					.Ip(i => i
-						.Name(p => p.IPAddress)
+						.Name(p => p.IpAddress)
 					)
 				)
 			);
@@ -52,10 +50,9 @@ namespace Tests.Mapping.Types.Core.Object
 					{
 						Dynamic = true,
 						Enabled = true,
-						IncludeInAll = true,
 						Properties = new Properties
 						{
-							{ "iPAddress", new IpProperty () }
+							{ "ipAddress", new IpProperty () }
 						}
 					}
 				}

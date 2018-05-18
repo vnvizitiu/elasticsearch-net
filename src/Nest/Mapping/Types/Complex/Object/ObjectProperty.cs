@@ -1,42 +1,51 @@
 using System;
-using System.Collections.Generic;
 using Elasticsearch.Net;
 using System.Diagnostics;
 using Newtonsoft.Json;
 
 namespace Nest
 {
+	/// <summary>
+	/// A object datatype mapping for an inner object
+	/// </summary>
 	[JsonObject(MemberSerialization.OptIn)]
 	public interface IObjectProperty : ICoreProperty
 	{
+		/// <summary>
+		/// Whether or not new properties should be added dynamically to an existing object.
+		/// Default is <c>true</c>
+		/// </summary>
 		[JsonProperty("dynamic")]
 		Union<bool, DynamicMapping> Dynamic { get; set; }
 
+		/// <summary>
+		/// Whether the JSON value given for this field should be parsed and indexed. Default is <c>true</c>
+		/// </summary>
 		[JsonProperty("enabled")]
 		bool? Enabled { get; set; }
 
-		[JsonProperty("include_in_all")]
-		bool? IncludeInAll { get; set; }
-
+		/// <summary>
+		/// The fields within the object
+		/// </summary>
 		[JsonProperty("properties", TypeNameHandling = TypeNameHandling.None)]
 		IProperties Properties { get; set; }
 	}
 
+	/// <summary>
+	/// A object datatype mapping for an inner object
+	/// </summary>
 	[DebuggerDisplay("{DebugDisplay}")]
 	public class ObjectProperty : CorePropertyBase, IObjectProperty
 	{
 		public ObjectProperty() : base(FieldType.Object) { }
 
-		[Obsolete("Please use overload taking FieldType")]
-		protected ObjectProperty(string type) : base(type) { }
+		protected ObjectProperty(FieldType type) : base(type) { }
 
-#pragma warning disable 618
-		protected ObjectProperty(FieldType type) : this(type.GetStringValue()) { }
-#pragma warning restore 618
-
+		/// <inheritdoc />
 		public Union<bool, DynamicMapping> Dynamic { get; set; }
+		/// <inheritdoc />
 		public bool? Enabled { get; set; }
-		public bool? IncludeInAll { get; set; }
+		/// <inheritdoc />
 		public IProperties Properties { get; set; }
 	}
 
@@ -60,33 +69,33 @@ namespace Nest
 
 		Union<bool, DynamicMapping> IObjectProperty.Dynamic { get; set; }
 		bool? IObjectProperty.Enabled { get; set; }
-		bool? IObjectProperty.IncludeInAll { get; set; }
 		IProperties IObjectProperty.Properties { get; set; }
 
 		protected ObjectPropertyDescriptorBase() : this(FieldType.Object) { }
 
-		[Obsolete("Please use overload taking FieldType")]
-		protected ObjectPropertyDescriptorBase(string type) : base(type)
-		{
+		protected ObjectPropertyDescriptorBase(FieldType type) : base(type) =>
 			_TypeName = TypeName.Create<TChild>();
-		}
 
-#pragma warning disable 618
-		protected ObjectPropertyDescriptorBase(FieldType type) : this(type.GetStringValue()) { }
-#pragma warning restore 618
+		/// <summary>
+		/// Whether or not new properties should be added dynamically to an existing object.
+		/// Default is <c>true</c>
+		/// </summary>
+		public TDescriptor Dynamic(Union<bool, DynamicMapping> dynamic) => Assign(a => a.Dynamic = dynamic);
 
-		public TDescriptor Dynamic(Union<bool, DynamicMapping> dynamic) =>
-			Assign(a => a.Dynamic = dynamic);
+		/// <summary>
+		/// Whether or not new properties should be added dynamically to an existing object.
+		/// Default is <c>true</c>
+		/// </summary>
+		public TDescriptor Dynamic(bool dynamic = true) => Assign(a => a.Dynamic = dynamic);
 
-		public TDescriptor Dynamic(bool dynamic = true) =>
-			Assign(a => a.Dynamic = dynamic);
+		/// <summary>
+		/// Whether the JSON value given for this field should be parsed and indexed. Default is <c>true</c>
+		/// </summary>
+		public TDescriptor Enabled(bool? enabled = true) => Assign(a => a.Enabled = enabled);
 
-		public TDescriptor Enabled(bool enabled = true) =>
-			Assign(a => a.Enabled = enabled);
-
-		public TDescriptor IncludeInAll(bool includeInAll = true) =>
-			Assign(a => a.IncludeInAll = includeInAll);
-
+		/// <summary>
+		/// The fields within the object
+		/// </summary>
 		public TDescriptor Properties(Func<PropertiesDescriptor<TChild>, IPromise<IProperties>> selector) =>
 			Assign(a => a.Properties = selector?.Invoke(new PropertiesDescriptor<TChild>(a.Properties))?.Value);
 

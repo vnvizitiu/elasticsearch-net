@@ -54,11 +54,11 @@ namespace Nest
 		/// Throttles the number of streams (per node) preforming snapshot operation. Defaults to 5
 		/// </summary>
 		/// <param name="concurrentStreams"></param>
-		public ReadOnlyUrlRepositorySettingsDescriptor ConcurrentStreams(int concurrentStreams) =>
+		public ReadOnlyUrlRepositorySettingsDescriptor ConcurrentStreams(int? concurrentStreams) =>
 			Assign(a => a.ConcurrentStreams = concurrentStreams);
 	}
 
-	public class ReadOnlyUrlRepositoryDescriptor 
+	public class ReadOnlyUrlRepositoryDescriptor
 		: DescriptorBase<ReadOnlyUrlRepositoryDescriptor, IReadOnlyUrlRepository>, IReadOnlyUrlRepository
 	{
 		string ISnapshotRepository.Type { get { return "url"; } }

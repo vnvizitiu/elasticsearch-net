@@ -3,16 +3,17 @@ using Newtonsoft.Json;
 
 namespace Nest
 {
+	[JsonObject(MemberSerialization.OptIn)]
 	public interface IRecoveryStatusResponse : IResponse
 	{
-		IReadOnlyDictionary<string, RecoveryStatus> Indices { get; }
+		IReadOnlyDictionary<IndexName, RecoveryStatus> Indices { get; }
 	}
 
-	[JsonObject]
-	public class RecoveryStatusResponse : ResponseBase, IRecoveryStatusResponse
+	[JsonConverter(typeof(ResolvableDictionaryResponseJsonConverter<RecoveryStatusResponse, IndexName, RecoveryStatus>))]
+	public class RecoveryStatusResponse : DictionaryResponseBase<IndexName, RecoveryStatus>, IRecoveryStatusResponse
 	{
+		[JsonIgnore]
+		public IReadOnlyDictionary<IndexName, RecoveryStatus> Indices => Self.BackingDictionary;
 
-		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, RecoveryStatus>))]
-		public IReadOnlyDictionary<string, RecoveryStatus> Indices { get; internal set; } = EmptyReadOnly<string, RecoveryStatus>.Dictionary;
 	}
 }

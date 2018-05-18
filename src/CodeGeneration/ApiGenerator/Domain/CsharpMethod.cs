@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using CsQuery.ExtensionMethods.Internal;
 
 namespace ApiGenerator.Domain
 {
@@ -26,7 +27,6 @@ namespace ApiGenerator.Domain
 		public string Documentation { get; set; }
 		public string Path { get; set; }
 		public string Arguments { get; set; }
-		public bool Allow404 { get; set; }
 		public bool Unmapped { get; set; }
 		public IEnumerable<ApiUrlPart> Parts { get; set; }
 		public ApiUrl Url { get; set; }
@@ -37,7 +37,6 @@ namespace ApiGenerator.Domain
 		{
 			return new CsharpMethod
 			{
-				Allow404 = method.Allow404,
 				Path = method.Path,
 				RequestType = method.RequestType,
 				ReturnDescription = method.ReturnDescription,
@@ -113,38 +112,53 @@ namespace ApiGenerator.Domain
 				var doc = $@"/// <summary>{url}</summary>";
 				if (urlRouteParameters.Any())
 				{
-					doc += "\r\n" + string.Join("\t\t\r\n", urlRouteParameters.Select(p => $"///<param name=\"{p.Key}\">{(p.Value.Required ? "this parameter is required" : "Optional, accepts null")}</param>"));
+					doc += "\r\n\t\t" + string.Join("\r\n\t\t", urlRouteParameters.Select(p => $"///<param name=\"{p.Key}\">{(p.Value.Required ? "this parameter is required" : "Optional, accepts null")}</param>"));
 				}
-				var generated = $"public {m}({par}) : base({routing}){{}}";
+				var generated = $"public {m}({par}) : base({routing})";
 
 				// special case SearchRequest<T> to pass the type of T as the type, when only the index is specified.
 				if ((m == "SearchRequest") && urlRouteParameters.Count() == 1 && !string.IsNullOrEmpty(this.RequestTypeGeneric))
 				{
 					var generic = this.RequestTypeGeneric.Replace("<", "").Replace(">", "");
-					generated = $"public {m}({par}) : this({urlRouteParameters.First().Key}, typeof({generic})){{}}";
+					generated = $"public {m}({par}) : this({urlRouteParameters.First().Key}, typeof({generic}))";
 				}
 
-				if ((m == "SuggestRequest") && string.IsNullOrEmpty(par) && !string.IsNullOrEmpty(this.RequestTypeGeneric))
+				if (string.IsNullOrEmpty(par) && !string.IsNullOrEmpty(this.RequestTypeGeneric))
 				{
 					var generic = this.RequestTypeGeneric.Replace("<", "").Replace(">", "");
 					doc = AppendToSummary(doc, ". Will infer the index from the generic type");
-					generated = $"public {m}({par}) : this(typeof({generic})){{}}";
+					generated = $"public {m}({par}) : this(typeof({generic}))";
 				}
 
-				var c = new Constructor { Generated = generated, Description = doc };
+				var c = new Constructor
+				{
+					Generated = generated,
+					Description = doc,
+					Body = this.IsDocumentRequest ? $" => Q(\"routing\", new Routing(() => AutoRouteDocument()));" : string.Empty
+				};
+
 				ctors.Add(c);
 			}
 			if (IsDocumentPath && !string.IsNullOrEmpty(this.RequestTypeGeneric))
 			{
 				var documentPathGeneric = Regex.Replace(this.DescriptorTypeGeneric, @"^<?([^\s,>]+).*$", "$1");
-				var doc = $@"/// <summary>{this.Url.Path}</summary>";
-				doc += "\r\n\t\t\r\n" + $"///<param name=\"document\"> describes an elasticsearch document of type <typeparamref name=\"{documentPathGeneric}\"/> from which the index, type and id can be inferred</param>";
+				var doc = $"/// <summary>{this.Url.Path}</summary>";
+				doc += "\r\n\t\t" + $"///<param name=\"document\"> describes an elasticsearch document of type <typeparamref name=\"{documentPathGeneric}\"/> from which the index, type and id can be inferred</param>";
 				var documentRoute = "r=>r.Required(\"index\", index ?? document.Self.Index).Required(\"type\", type ?? document.Self.Type).Required(\"id\", id ?? document.Self.Id)";
 				var documentFromPath = $"partial void DocumentFromPath({documentPathGeneric} document);";
 
 				var constructor = $"DocumentPath<{documentPathGeneric}> document, IndexName index = null, TypeName type = null, Id id = null";
 
-				var c = new Constructor { AdditionalCode = documentFromPath, Generated = $"public {m}({constructor}) : base({documentRoute}){{ this.DocumentFromPath(document.Document); }}", Description = doc, };
+				var autoRoute = this.IsDocumentRequest ? "Q(\"routing\", new Routing(() => AutoRouteDocument() ?? document.Document));" : string.Empty;
+				var body = $"{{ this.DocumentFromPath(document.Document); {autoRoute} }}";
+
+				var c = new Constructor
+				{
+					AdditionalCode = documentFromPath,
+					Generated = $"public {m}({constructor}) : base({documentRoute})",
+					Body = body,
+					Description = doc,
+				};
 				ctors.Add(c);
 			}
 			return ctors.DistinctBy(c => c.Generated);
@@ -158,13 +172,15 @@ namespace ApiGenerator.Domain
 			if (string.IsNullOrEmpty(generic))
 			{
 				doc = $@"/// <summary>{this.Url.Path}</summary>";
-				c = new Constructor { Generated = $"public {m}() {{}}", Description = doc };
+				c = new Constructor { Generated = $"public {m}()", Description = doc };
 			}
 			else
 			{
 				doc = $"///<summary>{this.Url.Path}<para><typeparamref name=\"{generic}\"/> describes an elasticsearch document type from which the index, type and id can be inferred</para></summary>";
-				c = new Constructor { Generated = $"public {m}() : this(typeof({generic}), typeof({generic})) {{}}", Description = doc, };
+				c = new Constructor { Generated = $"public {m}() : this(typeof({generic}), typeof({generic}))", Description = doc, };
 			}
+
+			c.Body = this.IsDocumentRequest ? $"Q(\"routing\", new Routing(() => AutoRouteDocument()));" : string.Empty;
 			ctors.Add(c);
 		}
 
@@ -206,37 +222,59 @@ namespace ApiGenerator.Domain
 				var doc = $@"/// <summary>{url}</summary>";
 				if (requiredUrlRouteParameters.Any())
 				{
-					doc += "\r\n" + string.Join("\t\t\r\n", requiredUrlRouteParameters.Select(p => $"///<param name=\"{p.Key}\"> this parameter is required</param>"));
+					doc += "\r\n\t\t" + string.Join("\r\n\t\t", requiredUrlRouteParameters.Select(p => $"///<param name=\"{p.Key}\"> this parameter is required</param>"));
 				}
 
-				var generated = $"public {m}({par}) : base({routing}){{}}";
+				var generated = $"public {m}({par}) : base({routing})";
+				var body = this.IsDocumentRequest ? $"Q(\"routing\", new Routing(() => AutoRouteDocument()));" : string.Empty;
 
 				// Add typeof(T) as the default type when only index specified
 				if ((m == "DeleteByQueryDescriptor" || m == "UpdateByQueryDescriptor") && requiredUrlRouteParameters.Count() == 1 && !string.IsNullOrEmpty(this.RequestTypeGeneric))
 				{
 					var generic = this.RequestTypeGeneric.Replace("<", "").Replace(">", "");
-					generated = $"public {m}({par}) : base({routing}.Required(\"type\", (Types)typeof({generic}))){{}}";
+					generated = $"public {m}({par}) : base({routing}.Required(\"type\", (Types)typeof({generic})))";
 				}
 
-				// Add typeof(T) as the default index to use for Suggest
-				if ((m == "SuggestDescriptor") && !string.IsNullOrEmpty(this.RequestTypeGeneric))
+				if ((m == "SearchShardsDescriptor") && !string.IsNullOrEmpty(this.RequestTypeGeneric))
 				{
 					var generic = this.RequestTypeGeneric.Replace("<", "").Replace(">", "");
 					doc = AppendToSummary(doc, ". Will infer the index from the generic type");
-					generated = $"public {m}({par}) : base(r => r.Required(\"index\", (Indices)typeof({generic}))){{}}";
+					generated = $"public {m}({par}) : base(r => r.Optional(\"index\", (Indices)typeof({generic})))";
 				}
 
-				var c = new Constructor { Generated = generated, Description = doc };
+				// Use generic T to set the Indices and Types by default in the ctor
+				if (m == "PutDatafeedDescriptor" || m == "UpdateDatafeedDescriptor")
+				{
+					var generic = "T";
+					doc = AppendToSummary(doc, ". Will infer the index and type from the generic type");
+					generated = $"public {m}({par}) : base({routing})";
+					body = $"{{ Self.Indices = typeof({generic}); Self.Types = typeof({generic}); {body} }}";
+				}
+
+				var c = new Constructor
+				{
+					Generated = generated,
+					Description = doc,
+					Body = (!body.IsNullOrEmpty() && !body.StartsWith("{")) ? ("=> " + body) : body
+				};
 				ctors.Add(c);
 			}
 			if (IsDocumentPath && !string.IsNullOrEmpty(this.DescriptorTypeGeneric))
 			{
 				var documentPathGeneric = Regex.Replace(this.DescriptorTypeGeneric, @"^<?([^\s,>]+).*$", "$1");
-				var doc = $@"/// <summary>{this.Url.Path}</summary>";
-				doc += "\r\n\t\t\r\n" + $"///<param name=\"document\"> describes an elasticsearch document of type <typeparamref name=\"{documentPathGeneric}\"/> from which the index, type and id can be inferred</param>";
+				var doc = $"/// <summary>{this.Url.Path}</summary>";
+				doc += "\r\n\t\t" + $"///<param name=\"document\"> describes an elasticsearch document of type <typeparamref name=\"{documentPathGeneric}\"/> from which the index, type and id can be inferred</param>";
 				var documentRoute = "r=>r.Required(\"index\", document.Self.Index).Required(\"type\", document.Self.Type).Required(\"id\", document.Self.Id)";
 				var documentFromPath = $"partial void DocumentFromPath({documentPathGeneric} document);";
-				var c = new Constructor { AdditionalCode = documentFromPath, Generated = $"public {m}(DocumentPath<{documentPathGeneric}> document) : base({documentRoute}){{ this.DocumentFromPath(document.Document); }}", Description = doc };
+				var autoRoute = this.IsDocumentRequest ? $"Q(\"routing\", new Routing(() => AutoRouteDocument() ?? document.Document));" : string.Empty;
+				var c = new Constructor
+				{
+					AdditionalCode = documentFromPath,
+					Generated =
+						$"public {m}(DocumentPath<{documentPathGeneric}> document) : base({documentRoute})",
+					Description = doc,
+					Body = $"{{ this.DocumentFromPath(document.Document); {autoRoute}}}"
+				};
 				ctors.Add(c);
 			}
 
@@ -248,9 +286,10 @@ namespace ApiGenerator.Domain
 			var generic = this.DescriptorTypeGeneric?.Replace("<", "").Replace(">", "");
 			var doc = $@"/// <summary>{this.Url.Path}</summary>";
 			var documentRoute = $"r=> r.Required(\"index\", (Indices)typeof({generic})).Required(\"type\", (Types)typeof({generic}))";
-			var c = new Constructor { Generated = $"public {m}() : base({documentRoute}){{}}", Description = doc };
+			var c = new Constructor { Generated = $"public {m}() : base({documentRoute})", Description = doc };
 			if (string.IsNullOrEmpty(generic))
-				c = new Constructor { Generated = $"public {m}() {{}}", Description = doc };
+				c = new Constructor { Generated = $"public {m}()", Description = doc };
+			c.Body = this.IsDocumentRequest ? $" => Q(\"routing\", new Routing(() => AutoRouteDocument()));" : string.Empty;
 			ctors.Add(c);
 		}
 
@@ -325,6 +364,7 @@ namespace ApiGenerator.Domain
 		private bool IsScroll => this.Url.Parts.All(p => p.Key == "scroll_id");
 		public bool IndicesAndTypes => AllParts.Count() == 2 && AllParts.All(p => p.Type == "list") && AllParts.All(p => new[] { "index", "type" }.Contains(p.Name));
 		public bool IsDocumentPath => AllParts.Count() == 3 && AllParts.All(p => p.Type != "list") && AllParts.All(p => new[] { "index", "type", "id" }.Contains(p.Name));
+		public bool IsDocumentRequest => this.IsDocumentPath && this.Url.Params.ContainsKey("routing");
 		public IEnumerable<ApiUrlPart> AllParts => (this.Url?.Parts?.Values ?? Enumerable.Empty<ApiUrlPart>()).Where(p => !string.IsNullOrWhiteSpace(p.Name));
 	}
 }

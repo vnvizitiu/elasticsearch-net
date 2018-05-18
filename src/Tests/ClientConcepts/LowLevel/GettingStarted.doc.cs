@@ -107,10 +107,10 @@ namespace Tests.ClientConcepts.LowLevel
                 LastName = "Laarman"
             };
 
-            var indexResponse = lowlevelClient.Index<byte[]>("people", "person", "1", person); //<1> synchronous method that returns an `IIndexResponse`
+            var indexResponse = lowlevelClient.Index<BytesResponse>("people", "person", "1", PostData.Serializable(person)); //<1> synchronous method that returns an `IIndexResponse`
             byte[] responseBytes = indexResponse.Body;
 
-            var asyncIndexResponse = await lowlevelClient.IndexAsync<string>("people", "person", "1", person); //<2> asynchronous method that returns a `Task<IIndexResponse>` that can be awaited
+            var asyncIndexResponse = await lowlevelClient.IndexAsync<StringResponse>("people", "person", "1", PostData.Serializable(person)); //<2> asynchronous method that returns a `Task<IIndexResponse>` that can be awaited
             string responseString = asyncIndexResponse.Body;
         }
 
@@ -130,17 +130,18 @@ namespace Tests.ClientConcepts.LowLevel
 				LastName = "Laarman"
 			};
 
-			var indexResponse = await lowlevelClient.IndexAsync<Stream>("people", "person", "1", person);
-			Stream responseStream = indexResponse.Body; // <1> If returning a `Stream`, be sure to properly https://msdn.microsoft.com/en-us/library/b1yfkh5e(v=vs.110).aspx[dispose] of it when you are finished with it.
+			var indexResponse = await lowlevelClient.IndexAsync<BytesResponse>("people", "person", "1", PostData.Serializable(person));
+			byte[] responseStream = indexResponse.Body;
 		}
 
 		/**
+		* For API's that take a body you can send the body as an (anonymous) object, byte[], string, stream. Additionally for API's that
+		* take multilined json you can also send a list of objects or a list of bytes to help you format this. These are all encapsulated
+		* by `PostData` and you can use the static methods on that class to send the body in whatever form you have it.
+		* Check out the documentation on <<post-data, Post Data>> to see all of these permutations in action.
 		*
-		* Whether you use an instance of a class, anonymous type, `string`, etc. they all are implicitly converted to an instance of `PostData<T>` that
-		* the method accepts. Check out the documentation on <<post-data, Post Data>> to see the other types that are supported.
-		*
-		* The generic type parameter on the method specifies the type of the response body. In the last example, we return the response stream
-		* from Elasticsearch, forgoing any deserialization.
+		* The generic type parameter on the method specifies the type of the response body. In the last example, we return the response as a
+		* string from Elasticsearch, forgoing any deserialization.
 		*
 		* [float]
 		* ==== Bulk indexing
@@ -159,8 +160,8 @@ namespace Tests.ClientConcepts.LowLevel
 				new { FirstName = "Russ", LastName = "Cam" },
 		    };
 
-			var indexResponse = lowlevelClient.Bulk<Stream>(people);
-			Stream responseStream = indexResponse.Body;
+			var indexResponse = lowlevelClient.Bulk<StringResponse>(PostData.MultiJson(people));
+			string responseStream = indexResponse.Body;
 		}
 		/**
 		* The client will serialize each item seperately and join items up using the `\n` character as required by the Bulk API. Refer to the
@@ -175,7 +176,7 @@ namespace Tests.ClientConcepts.LowLevel
 		*/
 		public void SearchingWithAnonymousTypes()
         {
-            var searchResponse = lowlevelClient.Search<string>("people", "person", new
+            var searchResponse = lowlevelClient.Search<StringResponse>("people", "person", PostData.Serializable(new
             {
                 from = 0,
                 size = 10,
@@ -187,7 +188,7 @@ namespace Tests.ClientConcepts.LowLevel
                         query = "Martijn"
                     }
                 }
-            });
+            }));
 
             var successful = searchResponse.Success;
             var responseJson = searchResponse.Body;
@@ -202,7 +203,7 @@ namespace Tests.ClientConcepts.LowLevel
          */
          public void SearchingWithStrings()
         {
-            var searchResponse = lowlevelClient.Search<byte[]>("people", "person", @"
+            var searchResponse = lowlevelClient.Search<BytesResponse>("people", "person", @"
             {
                 ""from"": 0,
                 ""size"": 10,
@@ -227,7 +228,7 @@ namespace Tests.ClientConcepts.LowLevel
         * Elasticsearch.Net does not provide typed objects to represent responses; if you need this, you should consider
         * using <<nest, NEST, the high level client>>, that does map all requests and responses to types. You can work with
         * strong types with Elasticsearch.Net but it will be up to you as the developer to configure Elasticsearch.Net so that
-        * it understands how to deserialize your types, most likely by providing your own <<changing-serializers, IElasticsearchSerializer>> implementation
+        * it understands how to deserialize your types, most likely by providing your own <<custom-serialization, IElasticsearchSerializer>> implementation
         * to `ConnectionConfiguration`.
         * --
         *
@@ -243,12 +244,11 @@ namespace Tests.ClientConcepts.LowLevel
         */
         public void ResponseProperties()
         {
-            var searchResponse = lowlevelClient.Search<byte[]>("people", "person", new { match_all = new {} });
+            var searchResponse = lowlevelClient.Search<BytesResponse>("people", "person", PostData.Serializable(new { match_all = new {} }));
 
             var success = searchResponse.Success; // <1> Response is in the 200 range, or an expected response for the given request
             var successOrKnownError = searchResponse.SuccessOrKnownError; // <2> Response is successful, or has a response code between 400-599 that indicates the request cannot be retried.
-            var serverError = searchResponse.ServerError; // <3> Details of any error returned from Elasticsearch
-            var exception = searchResponse.OriginalException; // <4> If the response is unsuccessful, will hold the original exception.
+            var exception = searchResponse.OriginalException; // <3> If the response is unsuccessful, will hold the original exception.
         }
 
         /**

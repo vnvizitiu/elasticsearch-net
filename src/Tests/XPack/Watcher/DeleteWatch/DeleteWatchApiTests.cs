@@ -29,7 +29,7 @@ namespace Tests.XPack.Watcher.DeleteWatch
 						)
 					)
 					.Actions(a => a
-						.Email("reminder_email", e => e 
+						.Email("reminder_email", e => e
 							.To("me@example.com")
 							.Subject("Something's strange in the neighbourhood")
 							.Body(b => b
@@ -65,8 +65,7 @@ namespace Tests.XPack.Watcher.DeleteWatch
 
 		protected override Func<DeleteWatchDescriptor, IDeleteWatchRequest> Fluent => p => p;
 
-		protected override DeleteWatchRequest Initializer =>
-			new DeleteWatchRequest(CallIsolatedValue);
+		protected override DeleteWatchRequest Initializer => new DeleteWatchRequest(CallIsolatedValue);
 
 		protected override void ExpectResponse(IDeleteWatchResponse response)
 		{
@@ -87,7 +86,7 @@ namespace Tests.XPack.Watcher.DeleteWatch
 			requestAsync: (client, r) => client.DeleteWatchAsync(r)
 		);
 
-		protected override bool ExpectIsValid => true;
+		protected override bool ExpectIsValid => false;
 		protected override int ExpectStatusCode => 404;
 		protected override HttpMethod HttpMethod => HttpMethod.DELETE;
 
@@ -101,11 +100,17 @@ namespace Tests.XPack.Watcher.DeleteWatch
 
 		protected override Func<DeleteWatchDescriptor, IDeleteWatchRequest> Fluent => p => p;
 
-		protected override DeleteWatchRequest Initializer =>
-			new DeleteWatchRequest(CallIsolatedValue);
+		protected override DeleteWatchRequest Initializer => new DeleteWatchRequest(CallIsolatedValue);
 
 		protected override void ExpectResponse(IDeleteWatchResponse response)
 		{
+			//This API returns different results depending on wheter `.watches` exists or not
+			if (response.ServerError?.Status == 404)
+			{
+				response.ServerError.Error.Reason.Should().Be("no such index");
+				return;
+			}
+
 			response.Version.Should().Be(1);
 			response.Found.Should().BeFalse();
 			response.Id.Should().Be(CallIsolatedValue);

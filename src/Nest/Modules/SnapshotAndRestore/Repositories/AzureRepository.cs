@@ -7,6 +7,12 @@ namespace Nest
 
 	public class AzureRepository : IAzureRepository
 	{
+		public AzureRepository() { }
+
+		public AzureRepository(IAzureRepositorySettings settings)
+		{
+			Settings = settings;
+		}
 		public IAzureRepositorySettings Settings { get; set; }
 		public string Type { get; } = "azure";
 	}
@@ -41,7 +47,7 @@ namespace Nest
 		public string ChunkSize { get; set; }
 	}
 
-	public class AzureRepositorySettingsDescriptor 
+	public class AzureRepositorySettingsDescriptor
 		: DescriptorBase<AzureRepositorySettingsDescriptor, IAzureRepositorySettings>, IAzureRepositorySettings
 	{
 		string IAzureRepositorySettings.BasePath { get; set; }
@@ -63,11 +69,11 @@ namespace Nest
 		public AzureRepositorySettingsDescriptor BasePath(string basePath) => Assign(a => a.BasePath = basePath);
 
 		/// <summary>
-		/// When set to true metadata files are stored in compressed format. This setting doesn't 
+		/// When set to true metadata files are stored in compressed format. This setting doesn't
 		/// affect index files that are already compressed by default. Defaults to false.
 		/// </summary>
 		/// <param name="compress"></param>
-		public AzureRepositorySettingsDescriptor Compress(bool compress = true) => Assign(a => a.Compress = compress);
+		public AzureRepositorySettingsDescriptor Compress(bool? compress = true) => Assign(a => a.Compress = compress);
 
 		/// <summary>
 		///  Big files can be broken down into chunks during snapshotting if needed.

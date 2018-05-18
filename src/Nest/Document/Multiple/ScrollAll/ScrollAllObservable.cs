@@ -31,7 +31,7 @@ namespace Nest
 			this._searchRequest = scrollAllRequest?.Search ?? new SearchRequest<T>();
 			if (this._searchRequest.Sort == null)
 				this._searchRequest.Sort = SortField.ByDocumentOrder;
-			this._searchRequest.RequestParameters.Scroll(this._scrollAllRequest.ScrollTime.ToTimeSpan());
+			this._searchRequest.RequestParameters.Scroll = this._scrollAllRequest.ScrollTime.ToTimeSpan();
 			this._client = client;
 			this._compositeCancelTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 			this._compositeCancelToken = this._compositeCancelTokenSource.Token;
@@ -88,7 +88,7 @@ namespace Nest
 			while (searchResult.IsValid && searchResult.Documents.HasAny())
 			{
 				if (this._backPressure != null)
-					await this._backPressure.WaitAsync(_compositeCancelToken);
+					await this._backPressure.WaitAsync(_compositeCancelToken).ConfigureAwait(false);
 
 				observer.OnNext(new ScrollAllResponse<T>()
 				{

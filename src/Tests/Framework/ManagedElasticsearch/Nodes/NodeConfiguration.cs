@@ -18,12 +18,14 @@ namespace Tests.Framework.ManagedElasticsearch.Nodes
 		public bool TestAgainstAlreadyRunningElasticsearch { get; }
 		public bool RunIntegrationTests { get; }
 		public bool RunUnitTests { get; }
+		public RandomConfiguration Random { get; }
 		public string ClusterFilter { get; }
 		public string TestFilter { get; }
 		public NodeFileSystem FileSystem { get; }
 		public int DesiredPort { get; }
+		public int Seed { get; }
 
-		public ElasticsearchPlugin[] RequiredPlugins { get; } = { };
+		public ElasticsearchPlugin[] RequiredPlugins { get; }
 
 		public bool XPackEnabled => this.RequiredPlugins.Contains(ElasticsearchPlugin.XPack);
 		public bool EnableSsl { get; }
@@ -39,10 +41,11 @@ namespace Tests.Framework.ManagedElasticsearch.Nodes
 		public NodeConfiguration(ITestConfiguration configuration, ClusterBase cluster)
 		{
 			this._cluster = cluster;
-			this.EnableSsl = cluster.SkipValidation;
+			this.EnableSsl = cluster.EnableSsl;
 
 			this.RequiredPlugins = ClusterRequiredPlugins(cluster);
 			this.Mode = configuration.Mode;
+			this.Random = configuration.Random;
 
 			var v = configuration.ElasticsearchVersion;
 			this.ElasticsearchVersion = v;
@@ -52,13 +55,14 @@ namespace Tests.Framework.ManagedElasticsearch.Nodes
 			this.RunUnitTests = configuration.RunUnitTests;
 			this.ClusterFilter = configuration.ClusterFilter;
 			this.TestFilter = configuration.TestFilter;
+			this.Seed = configuration.Seed;
 			this.FileSystem = new NodeFileSystem(configuration.ElasticsearchVersion, this.ClusterName, this.NodeName);
 			this.DesiredPort = cluster.DesiredPort;
 
 			var attr = v.Major >= 5 ? "attr." : "";
-			var indexedOrStored = v > ElasticsearchVersion.GetOrAdd("5.0.0-alpha1") ? "stored" : "indexed";
-			var shieldOrSecurity = v > ElasticsearchVersion.GetOrAdd("5.0.0-alpha1") ? "xpack.security" : "shield";
-			var es = v > ElasticsearchVersion.GetOrAdd("5.0.0-alpha2") ? "" : "es.";
+			var indexedOrStored = v > ElasticsearchVersion.Create("5.0.0-alpha1") ? "stored" : "indexed";
+			var shieldOrSecurity = v > ElasticsearchVersion.Create("5.0.0-alpha1") ? "xpack.security" : "shield";
+			var es = v > ElasticsearchVersion.Create("5.0.0-alpha2") ? "" : "es.";
 			var b = this.XPackEnabled.ToString().ToLowerInvariant();
 			var sslEnabled = this.EnableSsl.ToString().ToLowerInvariant();
 			this.DefaultNodeSettings = new List<string>
@@ -68,9 +72,6 @@ namespace Tests.Framework.ManagedElasticsearch.Nodes
 				$"{es}path.repo={this.FileSystem.RepositoryPath}",
 				$"{es}path.data={this.FileSystem.DataPath}",
 				$"{es}http.port={this.DesiredPort}",
-				$"{es}script.inline=true",
-				$"{es}script.max_compilations_per_minute=10000",
-				$"{es}script.{indexedOrStored}=true",
 				$"{es}node.{attr}testingcluster=true",
 				$"{es}node.{attr}gateway=true",
 				$"{es}{shieldOrSecurity}.enabled={b}",
@@ -78,6 +79,25 @@ namespace Tests.Framework.ManagedElasticsearch.Nodes
 				$"{es}{shieldOrSecurity}.authc.realms.pki1.enabled={sslEnabled}",
 				$"{es}search.remote.connect=true"
 			};
+			//script.max_compilations_rate
+			if (v < ElasticsearchVersion.Create("6.0.0-rc1"))
+				this.DefaultNodeSettings.Add($"{es}script.max_compilations_per_minute=10000");
+			else
+				this.DefaultNodeSettings.Add($"{es}script.max_compilations_rate=10000/1m");
+
+			if (v < ElasticsearchVersion.Create("5.5.0"))
+			{
+				this.DefaultNodeSettings.AddRange(new [] {
+					$"{es}script.inline=true",
+					$"{es}script.{indexedOrStored}=true",
+				});
+			}
+			else
+			{
+				this.DefaultNodeSettings.AddRange(new [] {
+					$"script.allowed_types=inline,stored",
+				});
+			}
 		}
 
 		public string[] CreateSettings(string[] additionalSettings)

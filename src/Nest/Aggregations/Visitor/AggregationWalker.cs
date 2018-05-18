@@ -39,6 +39,7 @@ namespace Nest
 			AcceptAggregation(aggregation.Average, visitor, (v, d) => v.Visit(d));
 			AcceptAggregation(aggregation.AverageBucket, visitor, (v, d) => v.Visit(d));
 			AcceptAggregation(aggregation.BucketScript, visitor, (v, d) => v.Visit(d));
+			AcceptAggregation(aggregation.BucketSort, visitor, (v, d) => v.Visit(d));
 			AcceptAggregation(aggregation.BucketSelector, visitor, (v, d) => v.Visit(d));
 			AcceptAggregation(aggregation.Cardinality, visitor, (v, d) => v.Visit(d));
 			AcceptAggregation(aggregation.Children, visitor, (v, d) => { v.Visit(d); this.Accept(v, d.Aggregations); });
@@ -70,6 +71,7 @@ namespace Nest
 			AcceptAggregation(aggregation.ScriptedMetric, visitor, (v, d) => v.Visit(d));
 			AcceptAggregation(aggregation.SerialDifferencing, visitor, (v, d) => v.Visit(d));
 			AcceptAggregation(aggregation.SignificantTerms, visitor, (v, d) => { v.Visit(d); this.Accept(v, d.Aggregations); });
+			AcceptAggregation(aggregation.SignificantText, visitor, (v, d) => { v.Visit(d); this.Accept(v, d.Aggregations); });
 			AcceptAggregation(aggregation.Stats, visitor, (v, d) => v.Visit(d));
 			AcceptAggregation(aggregation.Sum, visitor, (v, d) => v.Visit(d));
 			AcceptAggregation(aggregation.SumBucket, visitor, (v, d) => v.Visit(d));

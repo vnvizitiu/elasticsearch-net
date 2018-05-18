@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -79,6 +79,8 @@ var methodGroups =
         (methodInfo.ReturnType.IsGenericType()
          && typeof(Task<>) == methodInfo.ReturnType.GetGenericTypeDefinition()
          && typeof(IResponse).IsAssignableFrom(methodInfo.ReturnType.GetGenericArguments()[0]))
+    where !methodInfo.Name.Contains("CreateDocument")
+    where !methodInfo.Name.Contains("IndexDocument")
     let method = new MethodWithRequestParameter(methodInfo)
     group method by method.Name into methodGroup
     select methodGroup;

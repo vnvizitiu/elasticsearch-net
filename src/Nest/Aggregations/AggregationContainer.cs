@@ -5,6 +5,10 @@ using Newtonsoft.Json;
 
 namespace Nest
 {
+	/// <summary>
+	/// Describes aggregations that we would like to execute on elasticsearch. In NEST `Aggregation` always refers to an aggregation
+	/// going to elasticsearch and an `Aggregate` describes an aggregation going out.
+	/// </summary>
 	[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, IAggregationContainer>))]
 	public class AggregationDictionary : IsADictionaryBase<string, IAggregationContainer>
 	{
@@ -23,8 +27,7 @@ namespace Nest
 		public static implicit operator AggregationDictionary(AggregationBase aggregator)
 		{
 			IAggregation b;
-			var combinator = aggregator as AggregationCombinator;
-			if (combinator != null)
+			if (aggregator is AggregationCombinator combinator)
 			{
 				var dict = new AggregationDictionary();
 				foreach (var agg in combinator.Aggregations)
@@ -45,7 +48,7 @@ namespace Nest
 
 		public void Add(string key, AggregationContainer value) => this.BackingDictionary.Add(ValidateKey(key), value);
 
-		public override string ValidateKey(string key)
+		protected override string ValidateKey(string key)
 		{
 			if (AggregateJsonConverter.AllReservedAggregationNames.Contains(key))
 				throw new ArgumentException(
@@ -135,6 +138,9 @@ namespace Nest
 		[JsonProperty("significant_terms")]
 		ISignificantTermsAggregation SignificantTerms { get; set; }
 
+		[JsonProperty("significant_text")]
+		ISignificantTextAggregation SignificantText { get; set; }
+
 		[JsonProperty("value_count")]
 		IValueCountAggregation ValueCount { get; set; }
 
@@ -188,6 +194,9 @@ namespace Nest
 
 		[JsonProperty("bucket_selector")]
 		IBucketSelectorAggregation BucketSelector { get; set; }
+
+		[JsonProperty("bucket_sort")]
+		IBucketSortAggregation BucketSort { get; set; }
 
 		[JsonProperty("sampler")]
 		ISamplerAggregation Sampler { get; set; }
@@ -253,6 +262,8 @@ namespace Nest
 
 		public ISignificantTermsAggregation SignificantTerms { get; set; }
 
+		public ISignificantTextAggregation SignificantText { get; set; }
+
 		public IPercentileRanksAggregation PercentileRanks { get; set; }
 
 		public ITopHitsAggregation TopHits { get; set; }
@@ -287,6 +298,8 @@ namespace Nest
 
 		public IBucketSelectorAggregation BucketSelector { get; set; }
 
+		public IBucketSortAggregation BucketSort { get; set; }
+
 		public ISamplerAggregation Sampler { get; set; }
 
 		public IGeoCentroidAggregation GeoCentroid { get; set; }
@@ -304,6 +317,16 @@ namespace Nest
 			aggregator.WrapInContainer(container);
 			var bucket = aggregator as BucketAggregationBase;
 			container.Aggregations = bucket?.Aggregations;
+
+			var combinator = aggregator as AggregationCombinator;
+			if (combinator?.Aggregations != null)
+			{
+				var dict = new AggregationDictionary();
+				foreach (var agg in combinator.Aggregations)
+					dict.Add(((IAggregation) agg).Name, agg);
+				container.Aggregations = dict;
+			}
+
 			container.Meta = aggregator.Meta;
 			return container;
 		}
@@ -370,6 +393,8 @@ namespace Nest
 
 		ISignificantTermsAggregation IAggregationContainer.SignificantTerms { get; set; }
 
+		ISignificantTextAggregation IAggregationContainer.SignificantText { get; set; }
+
 		IPercentileRanksAggregation IAggregationContainer.PercentileRanks { get; set; }
 
 		ITermsAggregation IAggregationContainer.Terms { get; set; }
@@ -405,6 +430,8 @@ namespace Nest
 		IBucketScriptAggregation IAggregationContainer.BucketScript { get; set; }
 
 		IBucketSelectorAggregation IAggregationContainer.BucketSelector { get; set; }
+
+		IBucketSortAggregation IAggregationContainer.BucketSort { get; set; }
 
 		ISamplerAggregation IAggregationContainer.Sampler { get; set; }
 
@@ -507,16 +534,16 @@ namespace Nest
 			_SetInnerAggregation(name, selector, (a, d) => a.Sum = d);
 
 		public AggregationContainerDescriptor<T> Terms(string name,
-			Func<TermsAggregationDescriptor<T, string>, ITermsAggregation<string>> selector) =>
-			_SetInnerAggregation(name, selector, (a, d) => a.Terms = d);
-
-		public AggregationContainerDescriptor<T> Terms<TFieldType>(string name,
-			Func<TermsAggregationDescriptor<T, TFieldType>, ITermsAggregation<TFieldType>> selector) =>
+			Func<TermsAggregationDescriptor<T>, ITermsAggregation> selector) =>
 			_SetInnerAggregation(name, selector, (a, d) => a.Terms = d);
 
 		public AggregationContainerDescriptor<T> SignificantTerms(string name,
 			Func<SignificantTermsAggregationDescriptor<T>, ISignificantTermsAggregation> selector) =>
 			_SetInnerAggregation(name, selector, (a, d) => a.SignificantTerms = d);
+
+		public AggregationContainerDescriptor<T> SignificantText(string name,
+			Func<SignificantTextAggregationDescriptor<T>, ISignificantTextAggregation> selector) =>
+			_SetInnerAggregation(name, selector, (a, d) => a.SignificantText = d);
 
 		public AggregationContainerDescriptor<T> ValueCount(string name,
 			Func<ValueCountAggregationDescriptor<T>, IValueCountAggregation> selector) =>
@@ -586,6 +613,10 @@ namespace Nest
 			Func<BucketSelectorAggregationDescriptor, IBucketSelectorAggregation> selector) =>
 			_SetInnerAggregation(name, selector, (a, d) => a.BucketSelector = d);
 
+		public AggregationContainerDescriptor<T> BucketSort(string name,
+			Func<BucketSortAggregationDescriptor<T>, IBucketSortAggregation> selector) =>
+			_SetInnerAggregation(name, selector, (a, d) => a.BucketSort = d);
+
 		public AggregationContainerDescriptor<T> Sampler(string name,
 			Func<SamplerAggregationDescriptor<T>, ISamplerAggregation> selector) =>
 			_SetInnerAggregation(name, selector, (a, d) => a.Sampler = d);
@@ -616,7 +647,7 @@ namespace Nest
 			var aggregator = selector(new TAggregator());
 
 			//create new isolated container for new aggregator and assign to the right property
-			var container = new AggregationContainer() { Meta = aggregator.Meta };
+			var container = new AggregationContainer { Meta = aggregator.Meta };
 
 			assignToProperty(container, aggregator);
 
@@ -625,8 +656,7 @@ namespace Nest
 			if (self.Aggregations == null) self.Aggregations = new Dictionary<string, IAggregationContainer>();
 
 			//if the aggregator is a bucket aggregator (meaning it contains nested aggregations);
-			var bucket = aggregator as IBucketAggregation;
-			if (bucket != null && bucket.Aggregations.HasAny())
+			if (aggregator is IBucketAggregation bucket && bucket.Aggregations.HasAny())
 			{
 				//make sure we copy those aggregations to the isolated container's
 				//own .Aggregations container (the one that gets serialized to "aggs")
@@ -650,9 +680,12 @@ namespace Nest
 		//always evaluate to false so that each side of && equation is evaluated
 		public static bool operator true(AggregationContainerDescriptor<T> a) => false;
 
-
 		public static AggregationContainerDescriptor<T> operator &(AggregationContainerDescriptor<T> left, AggregationContainerDescriptor<T> right)
 		{
+			if (right == null) return left;
+			if (left == null) return right;
+			if (Equals(left, right)) return left;
+
 			var d = new AggregationContainerDescriptor<T>();
 			var leftAggs = (IDictionary<string, IAggregationContainer>)((IAggregationContainer)left).Aggregations;
 			var rightAggs = (IDictionary<string, IAggregationContainer>)((IAggregationContainer)right).Aggregations;

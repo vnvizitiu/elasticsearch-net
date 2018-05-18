@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Text;
+using Elasticsearch.Net;
 using Nest;
-using Newtonsoft.Json;
 using Tests.Framework;
 using static Tests.Framework.RoundTripper;
 
@@ -18,21 +18,28 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 	**/
 	public class AutoMap
 	{
-        /**
+		private IElasticClient client = TestClient.GetInMemoryClient(c => c.DisableDirectStreaming());
+
+		/**
 		* We'll look at the features of auto mapping with a number of examples. For this,
-        * we'll define two POCOs, `Company`, which has a name
+		* we'll define two POCOs, `Company`, which has a name
 		* and a collection of Employees, and `Employee` which has various properties of
 		* different types, and itself has a collection of `Employee` types.
 		*/
-        public class Company
+
+		public abstract class Document
+		{
+			public JoinField Join { get; set; }
+		}
+
+		public class Company : Document
 		{
 			public string Name { get; set; }
 			public List<Employee> Employees { get; set; }
 		}
 
-		public class Employee
+		public class Employee : Document
 		{
-			public string FirstName { get; set; }
 			public string LastName { get; set; }
 			public int Salary { get; set; }
 			public DateTime Birthday { get; set; }
@@ -46,55 +53,48 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 		{
 			/**
             * Auto mapping can take the pain out of having to define a manual mapping for all properties
-            * on the POCO
+            * on the POCO. In this case we want to index two subclasses into a single index. We call Map
+            * for the base class and then call AutoMap foreach of the types we want it it the implement
 			*/
-			var descriptor = new CreateIndexDescriptor("myindex")
-				.Mappings(ms => ms
-					.Map<Company>(m => m.AutoMap()) // <1> Auto map `Company`
-					.Map<Employee>(m => m.AutoMap()) // <2> Auto map `Employee`
-				);
 
-            // json
+			var createIndexResponse = client.CreateIndex("myindex", c => c
+				.Mappings(ms => ms
+					.Map<Document>(m => m
+						.AutoMap<Company>() // <1> Auto map `Company` using the generic method
+						.AutoMap(typeof(Employee)) // <2> Auto map `Employee` using the non-generic method
+					)
+				)
+			);
+
+			/**
+			 * This produces the following JSON request
+			 */
+			// json
 			var expected = new
 			{
 				mappings = new
 				{
-					company = new
+					document = new
 					{
 						properties = new
 						{
+							birthday = new {type = "date"},
 							employees = new
 							{
 								properties = new
 								{
-									birthday = new
-									{
-										type = "date"
-									},
+									birthday = new {type = "date"},
 									employees = new
 									{
 										properties = new { },
 										type = "object"
 									},
-									firstName = new
+									hours = new {type = "long"},
+									isManager = new {type = "boolean"},
+									join = new
 									{
-										fields = new
-										{
-											keyword = new
-											{
-												type = "keyword",
-												ignore_above = 256
-											}
-										},
-										type = "text"
-									},
-									hours = new
-									{
-										type = "long"
-									},
-									isManager = new
-									{
-										type = "boolean"
+										properties = new { },
+										type = "object"
 									},
 									lastName = new
 									{
@@ -102,65 +102,22 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 										{
 											keyword = new
 											{
-												type = "keyword",
-												ignore_above = 256
+												ignore_above = 256,
+												type = "keyword"
 											}
 										},
 										type = "text"
 									},
-									salary = new
-									{
-										type = "integer"
-									}
+									salary = new {type = "integer"}
 								},
 								type = "object"
 							},
-							name = new
-							{
-								fields = new
-								{
-									keyword = new
-									{
-										type = "keyword",
-										ignore_above = 256
-									}
-								},
-								type = "text"
-							}
-						}
-					},
-					employee = new
-					{
-						properties = new
-						{
-							birthday = new
-							{
-								type = "date"
-							},
-							employees = new
+							hours = new {type = "long"},
+							isManager = new {type = "boolean"},
+							join = new
 							{
 								properties = new { },
 								type = "object"
-							},
-							firstName = new
-							{
-								fields = new
-								{
-									keyword = new
-									{
-										type = "keyword",
-										ignore_above = 256
-									}
-								},
-								type = "text"
-							},
-							hours = new
-							{
-								type = "long"
-							},
-							isManager = new
-							{
-								type = "boolean"
 							},
 							lastName = new
 							{
@@ -168,24 +125,33 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 								{
 									keyword = new
 									{
-										type = "keyword",
-										ignore_above = 256
+										ignore_above = 256,
+										type = "keyword"
 									}
 								},
 								type = "text"
 							},
-							salary = new
+							name = new
 							{
-								type = "integer"
-							}
+								fields = new
+								{
+									keyword = new
+									{
+										ignore_above = 256,
+										type = "keyword"
+									}
+								},
+								type = "text"
+							},
+							salary = new {type = "integer"}
 						}
 					}
 				}
 			};
 
-            // hide
-			Expect(expected).WhenSerializing((ICreateIndexRequest)descriptor);
-        }
+			// hide
+			Expect(expected).NoRoundTrip().WhenSerializing(Encoding.UTF8.GetString(createIndexResponse.ApiCall.RequestBodyInBytes));
+		}
 
 		public class ParentWithStringId : IgnoringProperties.Parent
 		{
@@ -195,13 +161,25 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 		[U]
 		public void OverridingInheritedProperties()
 		{
-			var descriptor = new CreateIndexDescriptor("myindex")
+			var connectionSettings = new ConnectionSettings(new InMemoryConnection()) // <1> we're using an _in memory_ connection for this example. In your production application though, you'll want to use an `IConnection` that actually sends a request.
+				.DisableDirectStreaming() // <2> we disable direct streaming here to capture the request and response bytes. In your production application however, you'll likely not want to do this, since it causes the request and response bytes to be buffered in memory.
+				.DefaultMappingFor<ParentWithStringId>(m => m
+					.TypeName("parent")
+					.Ignore(p => p.Description)
+					.Ignore(p => p.IgnoreMe)
+				);
+
+			var client = new ElasticClient(connectionSettings);
+
+			var createIndexResponse = client.CreateIndex("myindex", c => c
 				.Mappings(ms => ms
 					.Map<ParentWithStringId>(m => m
 						.AutoMap()
 					)
-				);
+				)
+			);
 
+			// json
 			var expected = new
 			{
 				mappings = new
@@ -227,15 +205,8 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 				}
 			};
 
-			var settings = WithConnectionSettings(s => s
-				.InferMappingFor<ParentWithStringId>(m => m
-					.TypeName("parent")
-					.Ignore(p => p.Description)
-					.Ignore(p => p.IgnoreMe)
-				)
-			);
-
-			settings.Expect(expected).WhenSerializing((ICreateIndexRequest) descriptor);
+			// hide
+			Expect(expected).NoRoundTrip().WhenSerializing(Encoding.UTF8.GetString(createIndexResponse.ApiCall.RequestBodyInBytes));
 		}
 		/**
 		 * Observe that NEST has inferred the Elasticsearch types based on the CLR type of our POCO properties.
@@ -252,34 +223,35 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
          *
          * NEST has inferred mapping support for the following .NET types
          *
-         * - `String` maps to `"text"` with a `"keyword"` sub field. See <<multi-fields, Multi Fields>>.
-         * - `Int32` maps to `"integer"`
-         * - `UInt16` maps to `"integer"`
-         * - `Int16` maps to `"short"`
-         * - `Byte` maps to `"short"`
-         * - `Int64` maps to `"long"`
-         * - `UInt32` maps to `"long"`
-         * - `TimeSpan` maps to `"long"`
-         * - `Single` maps to `"float"`
-         * - `Double` maps to `"double"`
-         * - `Decimal` maps to `"double"`
-         * - `UInt64` maps to `"double"`
-         * - `DateTime` maps to `"date"`
-         * - `DateTimeOffset` maps to `"date"`
-         * - `Boolean` maps to `"boolean"`
-         * - `Char` maps to `"keyword"`
-         * - `Guid` maps to `"keyword"`
+		 * [horizontal]
+         * `String`:: maps to `"text"` with a `"keyword"` sub field. See <<multi-fields, Multi Fields>>.
+         * `Int32`:: maps to `"integer"`
+         * `UInt16`:: maps to `"integer"`
+         * `Int16`:: maps to `"short"`
+         * `Byte`:: maps to `"short"`
+         * `Int64`:: maps to `"long"`
+         * `UInt32`:: maps to `"long"`
+         * `TimeSpan`:: maps to `"long"`
+         * `Single`:: maps to `"float"`
+         * `Double`:: maps to `"double"`
+         * `Decimal`:: maps to `"double"`
+         * `UInt64`:: maps to `"double"`
+         * `DateTime`:: maps to `"date"`
+         * `DateTimeOffset`:: maps to `"date"`
+         * `Boolean`:: maps to `"boolean"`
+         * `Char`:: maps to `"keyword"`
+         * `Guid`:: maps to `"keyword"`
          *
          * and supports a number of special types defined in NEST
          *
-         * - `Nest.GeoLocation` maps to `"geo_point"`
-         * - `Nest.CompletionField` maps to `"completion"`
-         * - `Nest.Attachment` maps to `"attachment"`
-         * - `Nest.DateRange` maps to `"date_range"`
-         * - `Nest.DoubleRange` maps to `"double_range"`
-         * - `Nest.FloatRange` maps to `"float_range"`
-         * - `Nest.IntegerRange` maps to `"integer_range"`
-         * - `Nest.LongRange` maps to `"long_range"`
+		 * [horizontal]
+         * `Nest.GeoLocation`:: maps to `"geo_point"`
+         * `Nest.CompletionField`:: maps to `"completion"`
+         * `Nest.DateRange`:: maps to `"date_range"`
+         * `Nest.DoubleRange`:: maps to `"double_range"`
+         * `Nest.FloatRange`:: maps to `"float_range"`
+         * `Nest.IntegerRange`:: maps to `"integer_range"`
+         * `Nest.LongRange`:: maps to `"long_range"`
 		 *
          * All other types map to `"object"` by default.
          *
@@ -330,13 +302,14 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 		public void ControllingRecursionDepth()
 		{
 			/** By default, `.AutoMap()` only goes as far as depth 1 */
-			var descriptor = new CreateIndexDescriptor("myindex")
+			var createIndexResponse = client.CreateIndex("myindex", c => c
 				.Mappings(ms => ms
 					.Map<A>(m => m.AutoMap())
-				);
+				)
+			);
 
 			/** Thus we do not map properties on the second occurrence of our Child property */
-            //json
+			//json
 			var expected = new
 			{
 				mappings = new
@@ -355,17 +328,18 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 				}
 			};
 
-            //hide
-			Expect(expected).WhenSerializing((ICreateIndexRequest)descriptor);
+			//hide
+			Expect(expected).NoRoundTrip().WhenSerializing(Encoding.UTF8.GetString(createIndexResponse.ApiCall.RequestBodyInBytes));
 
 			/** Now let's specify a maxRecursion of `3` */
-			var withMaxRecursionDescriptor = new CreateIndexDescriptor("myindex")
+			createIndexResponse = client.CreateIndex("myindex", c => c
 				.Mappings(ms => ms
 					.Map<A>(m => m.AutoMap(3))
-				);
+				)
+			);
 
 			/** `.AutoMap()` has now mapped three levels of our Child property */
-            //json
+			//json
 			var expectedWithMaxRecursion = new
 			{
 				mappings = new
@@ -405,12 +379,12 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 				}
 			};
 
-            //hide
-			Expect(expectedWithMaxRecursion).WhenSerializing((ICreateIndexRequest)withMaxRecursionDescriptor);
+			//hide
+			Expect(expectedWithMaxRecursion).NoRoundTrip().WhenSerializing(Encoding.UTF8.GetString(createIndexResponse.ApiCall.RequestBodyInBytes));
 		}
 
-        //hide
-        [U]
+		//hide
+		[U]
 		public void PutMappingAlsoAdheresToMaxRecursion()
 		{
 			var descriptor = new PutMappingDescriptor<A>().AutoMap();
@@ -427,7 +401,7 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 				}
 			};
 
-			Expect(expected).WhenSerializing((IPutMappingRequest)descriptor);
+			Expect(expected).WhenSerializing((IPutMappingRequest) descriptor);
 
 			var withMaxRecursionDescriptor = new PutMappingDescriptor<A>().AutoMap(3);
 
@@ -464,7 +438,7 @@ namespace Tests.ClientConcepts.HighLevel.Mapping
 				}
 			};
 
-			Expect(expectedWithMaxRecursion).WhenSerializing((IPutMappingRequest)withMaxRecursionDescriptor);
+			Expect(expectedWithMaxRecursion).NoRoundTrip().WhenSerializing((IPutMappingRequest) withMaxRecursionDescriptor);
 		}
 	}
 }

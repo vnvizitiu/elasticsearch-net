@@ -32,11 +32,11 @@ Repository for both **NEST** and **Elasticsearch.Net**, the two official [elasti
     <tr>
     	<td><code>2.x</code></td>
     	<td><code>2.x</code></td>
-    	<td>:white_check_mark:</td>
-        <td><a href="https://ci.appveyor.com/project/Mpdreamz/elasticsearch-net/branch/2.x"><img src="https://ci.appveyor.com/api/projects/status/github/elastic/elasticsearch-net?branch=2.x&svg=true"></a></td>
-        <td><a href="https://travis-ci.org/elastic/elasticsearch-net/branches"><img src="https://travis-ci.org/elastic/elasticsearch-net.svg?branch=2.x"></a></td>
-    	<td><a href="https://www.nuget.org/packages/NEST/2.5.2"><img src="https://img.shields.io/badge/nuget-v2.5.3-blue.svg?style=flat-square"></a>
-    	<td><a href="https://www.myget.org/gallery/elasticsearch-net-legacy"><img src="https://img.shields.io/myget/elasticsearch-net-legacy/vpre/NEST.svg?style=flat-square&label=myget&colorB=339900"></a></td>
+    	<td>:x:</td>
+      <td><a href="https://ci.appveyor.com/project/Mpdreamz/elasticsearch-net/branch/2.x"><img src="https://ci.appveyor.com/api/projects/status/github/elastic/elasticsearch-net?branch=2.x&svg=true"></a></td>
+      <td><a href="https://travis-ci.org/elastic/elasticsearch-net/branches"><img src="https://travis-ci.org/elastic/elasticsearch-net.svg?branch=2.x"></a></td>
+    	<td><a href="https://www.nuget.org/packages/NEST/2.5.7"><img src="https://img.shields.io/badge/nuget-v2.5.7-blue.svg?style=flat-square"></a>
+    	<td>:heavy_minus_sign:</td>
     	</td>  
     </tr>
     <tr>
@@ -45,19 +45,30 @@ Repository for both **NEST** and **Elasticsearch.Net**, the two official [elasti
     	<td>:white_check_mark:</td>
         <td><a href="https://ci.appveyor.com/project/Mpdreamz/elasticsearch-net/branch/5.x"><img src="https://ci.appveyor.com/api/projects/status/github/elastic/elasticsearch-net?branch=5.x&svg=true"></a></td>
         <td><a href="https://travis-ci.org/elastic/elasticsearch-net/branches"><img src="https://travis-ci.org/elastic/elasticsearch-net.svg?branch=5.x"></a></td>
-    	<td><a href="https://www.nuget.org/packages/NEST"><img src="https://img.shields.io/nuget/vpre/NEST.svg"></a> </td>
+    	<td><a href="https://www.nuget.org/packages/NEST/5.6.0"><img src="https://img.shields.io/badge/nuget-v5.6.0-blue.svg?style=flat-square"></a> </td>
+    	<td><a href="https://www.myget.org/gallery/elasticsearch-net"><img src="https://img.shields.io/myget/elasticsearch-net-legacy/vpre/NEST.svg?style=flat-square&label=myget&colorB=339900"></a></td>
+    </tr>
+    <tr>
+    	<td><code>6.x</code></td>
+    	<td><code>6.x</code></td>
+    	<td>:white_check_mark:</td>
+        <td><a href="https://ci.appveyor.com/project/Mpdreamz/elasticsearch-net/branch/6.x"><img src="https://ci.appveyor.com/api/projects/status/github/elastic/elasticsearch-net?branch=6.x&svg=true"></a></td>
+        <td><a href="https://travis-ci.org/elastic/elasticsearch-net/branches"><img src="https://travis-ci.org/elastic/elasticsearch-net.svg?branch=6.x"></a></td>
+    	<td><a href="https://www.nuget.org/packages/NEST"><img src="https://img.shields.io/nuget/v/NEST.svg?style=flat-square"></a> </td>
     	<td><a href="https://www.myget.org/gallery/elasticsearch-net"><img src="https://img.shields.io/myget/elasticsearch-net/vpre/NEST.svg?style=flat-square&label=myget&colorB=339900"></a></td>
     </tr>
     <tr>
     	<td><code>master</code></td>
     	<td><code>master</code></td>
-    	<td>:white_check_mark:</td>
+    	<td>:x:</td>
         <td><a href="https://ci.appveyor.com/project/Mpdreamz/elasticsearch-net/branch/master"><img src="https://ci.appveyor.com/api/projects/status/github/elastic/elasticsearch-net?branch=master&svg=true"></a></td>
         <td><a href="https://travis-ci.org/elastic/elasticsearch-net/branches"><img src="https://travis-ci.org/elastic/elasticsearch-net.svg?branch=master"></a></td>
     	<td>:heavy_minus_sign:</td>
     	<td><a href="https://www.myget.org/gallery/elasticsearch-net-next"><img src="https://img.shields.io/myget/elasticsearch-net-next/vpre/NEST.svg?style=flat-square&label=myget&colorB=339900"></a></td>
     </tr>
 </table>
+          
+### [Full documentation at https://www.elastic.co/guide/en/elasticsearch/client/net-api/current](https://www.elastic.co/guide/en/elasticsearch/client/net-api/current/index.html) 
 
 ## Upgrading
 
@@ -71,14 +82,18 @@ Take a look at the [blog post for details around the evolution of NEST 2.x](http
 
 Take a look at the [blog post for the release of NEST 5.x](https://www.elastic.co/blog/nest-5-0-released), in addition to the list of breaking changes for [NEST](https://github.com/elastic/elasticsearch-net/blob/master/docs/5.0-breaking-changes/nest-breaking-changes.md) and [Elasticsearch.Net](https://github.com/elastic/elasticsearch-net/blob/master/docs/5.0-breaking-changes/elasticsearch-net-breaking-changes.md).
 
-#[NEST](https://github.com/elasticsearch/elasticsearch-net/tree/master/src/Nest#nest-)
+### Upgrading from 5.x to 6.x
+
+Take a look at the [blog post for the GA release of Elasticsearch.Net and NEST 6.0](https://www.elastic.co/blog/nest-elasticsearch-net-6-0-ga), in addition to the list of breaking changes for [NEST](https://www.elastic.co/guide/en/elasticsearch/client/net-api/6.x/nest-breaking-changes.html) and [Elasticsearch.Net](https://www.elastic.co/guide/en/elasticsearch/client/net-api/6.x/elasticsearch-net-breaking-changes.html).
+
+# [NEST](https://github.com/elasticsearch/elasticsearch-net/tree/master/src/Nest)
 
 NEST is the official high-level .NET client of [Elasticsearch](https://github.com/elasticsearch/elasticsearch).  It aims to be a solid, strongly typed client with a very concise API.
 
 * High-level client that internally uses the low-level **Elasticsearch.Net** client
 * Maps requests and responses to strongly typed objects with both fluent interface and object initializer syntaxes to build them
 * Comes with a very powerful query DSL that maps one-to-one with Elasticsearch
-* Takes advantage of .NET features where they make sense (i.e., covariant `T` collection result types, type and index inference)
+* Takes advantage of .NET features where they make sense (e.g. type and index inference, inferred mapping from POCO properties)
 * All calls have async variants with support for cancellation
 
 ## Getting Started
@@ -122,12 +137,12 @@ var client = new ElasticClient(settings);
 
 ### Indexing
 
-Indexing a document is as simple as:
+Indexing a document is as simple as (with 6.x):
 
 ```csharp
 var tweet = new Tweet
 {
-	Id = 1,
+    Id = 1,
     User = "kimchy",
     PostDate = new DateTime(2009, 11, 15),
     Message = "Trying out NEST, so far so good?"
@@ -155,13 +170,13 @@ NEST exposes a fluent interface and a [powerful query DSL](https://www.elastic.c
 
 ```csharp
 var response = client.Search<Tweet>(s => s
-	.From(0)
-	.Size(10)
-	.Query(q =>
-			q.Term(t => t.User, "kimchy")
-			|| q.Match(mq => mq.Field(f => f.User).Query("nest"))
-		)
-	);
+    .From(0)
+    .Size(10)
+    .Query(q => q
+        .Term(t => t.User, "kimchy") || q
+        .Match(mq => mq.Field(f => f.User).Query("nest"))
+    )
+);
 ```
 
 As well as an object initializer syntax if lambdas aren't your thing:
@@ -169,10 +184,10 @@ As well as an object initializer syntax if lambdas aren't your thing:
 ```csharp
 var request = new SearchRequest
 {
-	From = 0,
-	Size = 10,
-	Query = new TermQuery { Field = "user", Value = "kimchy" } 
-		|| new MatchQuery { Field = "description", Query = "nest" }
+    From = 0,
+    Size = 10,
+    Query = new TermQuery { Field = "user", Value = "kimchy" } || 
+            new MatchQuery { Field = "description", Query = "nest" }
 };
 
 var response = client.Search<Tweet>(request);
@@ -184,7 +199,8 @@ NEST also includes and exposes the low-level [Elasticsearch.Net](https://github.
 
 ```csharp
 //.LowLevel is of type IElasticLowLevelClient
-var response = client.LowLevel.SearchPost("myindex","elasticsearchprojects", new
+// Generic parameter of Search<> is the type of .Body on response
+var response = client.LowLevel.Search<SearchResponse<Tweet>>("myindex","elasticsearchprojects", PostData.Serializable(new
 {
 	from = 0,
 	size = 10,
@@ -197,12 +213,12 @@ var response = client.LowLevel.SearchPost("myindex","elasticsearchprojects", new
 			}
 		}
 	}
-});
+}));
 ```
 
-#### [Read the full documentation here](https://www.elastic.co/guide/en/elasticsearch/client/net-api/current/index.html) 
+#### [Full documentation at https://www.elastic.co/guide/en/elasticsearch/client/net-api/current/nest.html](https://www.elastic.co/guide/en/elasticsearch/client/net-api/current/nest.html) 
 
-#[Elasticsearch.Net](src/Elasticsearch.Net)
+# [Elasticsearch.Net](src/Elasticsearch.Net)
 
 A low-level, dependency free, client that has no opinions how you build and represent your requests and responses.
 
@@ -277,6 +293,8 @@ client.Index("myindex","mytype","1", myJson);
 
 This will execute the same request, but this time `myJson` will be serialized by the registered `ISerializer`.
 
+#### [Full documentation at https://www.elastic.co/guide/en/elasticsearch/client/net-api/current/elasticsearch-net.html](https://www.elastic.co/guide/en/elasticsearch/client/net-api/current/elasticsearch-net.html) 
+
 ## Contributing
 
 [Pull requests](https://github.com/elastic/elasticsearch-net/pulls) and [issues](https://github.com/elastic/elasticsearch-net/issues) are very much welcomed and appreciated.  If you'd like to report a bug or submit a feature/bug fix then please read our [contributing guide](contributing.md) first!
@@ -305,12 +323,6 @@ and a small HTTP server will be spun up locally on port 8000 through which you c
 
 [Pull Requests](https://github.com/elastic/elasticsearch-net/pulls) are most welcome for areas of documentation that need improving.
 
-## Blog posts 
-
-Starting this section (2016) to list blogposts from our users that might be super helpful in your journey to learn Elasticsearch from a .NET perspective
-
-- Read how buildclassifieds are using [ElasticSearch with ServiceStack (.NET)](http://buildclassifieds.com/2016/01/22/elasticsearch-and-servicestack/) in helping build a Classifieds Site.
-
 #### Many thanks to:
 * [Q42](https://q42.nl/) for supporting the development of NEST
 * [redgate](http://www.red-gate.com) for supplying @Mpdreamz with an ANTS Memory Profiler 8 & ANTS Performance Profiler 8 licenses
@@ -320,6 +332,6 @@ Starting this section (2016) to list blogposts from our users that might be supe
 
 ## Copyright and License
 
-This software is Copyright (c) 2014-2015 by Elasticsearch BV.
+This software is Copyright (c) 2014-2018 by Elasticsearch BV.
 
 This is free software, licensed under: [The Apache License Version 2.0](https://github.com/elasticsearch/elasticsearch-net/blob/develop/license.txt).

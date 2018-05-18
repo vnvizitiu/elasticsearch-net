@@ -16,11 +16,14 @@ namespace Nest
 			where TQuery : class, TQueryInterface, IQuery, new()
 			where TQueryInterface : class, IQuery
 		{
+			// Invoke the create delegate before assigning container; the create delegate
+			// may mutate the current QueryContainerDescriptor<T> instance such that it
+			// contains a query. See https://github.com/elastic/elasticsearch-net/issues/2875
+			var query = create.InvokeOrDefault(new TQuery());
+
 			var container = this.ContainedQuery == null
 				? this
 				: new QueryContainerDescriptor<T>();
-
-			var query = create.InvokeOrDefault(new TQuery());
 
 			IQueryContainer c = container;
 			c.IsVerbatim = query.IsVerbatim;
@@ -130,15 +133,6 @@ namespace Nest
 		}
 
 		/// <summary>
-		/// The indices query can be used when executed across multiple indices, allowing to have a query that executes
-		/// only when executed on an index that matches a specific list of indices, and another query that executes
-		/// when it is executed on an index that does not match the listed indices.
-		/// </summary>
-		[Obsolete("Deprecated. You can specify _index on the query to target specific indices")]
-		public QueryContainer Indices(Func<IndicesQueryDescriptor<T>, IIndicesQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.Indices = query);
-
-		/// <summary>
 		/// Matches documents with fields that have terms within a certain numeric range.
 		/// </summary>
 		public QueryContainer Range(Func<NumericRangeQueryDescriptor<T>, INumericRangeQuery> selector) =>
@@ -163,73 +157,10 @@ namespace Nest
 			WrapInContainer(selector, (query, container) => container.MoreLikeThis = query);
 
 		/// <summary>
-		/// A geo_shape query with an envelope finds documents
-		/// that have a geometry that matches for the given spatial relation and input envelope
-		/// </summary>
-		public QueryContainer GeoShapeEnvelope(Func<GeoShapeEnvelopeQueryDescriptor<T>, IGeoShapeEnvelopeQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.GeoShape = query);
-
-		/// <summary>
-		/// A geo_shape query with a circle finds documents
-		/// that have a geometry that matches for the given spatial relation and input circle
-		/// </summary>
-		public QueryContainer GeoShapeCircle(Func<GeoShapeCircleQueryDescriptor<T>, IGeoShapeCircleQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.GeoShape = query);
-
-		/// <summary>
 		/// A geo_shape query that finds documents
-		/// that have a geometry that matches for the given spatial relation and an indexed geo_shape
+		/// that have a geometry that matches for the given spatial relation and input shape
 		/// </summary>
-		public QueryContainer GeoIndexedShape(Func<GeoIndexedShapeQueryDescriptor<T>, IGeoIndexedShapeQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.GeoShape = query);
-
-		/// <summary>
-		/// A geo_shape query with a linestring finds documents
-		/// that have a geometry that matches for the given spatial relation and input linestring
-		/// </summary>
-		public QueryContainer GeoShapeLineString(Func<GeoShapeLineStringQueryDescriptor<T>, IGeoShapeLineStringQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.GeoShape = query);
-
-		/// <summary>
-		/// A geo_shape query with a multi linestring finds documents
-		/// that have a geometry that matches for the given spatial relation and input multi linestring
-		/// </summary>
-		public QueryContainer GeoShapeMultiLineString(Func<GeoShapeMultiLineStringQueryDescriptor<T>, IGeoShapeMultiLineStringQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.GeoShape = query);
-
-		/// <summary>
-		/// A geo_shape query with a point finds documents
-		/// that have a geometry that matches for the given spatial relation and input point
-		/// </summary>
-		public QueryContainer GeoShapePoint(Func<GeoShapePointQueryDescriptor<T>, IGeoShapePointQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.GeoShape = query);
-
-		/// <summary>
-		/// A geo_shape query with a multi point finds documents
-		/// that have a geometry that matches for the given spatial relation and input multi point
-		/// </summary>
-		public QueryContainer GeoShapeMultiPoint(Func<GeoShapeMultiPointQueryDescriptor<T>, IGeoShapeMultiPointQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.GeoShape = query);
-
-		/// <summary>
-		/// A geo_shape query with a polygon finds documents
-		/// that have a geometry that matches for the given spatial relation and input polygon
-		/// </summary>
-		public QueryContainer GeoShapePolygon(Func<GeoShapePolygonQueryDescriptor<T>, IGeoShapePolygonQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.GeoShape = query);
-
-		/// <summary>
-		/// A geo_shape query with a multi polygon finds documents
-		/// that have a geometry that matches for the given spatial relation and input multi polygon
-		/// </summary>
-		public QueryContainer GeoShapeMultiPolygon(Func<GeoShapeMultiPolygonQueryDescriptor<T>, IGeoShapeMultiPolygonQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.GeoShape = query);
-
-		/// <summary>
-		/// A geo_shape query with a geometry collection finds documents
-		/// that have a geometry that matches for the given spatial relation and input geometry collection
-		/// </summary>
-		public QueryContainer GeoShapeGeometryCollection(Func<GeoShapeGeometryCollectionQueryDescriptor<T>, IGeoShapeGeometryCollectionQuery> selector) =>
+		public QueryContainer GeoShape(Func<GeoShapeQueryDescriptor<T>, IGeoShapeQuery> selector) =>
 			WrapInContainer(selector, (query, container) => container.GeoShape = query);
 
 		/// <summary>
@@ -237,9 +168,6 @@ namespace Nest
 		/// </summary>
 		public QueryContainer GeoPolygon(Func<GeoPolygonQueryDescriptor<T>, IGeoPolygonQuery> selector) =>
 			WrapInContainer(selector, (query, container) => container.GeoPolygon = query);
-
-		public QueryContainer GeoHashCell(Func<GeoHashCellQueryDescriptor<T>, IGeoHashCellQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.GeoHashCell = query);
 
 		/// <summary>
 		/// Matches documents with a geo_point type field to include only those
@@ -326,6 +254,16 @@ namespace Nest
 		/// </summary>
 		public QueryContainer Term(Expression<Func<T, object>> field, object value, double? boost = null, string name = null) =>
 			this.Term(t => t.Field(field).Value(value).Boost(boost).Name(name));
+
+		/// <summary>
+		/// Helper method to easily filter on join relations
+		/// </summary>
+		public QueryContainer HasRelationName(Expression<Func<T, JoinField>> field, RelationName value) =>
+			this.Term(t => t.Field(field).Value(value));
+
+		/// <summary>Helper method to easily filter on join relations</summary>
+		public QueryContainer HasRelationName<TRelation>(Expression<Func<T, JoinField>> field) =>
+			this.Term(t => t.Field(field).Value(Infer.Relation<TRelation>()));
 
 		/// <summary>
 		/// Matches documents that have fields that contain a term (not analyzed).
@@ -481,14 +419,6 @@ namespace Nest
 		public QueryContainer FunctionScore(Func<FunctionScoreQueryDescriptor<T>, IFunctionScoreQuery> selector) =>
 			WrapInContainer(selector, (query, container) => container.FunctionScore = query);
 
-		/// <summary>
-		/// A query that accepts a query template and a map of key/value pairs to fill in template parameters.
-		/// Templating is based on Mustache.
-		/// </summary>
-		[Obsolete("Deprecated in 5.0.0. Use Search Template API instead")]
-		public QueryContainer Template(Func<TemplateQueryDescriptor<T>, ITemplateQuery> selector) =>
-			WrapInContainer(selector, (query, container) => container.Template = query);
-
 		public QueryContainer Script(Func<ScriptQueryDescriptor<T>, IScriptQuery> selector) =>
 			WrapInContainer(selector, (query, container) => container.Script = query);
 
@@ -513,5 +443,14 @@ namespace Nest
 		/// </summary>
 		public QueryContainer ParentId(Func<ParentIdQueryDescriptor<T>, IParentIdQuery> selector) =>
 			WrapInContainer(selector, (query, container) => container.ParentId = query);
+
+		/// <summary>
+		/// Returns any documents that match with at least one or more of the provided terms.
+		/// The terms are not analyzed and thus must match exactly. The number of terms that must match varies
+		/// per document and is either controlled by a minimum should match field or
+		/// computed per document in a minimum should match script.
+		/// </summary>
+		public QueryContainer TermsSet(Func<TermsSetQueryDescriptor<T>, ITermsSetQuery> selector) =>
+			WrapInContainer(selector, (query, container) => container.TermsSet = query);
 	}
 }

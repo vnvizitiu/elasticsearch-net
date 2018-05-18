@@ -35,7 +35,16 @@ namespace Nest
 		/// number of hits
 		/// </summary>
 		[JsonProperty("min_doc_count")]
-		int? MinimumDocumentCount { get; set; }
+		long? MinimumDocumentCount { get; set; }
+
+		/// <summary>
+		/// Regulates the certainty a shard has if the term should actually be added to the candidate
+		/// list or not with respect to the <see cref="MinimumDocumentCount"/>.
+		/// Terms will only be considered if their local shard frequency within
+		/// the set is higher than the <see cref="ShardMinimumDocumentCount"/>.
+		/// </summary>
+		[JsonProperty("shard_min_doc_count")]
+		long? ShardMinimumDocumentCount { get; set; }
 
 		/// <summary>
 		/// Determines the mechanism by which aggregations are executed
@@ -47,13 +56,13 @@ namespace Nest
 		/// Include term values for which buckets will be created.
 		/// </summary>
 		[JsonProperty("include")]
-		SignificantTermsIncludeExclude Include { get; set; }
+		IncludeExclude Include { get; set; }
 
 		/// <summary>
 		/// Exclude term values for which buckets will be created.
 		/// </summary>
 		[JsonProperty("exclude")]
-		SignificantTermsIncludeExclude Exclude { get; set; }
+		IncludeExclude Exclude { get; set; }
 
 		/// <summary>
 		/// Use mutual information to calculate significance score
@@ -97,7 +106,6 @@ namespace Nest
 		/// </summary>
 		[JsonProperty("background_filter")]
 		QueryContainer BackgroundFilter { get; set; }
-
 	}
 
 	public class SignificantTermsAggregation : BucketAggregationBase, ISignificantTermsAggregation
@@ -109,15 +117,15 @@ namespace Nest
 		/// <inheritdoc />
 		public int? ShardSize { get; set; }
 		/// <inheritdoc />
-		public int? MinimumDocumentCount { get; set; }
+		public long? MinimumDocumentCount { get; set; }
+		/// <inheritdoc />
+		public long? ShardMinimumDocumentCount { get; set; }
 		/// <inheritdoc />
 		public TermsAggregationExecutionHint? ExecutionHint { get; set; }
-
 		/// <inheritdoc />
-		public SignificantTermsIncludeExclude Include { get; set; }
-
+		public IncludeExclude Include { get; set; }
 		/// <inheritdoc />
-		public SignificantTermsIncludeExclude Exclude { get; set; }
+		public IncludeExclude Exclude { get; set; }
 		/// <inheritdoc />
 		public IMutualInformationHeuristic MutualInformation { get; set; }
 		/// <inheritdoc />
@@ -149,13 +157,15 @@ namespace Nest
 
 		int? ISignificantTermsAggregation.ShardSize { get; set; }
 
-		int? ISignificantTermsAggregation.MinimumDocumentCount { get; set; }
+		long? ISignificantTermsAggregation.MinimumDocumentCount { get; set; }
+
+		long? ISignificantTermsAggregation.ShardMinimumDocumentCount { get; set; }
 
 		TermsAggregationExecutionHint? ISignificantTermsAggregation.ExecutionHint { get; set; }
 
-		SignificantTermsIncludeExclude ISignificantTermsAggregation.Include { get; set; }
+		IncludeExclude ISignificantTermsAggregation.Include { get; set; }
 
-		SignificantTermsIncludeExclude ISignificantTermsAggregation.Exclude { get; set; }
+		IncludeExclude ISignificantTermsAggregation.Exclude { get; set; }
 
 		IMutualInformationHeuristic ISignificantTermsAggregation.MutualInformation { get; set; }
 
@@ -176,33 +186,37 @@ namespace Nest
 		public SignificantTermsAggregationDescriptor<T> Field(Expression<Func<T, object>> field) => Assign(a => a.Field = field);
 
 		/// <inheritdoc />
-		public SignificantTermsAggregationDescriptor<T> Size(int size) => Assign(a => a.Size = size);
+		public SignificantTermsAggregationDescriptor<T> Size(int? size) => Assign(a => a.Size = size);
 
 		/// <inheritdoc />
 		public SignificantTermsAggregationDescriptor<T> ExecutionHint(TermsAggregationExecutionHint? hint) => Assign(a => a.ExecutionHint = hint);
 
 		/// <inheritdoc />
 		public SignificantTermsAggregationDescriptor<T> Include(string includePattern) =>
-			Assign(a => a.Include = new SignificantTermsIncludeExclude(includePattern));
+			Assign(a => a.Include = new IncludeExclude(includePattern));
 
 		/// <inheritdoc />
 		public SignificantTermsAggregationDescriptor<T> Include(IEnumerable<string> values) =>
-			Assign(a => a.Include = new SignificantTermsIncludeExclude(values));
+			Assign(a => a.Include = new IncludeExclude(values));
 
 		/// <inheritdoc />
 		public SignificantTermsAggregationDescriptor<T> Exclude(string excludePattern) =>
-			Assign(a => a.Exclude = new SignificantTermsIncludeExclude(excludePattern));
+			Assign(a => a.Exclude = new IncludeExclude(excludePattern));
 
 		/// <inheritdoc />
 		public SignificantTermsAggregationDescriptor<T> Exclude(IEnumerable<string> values) =>
-			Assign(a => a.Exclude = new SignificantTermsIncludeExclude(values));
+			Assign(a => a.Exclude = new IncludeExclude(values));
 
 		/// <inheritdoc />
-		public SignificantTermsAggregationDescriptor<T> ShardSize(int shardSize) => Assign(a => a.ShardSize = shardSize);
+		public SignificantTermsAggregationDescriptor<T> ShardSize(int? shardSize) => Assign(a => a.ShardSize = shardSize);
 
 		/// <inheritdoc />
-		public SignificantTermsAggregationDescriptor<T> MinimumDocumentCount(int minimumDocumentCount) =>
+		public SignificantTermsAggregationDescriptor<T> MinimumDocumentCount(long? minimumDocumentCount) =>
 			Assign(a => a.MinimumDocumentCount = minimumDocumentCount);
+
+		/// <inheritdoc />
+		public SignificantTermsAggregationDescriptor<T> ShardMinimumDocumentCount(long? shardMinimumDocumentCount) =>
+			Assign(a => a.ShardMinimumDocumentCount = shardMinimumDocumentCount);
 
 		/// <inheritdoc />
 		public SignificantTermsAggregationDescriptor<T> MutualInformation(Func<MutualInformationHeuristicDescriptor, IMutualInformationHeuristic> mutualInformationSelector = null) =>

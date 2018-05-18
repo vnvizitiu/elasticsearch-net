@@ -3,17 +3,17 @@ using Newtonsoft.Json;
 
 namespace Nest
 {
-	public interface INodesStatsResponse : IResponse
+	public interface INodesStatsResponse : INodesResponse
 	{
-		[JsonProperty(PropertyName = "cluster_name")]
+		[JsonProperty("cluster_name")]
 		string ClusterName { get; }
 
-		[JsonProperty(PropertyName = "nodes")]
+		[JsonProperty("nodes")]
 		[JsonConverter(typeof(VerbatimDictionaryKeysJsonConverter<string, NodeStats>))]
 		IReadOnlyDictionary<string, NodeStats> Nodes { get; }
 	}
 
-	public class NodesStatsResponse : ResponseBase, INodesStatsResponse
+	public class NodesStatsResponse : NodesResponseBase, INodesStatsResponse
 	{
 		public string ClusterName { get; internal set; }
 

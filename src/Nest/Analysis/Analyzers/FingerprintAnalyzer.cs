@@ -36,6 +36,7 @@ namespace Nest
 		/// A list of stop words to use. Defaults to an empty list
 		/// </summary>
 		[JsonProperty("stopwords")]
+		[JsonConverter(typeof(StopWordsJsonConverter))]
 		StopWords StopWords { get; set; }
 
 		/// <summary>
@@ -79,7 +80,7 @@ namespace Nest
 
 		public FingerprintAnalyzerDescriptor MaxOutputSize(int? maxOutputSize) => Assign(a => a.MaxOutputSize = maxOutputSize);
 
-		public FingerprintAnalyzerDescriptor PreserveOriginal(bool preserveOriginal = true) => Assign(a => a.PreserveOriginal = preserveOriginal);
+		public FingerprintAnalyzerDescriptor PreserveOriginal(bool? preserveOriginal = true) => Assign(a => a.PreserveOriginal = preserveOriginal);
 
 		public FingerprintAnalyzerDescriptor StopWords(params string[] stopWords) => Assign(a => a.StopWords = stopWords);
 

@@ -17,12 +17,12 @@ namespace ApiGenerator
 
 		public static void Generate(string downloadBranch, params string[] folders)
 		{
+			Warnings = new List<string>();
 			var spec = CreateRestApiSpecModel(downloadBranch, folders);
 			var actions = new Dictionary<Action<RestApiSpec>, string>
 			{
 				{  GenerateClientInterface, "Client interface" },
 				{  GenerateRequestParameters, "Request parameters" },
-				{  GenerateRequestParametersExtensions, "Request parameters override" },
 				{  GenerateDescriptors, "Descriptors" },
 				{  GenerateRequests, "Requests" },
 				{  GenerateEnums, "Enums" },
@@ -39,7 +39,23 @@ namespace ApiGenerator
 					pbar.Tick("Generated " + kv.Value);
 				}
 			}
+
+			if (Warnings.Count == 0) return;
+
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			foreach (var warning in Warnings.Distinct().OrderBy(w=>w))
+				Console.WriteLine(warning);
+			Console.ResetColor();
 		}
+
+		public static List<string> Warnings { get; private set; }
+
+		private static string[] IgnoredApis { get; } =
+		{
+			"xpack.ml.delete_filter.json",
+			"xpack.ml.get_filters.json",
+			"xpack.ml.put_filter.json",
+		};
 
 		private static RestApiSpec CreateRestApiSpecModel(string downloadBranch, string[] folders)
 		{
@@ -50,15 +66,25 @@ namespace ApiGenerator
 			var endpoints = new Dictionary<string, ApiEndpoint>();
 			using (var pbar = new ProgressBar(directories.Count, $"Listing {directories.Count} directories", new ProgressBarOptions { BackgroundColor = ConsoleColor.DarkGray }))
 			{
-				foreach (var jsonFiles in directories.Select(dir => Directory.GetFiles(dir).Where(f => f.EndsWith(".json")).ToList()))
+				var folderFiles = directories.Select(dir =>
+					Directory.GetFiles(dir)
+					.Where(f => f.EndsWith(".json") && !IgnoredApis.Contains(new FileInfo(f).Name))
+					.ToList()
+				);
+				var commonFile = Path.Combine(CodeConfiguration.RestSpecificationFolder, "Core", "_common.json");
+				if (!File.Exists(commonFile)) throw new Exception($"Expected to find {commonFile}");
+				RestApiSpec.CommonApiQueryParameters = CreateCommonApiQueryParameters(commonFile);
+
+				foreach (var jsonFiles in folderFiles)
 				{
 					using (var fileProgress = pbar.Spawn(jsonFiles.Count, $"Listing {jsonFiles.Count} files", new ProgressBarOptions { ProgressCharacter = '─', BackgroundColor = ConsoleColor.DarkGray }))
 					{
 						foreach (var file in jsonFiles)
 						{
-							if (file.EndsWith("_common.json")) RestApiSpec.CommonApiQueryParameters = CreateCommonApiQueryParameters(file);
+							if (file.EndsWith("_common.json")) continue;
 							else if (file.EndsWith(".obsolete.json")) continue;
 							else if (file.EndsWith(".patch.json")) continue;
+							else if (file.EndsWith(".replace.json")) continue;
 							else
 							{
 								var endpoint = CreateApiEndpoint(file);
@@ -74,8 +100,6 @@ namespace ApiGenerator
 			return new RestApiSpec { Endpoints = endpoints, Commit = downloadBranch };
 		}
 
-
-
 		public static string PascalCase(string s)
 		{
 			var textInfo = new CultureInfo("en-US").TextInfo;
@@ -84,11 +108,19 @@ namespace ApiGenerator
 
 		private static KeyValuePair<string, ApiEndpoint> CreateApiEndpoint(string jsonFile)
 		{
+			var replaceFile = Path.Combine(Path.GetDirectoryName(jsonFile), Path.GetFileNameWithoutExtension(jsonFile)) + ".replace.json";
+			if (File.Exists(replaceFile))
+			{
+				var replaceSpec = JObject.Parse(File.ReadAllText(replaceFile));
+				var endpointReplaced = replaceSpec.ToObject<Dictionary<string, ApiEndpoint>>().First();
+				endpointReplaced.Value.CsharpMethodName = CreateMethodName(endpointReplaced.Key);
+				return endpointReplaced;
+			}
+
 			var officialJsonSpec = JObject.Parse(File.ReadAllText(jsonFile));
 			PatchOfficialSpec(officialJsonSpec, jsonFile);
 			var endpoint = officialJsonSpec.ToObject<Dictionary<string, ApiEndpoint>>().First();
 			endpoint.Value.CsharpMethodName = CreateMethodName(endpoint.Key);
-			AddObsoletes(jsonFile, endpoint.Value);
 			return endpoint;
 		}
 
@@ -106,24 +138,12 @@ namespace ApiGenerator
 			});
 		}
 
-		private static void AddObsoletes(string jsonFile, ApiEndpoint endpoint)
-		{
-			var directory = Path.GetDirectoryName(jsonFile);
-			var obsoleteFile = Path.Combine(directory, Path.GetFileNameWithoutExtension(jsonFile)) + ".obsolete.json";
-			if (!File.Exists(obsoleteFile)) return;
-
-			var json = File.ReadAllText(obsoleteFile);
-			var endpointOverride = JsonConvert.DeserializeObject<Dictionary<string, ApiEndpoint>>(json).First();
-			endpoint.ObsoleteQueryParameters = endpointOverride.Value?.Url?.Params ?? new Dictionary<string, ApiQueryParameters>();
-			endpoint.RemovedMethods = endpointOverride.Value?.RemovedMethods ?? new Dictionary<string, string>();
-		}
-
 		private static Dictionary<string, ApiQueryParameters> CreateCommonApiQueryParameters(string jsonFile)
 		{
 			var json = File.ReadAllText(jsonFile);
 			var jobject = JObject.Parse(json);
 			var commonParameters = jobject.Property("params").Value.ToObject<Dictionary<string, ApiQueryParameters>>();
-			return commonParameters;
+			return ApiQueryParametersPatcher.Patch(null, commonParameters, null, checkCommon: false);
 		}
 
 		private static string CreateMethodName(string apiEndpointKey)
@@ -170,13 +190,6 @@ namespace ApiGenerator
 		{
 			var targetFile = CodeConfiguration.EsNetFolder + @"Domain\RequestParameters\RequestParameters.Generated.cs";
 			var source = RazorHelper.Execute(File.ReadAllText(CodeConfiguration.ViewFolder + @"RequestParameters.Generated.cshtml"), model).ToString();
-			File.WriteAllText(targetFile, source);
-		}
-
-		private static void GenerateRequestParametersExtensions(RestApiSpec model)
-		{
-			var targetFile = CodeConfiguration.NestFolder + @"_Generated\_RequestParametersExtensions.Generated.cs";
-			var source = RazorHelper.Execute(File.ReadAllText(CodeConfiguration.ViewFolder + @"_RequestParametersExtensions.Generated.cshtml"), model).ToString();
 			File.WriteAllText(targetFile, source);
 		}
 

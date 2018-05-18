@@ -27,7 +27,7 @@ namespace Tests.Framework
 		protected override IElasticClient Client => this.Cluster.Client;
 		protected override TInitializer Initializer => Activator.CreateInstance<TInitializer>();
 
-		[I] public async Task HandlesStatusCode() =>
+		[I] public async Task ReturnsExpectedStatusCode() =>
 			await this.AssertOnAllResponses(r => r.ApiCall.HttpStatusCode.Should().Be(this.ExpectStatusCode));
 
 		[I] public async Task ReturnsExpectedIsValid() =>
@@ -52,13 +52,6 @@ namespace Tests.Framework
 			});
 		}
 
-		private static bool IsNotRequestExceptionType(Type exceptionType)
-		{
-#if DOTNETCORE
-			return exceptionType != typeof(System.Net.Http.HttpRequestException);
-#else
-			return exceptionType != typeof(WebException);
-#endif
-		}
+		private static bool IsNotRequestExceptionType(Type exceptionType) => exceptionType != typeof(System.Net.Http.HttpRequestException);
 	}
 }

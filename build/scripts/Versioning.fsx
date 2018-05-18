@@ -38,20 +38,23 @@ module Versioning =
         newGlobalJson.JsonValue.WriteTo(tw, JsonSaveOptions.None)
         tracefn "Written (%s) to global.json as the current version will use this version from now on as current in the build" (version.ToString()) 
 
+    let GlobalJsonVersion = parse(globalJson.Version)
+
     let CurrentVersion =
         Commandline.parse()
-        let currentVersion = parse(globalJson.Version)
+        let currentVersion = GlobalJsonVersion
         let bv = getBuildParam "version"
         let buildVersion = if (isNullOrEmpty bv) then None else Some(parse(bv)) 
         match (getBuildParam "target", buildVersion) with
-        | ("release", None) -> failwithf "can not run release because no explicit version number was passed on the command line"
+        | ("release", None) -> failwithf "cannot run release because no explicit version number was passed on the command line"
         | ("release", Some v) -> 
-            if (currentVersion >= v) then failwithf "tried to create release %s but current version is already at %s" (v.ToString()) (currentVersion.ToString())
+            // Warn if version is same as current version
+            if (currentVersion >= v) then traceImportant (sprintf "creating release %s when current version is already at %s" (v.ToString()) (currentVersion.ToString()))
             writeVersionIntoGlobalJson v
             v
-        | ("canary", Some v) -> failwithf "can not run canary release, expected no version number to specified but received %s" (v.ToString())
+        | ("canary", Some v) -> failwithf "cannot run canary release, expected no version number to specified but received %s" (v.ToString())
         | ("canary", None) -> 
-            let timestampedVersion = (sprintf "ci%s" (DateTime.UtcNow.ToString("MMddHHmmss")))
+            let timestampedVersion = (sprintf "ci%s" (DateTime.UtcNow.ToString("yyyyMMddTHHmmss")))
             tracefn "Canary suffix %s " timestampedVersion
             let canaryVersion = parse ((sprintf "%d.%d.0-%s" currentVersion.Major (currentVersion.Minor + 1) timestampedVersion).Trim())
             tracefn "Canary build increased currentVersion (%s) to (%s) " (currentVersion.ToString()) (canaryVersion.ToString())

@@ -17,8 +17,6 @@ NEST exposes all of the search request parameters available in Elasticsearch
 
 * <<explain-usage,Explain Usage>>
 
-* <<fielddata-fields-usage,Fielddata Fields Usage>>
-
 * <<fields-usage,Fields Usage>>
 
 * <<from-and-size-usage,From And Size Usage>>
@@ -26,6 +24,8 @@ NEST exposes all of the search request parameters available in Elasticsearch
 * <<highlighting-usage,Highlighting Usage>>
 
 * <<index-boost-usage,Index Boost Usage>>
+
+* <<indices-boost-usage,Indices Boost Usage>>
 
 * <<inner-hits-usage,Inner Hits Usage>>
 
@@ -57,8 +57,6 @@ See the documentation on <<writing-queries, Writing queries>> for how to use the
 
 include::search/request/explain-usage.asciidoc[]
 
-include::search/request/fielddata-fields-usage.asciidoc[]
-
 include::search/request/fields-usage.asciidoc[]
 
 include::search/request/from-and-size-usage.asciidoc[]
@@ -66,6 +64,8 @@ include::search/request/from-and-size-usage.asciidoc[]
 include::search/request/highlighting-usage.asciidoc[]
 
 include::search/request/index-boost-usage.asciidoc[]
+
+include::search/request/indices-boost-usage.asciidoc[]
 
 include::search/request/inner-hits-usage.asciidoc[]
 

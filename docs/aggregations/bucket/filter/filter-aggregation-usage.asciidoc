@@ -1,4 +1,4 @@
-:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/master
+:ref_current: https://www.elastic.co/guide/en/elasticsearch/reference/6.1
 
 :github: https://github.com/elastic/elasticsearch-net
 
@@ -24,13 +24,11 @@ Be sure to read the Elasticsearch documentation on {ref_current}/search-aggregat
 
 [source,csharp]
 ----
-s => s
-.Aggregations(aggs => aggs
-    .Filter("bethels_projects", date => date
-        .Filter(q => q.Term(p => p.LeadDeveloper.FirstName, FirstNameToFind))
-        .Aggregations(childAggs => childAggs
-            .Terms("project_tags", avg => avg.Field(p => p.CuratedTags.First().Name.Suffix("keyword")))
-        )
+a => a
+.Filter("bethels_projects", date => date
+    .Filter(q => q.Term(p => p.LeadDeveloper.FirstName, FirstNameToFind))
+    .Aggregations(childAggs => childAggs
+        .Terms("project_tags", avg => avg.Field(p => p.CuratedTags.First().Name.Suffix("keyword")))
     )
 )
 ----
@@ -39,14 +37,11 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new FilterAggregation("bethels_projects")
 {
-    Aggregations = new FilterAggregation("bethels_projects")
-    {
-        Filter = new TermQuery {Field = Field<Project>(p => p.LeadDeveloper.FirstName), Value = FirstNameToFind},
-        Aggregations =
-            new TermsAggregation("project_tags") { Field = Field<Project>(p => p.CuratedTags.First().Name.Suffix("keyword")) }
-    }
+    Filter = new TermQuery {Field = Field<Project>(p => p.LeadDeveloper.FirstName), Value = FirstNameToFind},
+    Aggregations =
+        new TermsAggregation("project_tags") {Field = Field<Project>(p => p.CuratedTags.First().Name.Suffix("keyword"))}
 }
 ----
 
@@ -54,20 +49,18 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "bethels_projects": {
-      "filter": {
-        "term": {
-          "leadDeveloper.firstName": {
-            "value": "pierce"
-          }
+  "bethels_projects": {
+    "filter": {
+      "term": {
+        "leadDeveloper.firstName": {
+          "value": "pierce"
         }
-      },
-      "aggs": {
-        "project_tags": {
-          "terms": {
-            "field": "curatedTags.name.keyword"
-          }
+      }
+    },
+    "aggs": {
+      "project_tags": {
+        "terms": {
+          "field": "curatedTags.name.keyword"
         }
       }
     }
@@ -77,8 +70,9 @@ new SearchRequest<Project>
 
 === Handling Responses
 
-Using the `.Aggs` aggregation helper we can fetch our aggregation results easily
-in the correct type. <<aggs-vs-aggregations, Be sure to read more about .Aggs vs .Aggregations>>
+The `AggregateDictionary found on `.Aggregations` on `ISearchResponse<T>` has several helper methods
+so we can fetch our aggregation results easily in the correct type.
+<<handling-aggregate-response, Be sure to read more about these helper methods>>
 
 ==== Handling Responses
 
@@ -86,7 +80,7 @@ in the correct type. <<aggs-vs-aggregations, Be sure to read more about .Aggs vs
 ----
 response.ShouldBeValid();
 
-var filterAgg = response.Aggs.Filter("bethels_projects");
+var filterAgg = response.Aggregations.Filter("bethels_projects");
 filterAgg.Should().NotBeNull();
 filterAgg.DocCount.Should().BeGreaterThan(0);
 var tags = filterAgg.Terms("project_tags");
@@ -104,13 +98,11 @@ to an empty object.
 
 [source,csharp]
 ----
-s => s
-.Aggregations(aggs => aggs
-    .Filter("empty_filter", date => date
-        .Filter(f => f
-            .Bool(b => b
-                .Filter(new QueryContainer[0])
-            )
+a => a
+.Filter("empty_filter", date => date
+    .Filter(f => f
+        .Bool(b => b
+            .Filter(new QueryContainer[0])
         )
     )
 )
@@ -120,14 +112,11 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new FilterAggregation("empty_filter")
 {
-    Aggregations = new FilterAggregation("empty_filter")
+    Filter = new BoolQuery
     {
-        Filter = new BoolQuery
-        {
-            Filter = new List<QueryContainer>()
-        }
+        Filter = new List<QueryContainer>()
     }
 }
 ----
@@ -136,10 +125,8 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "empty_filter": {
-      "filter": {}
-    }
+  "empty_filter": {
+    "filter": {}
   }
 }
 ----
@@ -148,22 +135,18 @@ new SearchRequest<Project>
 
 [source,csharp]
 ----
-response.ShouldBeValid();
-response.Aggs.Filter("empty_filter").DocCount.Should().BeGreaterThan(0);
+response.ShouldNotBeValid();
 ----
 
 ==== Fluent DSL example
 
 [source,csharp]
 ----
-s => s
-.Aggregations(aggs => aggs
-    .Filter(_aggName, date => date
-        .Filter(f => f
-            .Script(b => b
-                .Inline(_ctxNumberofCommits)
-                .Lang("groovy")
-            )
+a => a
+.Filter(_aggName, date => date
+    .Filter(f => f
+        .Script(b => b
+            .Source(_ctxNumberofCommits)
         )
     )
 )
@@ -173,15 +156,11 @@ s => s
 
 [source,csharp]
 ----
-new SearchRequest<Project>
+new FilterAggregation(_aggName)
 {
-    Aggregations = new FilterAggregation(_aggName)
+    Filter = new ScriptQuery
     {
-        Filter = new ScriptQuery
-        {
-            Inline = _ctxNumberofCommits,
-            Lang = "groovy"
-    }
+        Source = _ctxNumberofCommits
     }
 }
 ----
@@ -190,14 +169,11 @@ new SearchRequest<Project>
 .Example json output
 ----
 {
-  "aggs": {
-    "script_filter": {
-      "filter": {
+  "script_filter": {
+    "filter": {
+      "script": {
         "script": {
-          "script": {
-            "inline": "_source.numberOfCommits > 0",
-            "lang": "groovy"
-          }
+          "source": "_source.numberOfCommits > 0"
         }
       }
     }
@@ -210,6 +186,6 @@ new SearchRequest<Project>
 [source,csharp]
 ----
 response.ShouldBeValid();
-response.Aggs.Filter(_aggName).DocCount.Should().BeGreaterThan(0);
+response.Aggregations.Filter(_aggName).DocCount.Should().BeGreaterThan(0);
 ----
 

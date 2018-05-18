@@ -14,26 +14,25 @@ module Projects =
     type DotNetFrameworkIdentifier = { MSBuild: string; Nuget: string; DefineConstants: string; }
 
     type DotNetFramework = 
-        | Net45 
         | Net46 
         | NetStandard1_3
-        | NetCoreApp1_1
-        static member All = [Net45; Net46; NetStandard1_3] 
+        | NetCoreApp2_0
+        static member All = [NetStandard1_3] 
         member this.Identifier = 
             match this with
-            | Net45 -> { MSBuild = "v4.5"; Nuget = "net45"; DefineConstants = if not isMono then "TRACE;NET45" else "NET45"; }
-            | Net46 -> { MSBuild = "v4.6"; Nuget = "net46"; DefineConstants = if not isMono then "TRACE;NET46" else "NET46"; }
-            | NetStandard1_3 -> { MSBuild = "netstandard1.3"; Nuget = "netstandard1.3"; DefineConstants = if not isMono then "TRACE;DOTNETCORE" else "DOTNETCORE"; }
-            | NetCoreApp1_1 -> { MSBuild = "netcoreapp1.1"; Nuget = "netcoreapp1.1"; DefineConstants = if not isMono then "TRACE;DOTNETCORE" else "DOTNETCORE"; }
+            | Net46 -> { MSBuild = "v4.6"; Nuget = "net46"; DefineConstants = ""; }
+            | NetStandard1_3 -> { MSBuild = "netstandard1.3"; Nuget = "netstandard1.3"; DefineConstants = ""; }
+            | NetCoreApp2_0 -> { MSBuild = "netcoreapp2.0"; Nuget = "netcoreapp2.0"; DefineConstants = ""; }
 
     type Project =
         | Nest
         | ElasticsearchNet
+        | NestJsonNetSerializer
+        | ElasticsearchNetHttpWebRequestConnection
 
     type PrivateProject =
         | Tests
         | DocGenerator
-
 
     type DotNetProject = 
         | Project of Project
@@ -43,10 +42,18 @@ module Projects =
             seq [
                 Project Project.ElasticsearchNet; 
                 Project Project.Nest; 
+                Project Project.NestJsonNetSerializer;
+                Project ElasticsearchNetHttpWebRequestConnection;
                 PrivateProject PrivateProject.Tests
             ]
 
-        static member AllPublishable = seq [Project Project.ElasticsearchNet; Project Project.Nest;] 
+        static member AllPublishable = 
+            seq [
+                Project Project.ElasticsearchNet; 
+                Project Project.Nest; 
+                Project Project.NestJsonNetSerializer;
+                Project ElasticsearchNetHttpWebRequestConnection;
+            ] 
         static member Tests = seq [PrivateProject PrivateProject.Tests;] 
 
         member this.Name =
@@ -55,6 +62,8 @@ module Projects =
                 match p with
                 | Nest -> "Nest"
                 | ElasticsearchNet -> "Elasticsearch.Net"
+                | NestJsonNetSerializer -> "Nest.JsonNetSerializer"
+                | ElasticsearchNetHttpWebRequestConnection -> "Elasticsearch.Net.Connections.HttpWebRequestConnection"
             | PrivateProject p ->
                 match p with
                 | Tests -> "Tests"

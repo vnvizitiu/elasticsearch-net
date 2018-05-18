@@ -29,11 +29,11 @@ namespace Nest
 
 		public int TotalResponses => this.Responses.HasAny() ? this.Responses.Count() : 0;
 
-		private IEnumerable<T> _allResponses<T>() where T : class, IResponse, IBodyWithApiCallDetails
+		private IEnumerable<T> _allResponses<T>() where T : class, IResponse, IElasticsearchResponse
 		{
 			foreach (var r in this.Responses.Values.OfType<T>())
 			{
-				((IBodyWithApiCallDetails)r).ApiCall = this.ApiCall;
+				((IElasticsearchResponse)r).ApiCall = this.ApiCall;
 				yield return r;
 			}
 		}
@@ -42,13 +42,13 @@ namespace Nest
 
 		public IEnumerable<IResponse> GetInvalidResponses() => this._allResponses<IResponse>().Where(r => !r.IsValid);
 
-		public IEnumerable<SearchResponse<T>> GetResponses<T>() where T : class => this._allResponses<SearchResponse<T>>();
+		public IEnumerable<ISearchResponse<T>> GetResponses<T>() where T : class => this._allResponses<SearchResponse<T>>();
 
-		public SearchResponse<T> GetResponse<T>(string name) where T : class
+		public ISearchResponse<T> GetResponse<T>(string name) where T : class
 		{
 			object response;
 			this.Responses.TryGetValue(name, out response);
-			var r = response as IBodyWithApiCallDetails;
+			var r = response as IElasticsearchResponse;
 			if (r != null)
 				r.ApiCall = this.ApiCall;
 			return response as SearchResponse<T>;

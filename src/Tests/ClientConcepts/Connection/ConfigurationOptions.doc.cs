@@ -3,10 +3,6 @@ using Elasticsearch.Net;
 using Nest;
 using Tests.Framework.MockData;
 
-#if DOTNETCORE
-using System.Net.Http;
-#endif
-
 namespace Tests.ClientConcepts.Connection
 {
 	public class ConfigurationOptions
@@ -46,11 +42,12 @@ namespace Tests.ClientConcepts.Connection
 
 			var lowLevelClient = new ElasticLowLevelClient(connectionConfiguration);
 
+
 			/**
 			 * And with the high level client
 			 */
 			var connectionSettings = new ConnectionSettings()
-				.InferMappingFor<Project>(i => i
+				.DefaultMappingFor<Project>(i => i
 					.IndexName("my-projects")
 					.TypeName("project")
 				)
